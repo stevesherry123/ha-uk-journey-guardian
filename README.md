@@ -83,7 +83,8 @@ After downloading it:
 1. Restart Home Assistant.
 2. Open **Settings → Devices & services → Add integration**.
 3. Search for **UK Journey Guardian**.
-4. Select the calendar, traveller, zones, and provider credentials.
+4. Select the calendar, traveller, and zones. Provider credentials can be
+   deferred until the related monitoring feature is enabled.
 5. Keep existing travel alarms enabled while validating shadow-mode results.
 
 The project may be submitted to HACS's default catalogue after it is stable,
@@ -105,9 +106,6 @@ Entity IDs can differ if similarly named entities already exist.
 
 `journey_guardian.review_now` immediately reviews the configured calendar and
 returns the normalized engine snapshot when a response is requested.
-
-`journey_guardian.reset_api_budget` resets the persisted daily API counter. It is
-intended for diagnostics and controlled recovery, not routine automation.
 
 ## Privacy and security
 

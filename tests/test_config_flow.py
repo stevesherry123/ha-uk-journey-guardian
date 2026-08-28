@@ -1,0 +1,118 @@
+"""Tests for the Journey Guardian config flow."""
+
+from unittest.mock import patch
+
+from homeassistant.config_entries import SOURCE_USER
+from homeassistant.data_entry_flow import FlowResultType
+
+from custom_components.journey_guardian.const import (
+    CONF_CALENDAR_ENTITY,
+    CONF_DAILY_API_LIMIT,
+    CONF_DESTINATION_ZONES,
+    CONF_GOOGLE_ROUTES_API_KEY,
+    CONF_HOME_ZONE,
+    CONF_PERSON_ENTITY,
+    CONF_PREPARATION_BUFFER_MINUTES,
+    CONF_STATION_ACCESS_MODE,
+    CONF_STATION_BUFFER_MINUTES,
+    CONF_TRANSPORTAPI_APP_ID,
+    CONF_TRANSPORTAPI_APP_KEY,
+    CONF_URGENT_API_RESERVE,
+    DOMAIN,
+)
+
+USER_INPUT = {
+    CONF_CALENDAR_ENTITY: ".".join(("calendar", "example_travel")),
+    CONF_PERSON_ENTITY: ".".join(("person", "example_traveller")),
+    CONF_HOME_ZONE: "zone.home",
+    CONF_DESTINATION_ZONES: ["zone.example_destination"],
+    CONF_PREPARATION_BUFFER_MINUTES: 30,
+    CONF_STATION_BUFFER_MINUTES: 15,
+    CONF_STATION_ACCESS_MODE: "walking",
+    CONF_TRANSPORTAPI_APP_ID: "example-app-id",
+    CONF_TRANSPORTAPI_APP_KEY: "example-app-key",
+    CONF_GOOGLE_ROUTES_API_KEY: "",
+    CONF_DAILY_API_LIMIT: 30,
+    CONF_URGENT_API_RESERVE: 3,
+}
+
+
+async def test_user_flow_creates_entry(hass) -> None:
+    """A complete valid form creates the single config entry."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    with (
+        patch(
+            "custom_components.journey_guardian.async_setup",
+            return_value=True,
+        ),
+        patch(
+            "custom_components.journey_guardian.async_setup_entry",
+            return_value=True,
+        ),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], USER_INPUT
+        )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["title"] == "UK Journey Guardian"
+    assert result["data"] == USER_INPUT
+
+
+async def test_user_flow_allows_deferred_provider_credentials(hass) -> None:
+    """Calendar-only setup does not require unused provider credentials."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    deferred_input = {
+        key: value
+        for key, value in USER_INPUT.items()
+        if key
+        not in {
+            CONF_TRANSPORTAPI_APP_ID,
+            CONF_TRANSPORTAPI_APP_KEY,
+            CONF_GOOGLE_ROUTES_API_KEY,
+        }
+    }
+
+    with (
+        patch(
+            "custom_components.journey_guardian.async_setup",
+            return_value=True,
+        ),
+        patch(
+            "custom_components.journey_guardian.async_setup_entry",
+            return_value=True,
+        ),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], deferred_input
+        )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"] == deferred_input
+
+
+async def test_user_flow_rejects_reserve_at_limit(hass) -> None:
+    """The urgent reserve must remain below the daily allowance."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    invalid_input = {
+        **USER_INPUT,
+        CONF_DAILY_API_LIMIT: 3,
+        CONF_URGENT_API_RESERVE: 3,
+    }
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], invalid_input
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {
+        CONF_URGENT_API_RESERVE: "reserve_must_be_lower"
+    }

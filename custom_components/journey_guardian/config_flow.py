@@ -88,8 +88,8 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         "bicycling": "Cycling",
                     }
                 ),
-                vol.Required(CONF_TRANSPORTAPI_APP_ID): selector.TextSelector(),
-                vol.Required(CONF_TRANSPORTAPI_APP_KEY): selector.TextSelector(
+                vol.Optional(CONF_TRANSPORTAPI_APP_ID): selector.TextSelector(),
+                vol.Optional(CONF_TRANSPORTAPI_APP_KEY): selector.TextSelector(
                     selector.TextSelectorConfig(
                         type=selector.TextSelectorType.PASSWORD
                     )

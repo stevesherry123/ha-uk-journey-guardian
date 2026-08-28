@@ -27,8 +27,8 @@
           "preparation_buffer_minutes": "Minutes allowed to get ready before leaving for the station.",
           "station_buffer_minutes": "Minutes to arrive at the station before the scheduled train departure.",
           "station_access_mode": "Auto compares suitable modes; a fixed mode can be selected instead.",
-          "transportapi_app_id": "Your TransportAPI application identifier.",
-          "transportapi_app_key": "Stored privately in the Home Assistant config entry.",
+          "transportapi_app_id": "Optional until TransportAPI rail monitoring is enabled.",
+          "transportapi_app_key": "Optional until TransportAPI rail monitoring is enabled. Stored privately in the Home Assistant config entry.",
           "google_routes_api_key": "Optional until Google routing is enabled. Use a dedicated restricted server-side Routes API key.",
           "daily_api_limit": "Maximum TransportAPI calls permitted each local day.",
           "urgent_api_reserve": "Routine checks stop before consuming this final reserve."
@@ -60,10 +60,6 @@
     "review_now": {
       "name": "Review journey now",
       "description": "Immediately refresh the calendar and UK Journey Guardian decision path."
-    },
-    "reset_api_budget": {
-      "name": "Reset API budget",
-      "description": "Reset the persisted TransportAPI call counter for the current day."
     }
   }
 }

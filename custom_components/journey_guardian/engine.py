@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 from typing import Any
 
@@ -12,6 +13,8 @@ from .budget import TransportAPIBudget
 from .const import DEFAULT_LOOKAHEAD_HOURS
 from .journey import select_next_journey
 from .models import JourneySnapshot
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class JourneyGuardianEngine:
@@ -42,12 +45,18 @@ class JourneyGuardianEngine:
                 budget=self._budget.snapshot(),
             )
         except Exception as err:  # Home Assistant service errors vary by provider
+            # Exception messages from calendars and future provider clients may
+            # contain entity IDs, event details, URLs, or credentials. Preserve
+            # only a stable public category in coordinator data.
+            _LOGGER.warning(
+                "Calendar review failed with %s", type(err).__name__
+            )
             return JourneySnapshot(
                 status="error",
                 checked_at=checked_at,
                 next_journey=None,
                 budget=self._budget.snapshot(),
-                error=f"{type(err).__name__}: {err}",
+                error="calendar_unavailable",
             )
 
     async def _async_calendar_events(self, start: Any) -> list[dict[str, Any]]:

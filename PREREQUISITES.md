@@ -49,8 +49,10 @@ integration enforces a daily budget and preserves an urgent reserve.
 - [TransportAPI developer portal](https://developer.transportapi.com/)
 - [TransportAPI rail documentation](https://developer.transportapi.com/docs)
 
-The credentials are entered into Home Assistant's integration setup. They must
-not be placed in YAML examples, source files, logs, screenshots, or issue reports.
+The credentials are entered into Home Assistant's integration setup when rail
+monitoring is enabled; they can be deferred during calendar-only setup. They
+must not be placed in YAML examples, source files, logs, screenshots, or issue
+reports.
 
 ## Walking and road estimates
 

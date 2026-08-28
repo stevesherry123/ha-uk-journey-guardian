@@ -1,7 +1,3 @@
 review_now:
   name: Review journey now
   description: Immediately refresh the calendar and UK Journey Guardian decision path.
-
-reset_api_budget:
-  name: Reset API budget
-  description: Reset the persisted TransportAPI call counter for the current day.

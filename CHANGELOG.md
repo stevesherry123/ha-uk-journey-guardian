@@ -6,11 +6,18 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ### Fixed
 
+- Sanitized calendar/provider failures before exposing error state, diagnostics,
+  or action responses.
+- Registered integration actions independently from the config-entry lifecycle.
 - Simplified setup-form selectors for broader Home Assistant compatibility.
 - Made Google Routes credentials optional until that provider is enabled.
+- Made TransportAPI credentials optional until rail monitoring is enabled.
 
 ### Changed
 
+- Removed the manual TransportAPI budget reset so the configured daily limit
+  cannot be bypassed.
+- Removed the unused Core-only `strings.json` translation source.
 - Renamed the public-facing project to UK Journey Guardian.
 - Replaced location-specific routing assumptions with generic calendar parsing.
 - Added support for selecting multiple destination zones.

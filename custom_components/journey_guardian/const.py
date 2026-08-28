@@ -28,7 +28,6 @@ DEFAULT_LOOKAHEAD_HOURS = 30
 DEFAULT_UPDATE_INTERVAL = timedelta(minutes=10)
 
 SERVICE_REVIEW_NOW = "review_now"
-SERVICE_RESET_API_BUDGET = "reset_api_budget"
 
 STORAGE_KEY = f"{DOMAIN}.transportapi_budget"
 STORAGE_VERSION = 1

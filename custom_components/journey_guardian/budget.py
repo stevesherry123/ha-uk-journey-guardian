@@ -69,13 +69,6 @@ class TransportAPIBudget:
             await self._async_save()
             return True
 
-    async def async_reset(self) -> None:
-        """Reset the daily count explicitly."""
-        async with self._lock:
-            self._date = dt_util.now().date().isoformat()
-            self._calls_used = 0
-            await self._async_save()
-
     def _rollover_if_needed(self) -> None:
         today = dt_util.now().date().isoformat()
         if self._date != today:

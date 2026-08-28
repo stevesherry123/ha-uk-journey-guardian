@@ -1,0 +1,129 @@
+"""Config flow for Journey Guardian."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import voluptuous as vol
+from homeassistant import config_entries
+from homeassistant.data_entry_flow import ConfigFlowResult
+from homeassistant.helpers import selector
+
+from .const import (
+    CONF_CALENDAR_ENTITY,
+    CONF_DAILY_API_LIMIT,
+    CONF_DESTINATION_ZONES,
+    CONF_GOOGLE_ROUTES_API_KEY,
+    CONF_HOME_ZONE,
+    CONF_PERSON_ENTITY,
+    CONF_PREPARATION_BUFFER_MINUTES,
+    CONF_STATION_ACCESS_MODE,
+    CONF_STATION_BUFFER_MINUTES,
+    CONF_TRANSPORTAPI_APP_ID,
+    CONF_TRANSPORTAPI_APP_KEY,
+    CONF_URGENT_API_RESERVE,
+    DEFAULT_DAILY_API_LIMIT,
+    DEFAULT_HOME_ZONE,
+    DEFAULT_PREPARATION_BUFFER_MINUTES,
+    DEFAULT_STATION_ACCESS_MODE,
+    DEFAULT_STATION_BUFFER_MINUTES,
+    DEFAULT_URGENT_API_RESERVE,
+    DOMAIN,
+)
+
+
+class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Configure Journey Guardian through the Home Assistant UI."""
+
+    VERSION = 1
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle the initial setup step."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if user_input[CONF_URGENT_API_RESERVE] >= user_input[CONF_DAILY_API_LIMIT]:
+                errors[CONF_URGENT_API_RESERVE] = "reserve_must_be_lower"
+            else:
+                await self.async_set_unique_id(DOMAIN)
+                self._abort_if_unique_id_configured()
+                return self.async_create_entry(
+                    title="UK Journey Guardian", data=user_input
+                )
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_CALENDAR_ENTITY): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="calendar")
+                ),
+                vol.Required(CONF_PERSON_ENTITY): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="person")
+                ),
+                vol.Required(
+                    CONF_HOME_ZONE, default=DEFAULT_HOME_ZONE
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="zone")
+                ),
+                vol.Optional(
+                    CONF_DESTINATION_ZONES, default=[]
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="zone", multiple=True)
+                ),
+                vol.Required(
+                    CONF_PREPARATION_BUFFER_MINUTES,
+                    default=DEFAULT_PREPARATION_BUFFER_MINUTES,
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0,
+                        max=180,
+                        step=5,
+                        mode=selector.NumberSelectorMode.BOX,
+                        unit_of_measurement="min",
+                    )
+                ),
+                vol.Required(
+                    CONF_STATION_BUFFER_MINUTES,
+                    default=DEFAULT_STATION_BUFFER_MINUTES,
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0,
+                        max=120,
+                        step=5,
+                        mode=selector.NumberSelectorMode.BOX,
+                        unit_of_measurement="min",
+                    )
+                ),
+                vol.Required(
+                    CONF_STATION_ACCESS_MODE,
+                    default=DEFAULT_STATION_ACCESS_MODE,
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["auto", "walking", "driving", "bicycling"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        translation_key="station_access_mode",
+                    )
+                ),
+                vol.Required(CONF_TRANSPORTAPI_APP_ID): selector.TextSelector(),
+                vol.Required(CONF_TRANSPORTAPI_APP_KEY): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.PASSWORD
+                    )
+                ),
+                vol.Required(CONF_GOOGLE_ROUTES_API_KEY): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.PASSWORD
+                    )
+                ),
+                vol.Required(
+                    CONF_DAILY_API_LIMIT, default=DEFAULT_DAILY_API_LIMIT
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=100)),
+                vol.Required(
+                    CONF_URGENT_API_RESERVE,
+                    default=DEFAULT_URGENT_API_RESERVE,
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=20)),
+            }
+        )
+        return self.async_show_form(
+            step_id="user", data_schema=schema, errors=errors
+        )

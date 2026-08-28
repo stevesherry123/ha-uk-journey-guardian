@@ -1,0 +1,13 @@
+{
+  "domain": "journey_guardian",
+  "name": "UK Journey Guardian",
+  "codeowners": ["@stevesherry123"],
+  "config_flow": true,
+  "documentation": "https://github.com/stevesherry123/ha-uk-journey-guardian",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/stevesherry123/ha-uk-journey-guardian/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

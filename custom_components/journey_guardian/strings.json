@@ -1,0 +1,79 @@
+{
+  "title": "UK Journey Guardian",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up UK Journey Guardian",
+        "description": "Connect a travel calendar, routing providers, and destination zones. Credentials are stored by Home Assistant and are never exposed as entity state.",
+        "data": {
+          "calendar_entity": "Travel calendar",
+          "person_entity": "Traveller",
+          "home_zone": "Home zone",
+          "destination_zones": "Destination zones",
+          "preparation_buffer_minutes": "Preparation buffer",
+          "station_buffer_minutes": "Station arrival buffer",
+          "station_access_mode": "Default way to reach the station",
+          "transportapi_app_id": "TransportAPI application ID",
+          "transportapi_app_key": "TransportAPI application key",
+          "google_routes_api_key": "Google Routes API key",
+          "daily_api_limit": "Daily TransportAPI call limit",
+          "urgent_api_reserve": "Calls reserved for urgent checks"
+        },
+        "data_description": {
+          "calendar_entity": "Calendar containing timed rail journey events.",
+          "person_entity": "Person whose location will be used for travel decisions.",
+          "home_zone": "Zone used to identify home departures.",
+          "destination_zones": "Optional zones representing one or more regular destinations.",
+          "preparation_buffer_minutes": "Minutes allowed to get ready before leaving for the station.",
+          "station_buffer_minutes": "Minutes to arrive at the station before the scheduled train departure.",
+          "station_access_mode": "Auto compares suitable modes; a fixed mode can be selected instead.",
+          "transportapi_app_id": "Your TransportAPI application identifier.",
+          "transportapi_app_key": "Stored privately in the Home Assistant config entry.",
+          "google_routes_api_key": "Restricted server-side key with the Routes API enabled.",
+          "daily_api_limit": "Maximum TransportAPI calls permitted each local day.",
+          "urgent_api_reserve": "Routine checks stop before consuming this final reserve."
+        }
+      }
+    },
+    "error": {
+      "reserve_must_be_lower": "The urgent reserve must be lower than the daily limit."
+    },
+    "abort": {
+      "already_configured": "UK Journey Guardian is already configured."
+    }
+  },
+  "selector": {
+    "station_access_mode": {
+      "options": {
+        "auto": "Automatic",
+        "walking": "Walking",
+        "driving": "Driving",
+        "bicycling": "Cycling"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {"name": "Status"},
+      "next_departure": {"name": "Next departure"},
+      "decision_path": {"name": "Decision path"},
+      "transportapi_calls": {"name": "TransportAPI calls today"}
+    },
+    "binary_sensor": {
+      "data_healthy": {"name": "Data healthy"}
+    },
+    "button": {
+      "review_now": {"name": "Review now"}
+    }
+  },
+  "services": {
+    "review_now": {
+      "name": "Review journey now",
+      "description": "Immediately refresh the calendar and UK Journey Guardian decision path."
+    },
+    "reset_api_budget": {
+      "name": "Reset API budget",
+      "description": "Reset the persisted TransportAPI call counter for the current day."
+    }
+  }
+}

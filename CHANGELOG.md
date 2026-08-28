@@ -1,0 +1,24 @@
+# Changelog
+
+All notable changes to Journey Guardian will be documented in this file.
+
+## [Unreleased]
+
+### Changed
+
+- Renamed the public-facing project to UK Journey Guardian.
+- Replaced location-specific routing assumptions with generic calendar parsing.
+- Added support for selecting multiple destination zones.
+- Added per-traveller preparation, station-buffer, and station-access settings.
+- Added provider and Home Assistant prerequisites documentation.
+- Added a public, privacy-safe development backlog including HACS submission.
+
+### Added
+
+- Initial Home Assistant custom-integration scaffold.
+- UI configuration for calendar, traveller, zones, and TransportAPI allowance.
+- Generic calendar normalization and origin/destination extraction.
+- Persistent TransportAPI quota manager with an urgent-call reserve.
+- Status, next-departure, decision-path, API-count, and data-health entities.
+- Manual review button and Home Assistant actions.
+- Redacted diagnostics, tests, and automated validation.

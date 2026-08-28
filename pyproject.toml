@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ha-uk-journey-guardian"
+version = "0.1.0"
+description = "UK-focused Home Assistant journey monitoring and departure decisions"
+requires-python = ">=3.14.2"
+license = { text = "MIT" }
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.3",
+  "ruff>=0.11",
+]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

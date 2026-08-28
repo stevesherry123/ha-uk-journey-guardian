@@ -27,6 +27,7 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ### Added
 
+- Non-identifying brand icon for HACS and Home Assistant presentation.
 - Initial Home Assistant custom-integration scaffold.
 - UI configuration for calendar, traveller, zones, and TransportAPI allowance.
 - Generic calendar normalization and origin/destination extraction.

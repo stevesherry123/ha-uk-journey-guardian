@@ -29,7 +29,7 @@
           "station_access_mode": "Auto compares suitable modes; a fixed mode can be selected instead.",
           "transportapi_app_id": "Your TransportAPI application identifier.",
           "transportapi_app_key": "Stored privately in the Home Assistant config entry.",
-          "google_routes_api_key": "Restricted server-side key with the Routes API enabled.",
+          "google_routes_api_key": "Optional until Google routing is enabled. Use a dedicated restricted server-side Routes API key.",
           "daily_api_limit": "Maximum TransportAPI calls permitted each local day.",
           "urgent_api_reserve": "Routine checks stop before consuming this final reserve."
         }

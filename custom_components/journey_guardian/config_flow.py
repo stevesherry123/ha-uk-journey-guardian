@@ -94,7 +94,7 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         type=selector.TextSelectorType.PASSWORD
                     )
                 ),
-                vol.Required(CONF_GOOGLE_ROUTES_API_KEY): selector.TextSelector(
+                vol.Optional(CONF_GOOGLE_ROUTES_API_KEY): selector.TextSelector(
                     selector.TextSelectorConfig(
                         type=selector.TextSelectorType.PASSWORD
                     )

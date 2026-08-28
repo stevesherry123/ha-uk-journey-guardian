@@ -114,5 +114,5 @@ def configured_provider_credentials(entry: ConfigEntry) -> dict[str, str]:
     return {
         CONF_TRANSPORTAPI_APP_ID: entry.data[CONF_TRANSPORTAPI_APP_ID],
         CONF_TRANSPORTAPI_APP_KEY: entry.data[CONF_TRANSPORTAPI_APP_KEY],
-        CONF_GOOGLE_ROUTES_API_KEY: entry.data[CONF_GOOGLE_ROUTES_API_KEY],
+        CONF_GOOGLE_ROUTES_API_KEY: entry.data.get(CONF_GOOGLE_ROUTES_API_KEY, ""),
     }

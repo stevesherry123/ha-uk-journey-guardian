@@ -7,6 +7,7 @@ All notable changes to Journey Guardian will be documented in this file.
 ### Fixed
 
 - Simplified setup-form selectors for broader Home Assistant compatibility.
+- Made Google Routes credentials optional until that provider is enabled.
 
 ### Changed
 

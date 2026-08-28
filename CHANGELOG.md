@@ -4,6 +4,10 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Simplified setup-form selectors for broader Home Assistant compatibility.
+
 ### Changed
 
 - Renamed the public-facing project to UK Journey Guardian.

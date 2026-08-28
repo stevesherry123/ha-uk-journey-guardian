@@ -6,7 +6,6 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.data_entry_flow import ConfigFlowResult
 from homeassistant.helpers import selector
 
 from .const import (
@@ -39,7 +38,7 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    ) -> dict[str, Any]:
         """Handle the initial setup step."""
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -73,36 +72,21 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(
                     CONF_PREPARATION_BUFFER_MINUTES,
                     default=DEFAULT_PREPARATION_BUFFER_MINUTES,
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=0,
-                        max=180,
-                        step=5,
-                        mode=selector.NumberSelectorMode.BOX,
-                        unit_of_measurement="min",
-                    )
-                ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=180)),
                 vol.Required(
                     CONF_STATION_BUFFER_MINUTES,
                     default=DEFAULT_STATION_BUFFER_MINUTES,
-                ): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=0,
-                        max=120,
-                        step=5,
-                        mode=selector.NumberSelectorMode.BOX,
-                        unit_of_measurement="min",
-                    )
-                ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=120)),
                 vol.Required(
                     CONF_STATION_ACCESS_MODE,
                     default=DEFAULT_STATION_ACCESS_MODE,
-                ): selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=["auto", "walking", "driving", "bicycling"],
-                        mode=selector.SelectSelectorMode.DROPDOWN,
-                        translation_key="station_access_mode",
-                    )
+                ): vol.In(
+                    {
+                        "auto": "Automatic",
+                        "walking": "Walking",
+                        "driving": "Driving",
+                        "bicycling": "Cycling",
+                    }
                 ),
                 vol.Required(CONF_TRANSPORTAPI_APP_ID): selector.TextSelector(),
                 vol.Required(CONF_TRANSPORTAPI_APP_KEY): selector.TextSelector(

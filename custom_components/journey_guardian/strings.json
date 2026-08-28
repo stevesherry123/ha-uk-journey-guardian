@@ -42,16 +42,6 @@
       "already_configured": "UK Journey Guardian is already configured."
     }
   },
-  "selector": {
-    "station_access_mode": {
-      "options": {
-        "auto": "Automatic",
-        "walking": "Walking",
-        "driving": "Driving",
-        "bicycling": "Cycling"
-      }
-    }
-  },
   "entity": {
     "sensor": {
       "status": {"name": "Status"},

@@ -29,6 +29,8 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ### Added
 
+- Architecture decision record and cutover engineering gates covering provider
+  trust, freshness, state recovery, Repairs, migrations, and request brokering.
 - Planned, active, and completed calendar-journey lifecycle handling so an
   underway leg remains available for follow-up monitoring until its event ends.
 - Non-identifying brand icon for HACS and Home Assistant presentation.

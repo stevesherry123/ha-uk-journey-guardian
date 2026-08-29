@@ -64,6 +64,10 @@ provider monitoring will be added in a later feature slice.
 See [PREREQUISITES.md](PREREQUISITES.md) for provider accounts, calendar setup,
 API-key security, and notification requirements.
 
+The integration's architectural boundaries, security defaults, state-handling
+rules, and provider trust model are recorded in
+[ADR 0001](docs/adr/0001-layered-journey-engine.md).
+
 ## Departure calculation
 
 Journey Guardian keeps the two safety margins independent:

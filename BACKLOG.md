@@ -17,10 +17,32 @@ inside each user's Home Assistant installation.
 - [ ] disable the legacy packages and complete an observation period
 - [ ] remove the legacy packages only after the observation period succeeds
 
+## Engineering gates for cutover
+
+- [x] use Home Assistant-native configuration and privacy-safe diagnostics
+- [x] persist the shared provider budget and protect an urgent reserve
+- [x] sanitize calendar/provider exceptions into stable public categories
+- [x] keep integration actions safe across config-entry reloads
+- [x] document the layered, local-first architecture and trust boundaries
+- [ ] route every provider request through a caching, deduplicating request broker
+- [ ] expose source freshness and distinguish stale data from healthy current data
+- [ ] separate raw provider observations from derived journey decisions
+- [ ] distinguish scheduled, predicted, confirmed, cancelled, and inferred values
+- [ ] surface actionable configuration/provider faults through Home Assistant Repairs
+- [ ] version persisted journey state and test idempotent restart/reload recovery
+- [ ] reject or quarantine malformed, duplicate, corrected, and unsupported records
+- [ ] validate calculated departure decisions against authoritative observations
+- [ ] retain the rationale for deferred or rejected engineering decisions
+
 ## Pre-feature hardening
 
 - add Home Assistant integration-level tests for config flow, setup, unloading,
   coordinator refreshes, entities, actions, diagnostics, and recovery paths
+- add contract tests for malformed, duplicate, stale, corrected, and unsupported
+  calendar/provider records
+- preserve privacy-safe raw source observations separately from derived state where
+  replay or incident investigation is required
+- add schema versions and migrations before persisting journey lifecycle state
 - surface prolonged calendar unavailability using a last-successful-review
   timestamp and a privacy-safe stale-data warning
 - sanitize provider and calendar exceptions before exposing error state,

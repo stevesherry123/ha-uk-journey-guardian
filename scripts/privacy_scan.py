@@ -5,7 +5,16 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
-EXCLUDED_PARTS = {".git", ".pytest_cache", ".ruff_cache", "__pycache__"}
+EXCLUDED_PARTS = {
+    ".git",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "venv",
+}
 TEXT_SUFFIXES = {
     "",
     ".json",
@@ -35,7 +44,10 @@ def main() -> int:
     """Scan repository text and print only file and rule names."""
     findings: list[tuple[Path, str]] = []
     for path in ROOT.rglob("*"):
-        if not path.is_file() or any(part in EXCLUDED_PARTS for part in path.parts):
+        if not path.is_file() or any(
+            part in EXCLUDED_PARTS or part.endswith(".egg-info")
+            for part in path.parts
+        ):
             continue
         if path.suffix.casefold() not in TEXT_SUFFIXES:
             continue

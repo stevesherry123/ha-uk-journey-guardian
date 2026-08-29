@@ -43,6 +43,9 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
         journey = self.coordinator.data.next_journey
         return {
             "checked_at": self.coordinator.data.checked_at.isoformat(),
+            "journey_end": (
+                journey.end.isoformat() if journey and journey.end else None
+            ),
             "origin_code": journey.origin_code if journey else None,
             "origin_name": journey.origin_name if journey else None,
             "destination_confirmation": (

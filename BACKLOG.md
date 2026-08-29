@@ -4,6 +4,19 @@ This backlog deliberately uses generic terminology. Real stations, destinations,
 addresses, calendars, people, notification targets, and credentials must remain
 inside each user's Home Assistant installation.
 
+## Legacy cutover checklist
+
+- [x] discover and normalize generic timed calendar journeys
+- [x] retain an underway journey until its calendar event ends
+- [ ] provide manual-review parity through the shared decision engine
+- [ ] monitor direct and split rail legs within the shared provider budget
+- [ ] calculate preparation and leave times with a conservative routing fallback
+- [ ] send configurable operational notifications with deduplication
+- [ ] replace rapid wake-up loops with bounded, cancellable announcements
+- [ ] pass direct, split, delayed, cancelled, restart, and provider-outage tests
+- [ ] disable the legacy packages and complete an observation period
+- [ ] remove the legacy packages only after the observation period succeeds
+
 ## Pre-feature hardening
 
 - add Home Assistant integration-level tests for config flow, setup, unloading,

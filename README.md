@@ -28,6 +28,7 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - UI-based Home Assistant configuration
 - privacy-preserving diagnostics
 - generic normalization of the next timed calendar journey
+- planned, active, and completed calendar-journey lifecycle states
 - optional multiple destination zones
 - per-traveller preparation time, station buffer, and station-access preference
 - a persistent shared TransportAPI budget with an urgent-call reserve
@@ -55,6 +56,10 @@ The required separator is ` to ` (case-insensitive). The event must have a timed
 start, not only an all-day date. Setting the event location to the departure
 station is strongly recommended as an independent confirmation. For split
 journeys, create or import one event per leg.
+
+A recognized journey remains active until the timed calendar event ends. This
+provides the lifecycle window needed for delayed-service and interchange checks;
+provider monitoring will be added in a later feature slice.
 
 See [PREREQUISITES.md](PREREQUISITES.md) for provider accounts, calendar setup,
 API-key security, and notification requirements.

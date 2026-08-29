@@ -42,7 +42,10 @@ def select_next_journey(
     candidates: list[JourneyEvent] = []
     for raw_event in events:
         start = parse_datetime(str(raw_event.get("start", "")), reference)
-        if start is None or start <= reference:
+        if start is None:
+            continue
+        end = parse_datetime(str(raw_event.get("end", "")), reference)
+        if start <= reference and (end is None or end <= reference):
             continue
         summary = str(raw_event.get("summary", "")).strip()
         location = str(raw_event.get("location", "")).strip()
@@ -53,6 +56,7 @@ def select_next_journey(
         candidates.append(
             JourneyEvent(
                 start=start,
+                end=end,
                 summary=summary,
                 location=location,
                 origin_code="CALENDAR",

@@ -6,6 +6,8 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ### Fixed
 
+- Excluded disposable development environments and build outputs from the
+  repository privacy scan.
 - Sanitized calendar/provider failures before exposing error state, diagnostics,
   or action responses.
 - Registered integration actions independently from the config-entry lifecycle.
@@ -27,6 +29,8 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ### Added
 
+- Planned, active, and completed calendar-journey lifecycle handling so an
+  underway leg remains available for follow-up monitoring until its event ends.
 - Non-identifying brand icon for HACS and Home Assistant presentation.
 - Initial Home Assistant custom-integration scaffold.
 - UI configuration for calendar, traveller, zones, and TransportAPI allowance.

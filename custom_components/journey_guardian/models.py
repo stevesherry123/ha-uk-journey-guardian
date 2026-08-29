@@ -12,6 +12,7 @@ class JourneyEvent:
     """A normalized timed journey event."""
 
     start: datetime
+    end: datetime | None
     summary: str
     location: str
     origin_code: str
@@ -23,6 +24,7 @@ class JourneyEvent:
         """Return a serializable representation."""
         data = asdict(self)
         data["start"] = self.start.isoformat()
+        data["end"] = self.end.isoformat() if self.end is not None else None
         return data
 
 

@@ -37,7 +37,12 @@ class JourneyGuardianEngine:
         try:
             events = await self._async_calendar_events(checked_at)
             next_journey = select_next_journey(events, checked_at)
-            status = "planned" if next_journey is not None else "idle"
+            if next_journey is None:
+                status = "idle"
+            elif next_journey.start <= checked_at:
+                status = "active"
+            else:
+                status = "planned"
             return JourneySnapshot(
                 status=status,
                 checked_at=checked_at,

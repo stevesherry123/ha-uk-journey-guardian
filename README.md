@@ -68,6 +68,11 @@ The integration's architectural boundaries, security defaults, state-handling
 rules, and provider trust model are recorded in
 [ADR 0001](docs/adr/0001-layered-journey-engine.md).
 
+Accepted development work follows the repository's
+[release policy](docs/RELEASE_POLICY.md): unless explicitly held as draft work, a
+completed change is published to `main`, tagged, released, and verified before it
+is presented as ready for a Home Assistant upgrade.
+
 ## Departure calculation
 
 Journey Guardian keeps the two safety margins independent:

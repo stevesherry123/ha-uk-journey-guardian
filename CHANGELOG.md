@@ -29,6 +29,8 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ### Added
 
+- A default completion contract that publishes accepted work to `main`, creates
+  the matching release, and verifies upgrade availability unless explicitly held.
 - Architecture decision record and cutover engineering gates covering provider
   trust, freshness, state recovery, Repairs, migrations, and request brokering.
 - Planned, active, and completed calendar-journey lifecycle handling so an

@@ -56,6 +56,8 @@ inside each user's Home Assistant installation.
 - create non-identifying brand assets
 - add and pass HACS Action and Hassfest validation
 - pin or constrain development and CI tooling for reproducible validation
+- update GitHub's checkout and Python setup actions to Node.js 24-based releases
+  once their pinned replacement versions are adopted
 - add a repository description and generic topics without private route details
 - protect the default branch with required validation checks when the development
   workflow is ready for pull requests

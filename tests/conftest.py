@@ -2,9 +2,16 @@
 
 from pathlib import Path
 
+import custom_components
 import pytest
 
 ROOT = Path(__file__).parents[1]
+CUSTOM_COMPONENTS_PATH = str(ROOT / "custom_components")
+
+# `pip install .[test]` can import the built package before Home Assistant mounts
+# the checkout. Ensure the loader always scans the source under test first.
+if CUSTOM_COMPONENTS_PATH not in custom_components.__path__:
+    custom_components.__path__.insert(0, CUSTOM_COMPONENTS_PATH)
 
 
 @pytest.fixture

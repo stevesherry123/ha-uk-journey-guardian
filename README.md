@@ -7,7 +7,7 @@ split-journey monitoring.
 The current alpha targets Home Assistant 2026.8 or newer.
 
 > [!WARNING]
-> UK Journey Guardian is currently an alpha project. The first release provides
+> UK Journey Guardian is currently an alpha project. The current release provides
 > the integration foundation and shadow-mode calendar decisions. Do not remove
 > an existing travel alarm or rely on it as the sole source of departure advice.
 
@@ -31,14 +31,18 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - planned, active, and completed calendar-journey lifecycle states
 - optional multiple destination zones
 - per-traveller preparation time, station buffer, and station-access preference
+- preparation, leave-home, and station-arrival timestamp entities
+- editable conservative station-access and early-warning timing
 - a persistent shared TransportAPI budget with an urgent-call reserve
 - status, next-departure, decision-path, API-budget, and data-health entities
 - a **Review now** button and `journey_guardian.review_now` action
 - automated validation and unit tests
 
 The alpha does not yet call TransportAPI, Google Routes, or local transit
-providers. Those providers will be added behind the shared coordinator and quota
-guard after shadow-mode decisions have been verified.
+providers. Until live routing is added, station-access timing uses a configurable
+conservative fallback and is explicitly classified as inferred. Providers will
+be added behind the shared coordinator and quota guard after shadow-mode
+decisions have been verified.
 
 ## Calendar format
 
@@ -79,12 +83,14 @@ Journey Guardian keeps the two safety margins independent:
 
 ```text
 leave time = train departure - station buffer - route duration
-start getting ready = leave time - preparation buffer
+start getting ready = leave time - preparation buffer - early-warning margin
 ```
 
-Both buffers are user choices. The home-to-station route duration is requested
-for the configured access mode. Selecting walking explicitly uses a walking route;
-automatic mode may compare suitable modes when that capability is implemented.
+The safety margins and conservative station-access duration are user choices.
+Until live routing is enabled, the timing entities include
+`source: configured_fallback` and `classification: inferred`. Selecting walking
+explicitly will use a walking route when that capability is implemented;
+automatic mode may compare suitable modes.
 
 ## Installation during alpha
 
@@ -101,20 +107,21 @@ After downloading it:
    deferred until the related monitoring feature is enabled.
 5. Keep existing travel alarms enabled while validating shadow-mode results.
 
+After installation, open **Settings → Devices & services → UK Journey
+Guardian → Configure** to tune the preparation, early-warning,
+station-arrival, and conservative station-access durations.
+
 The project may be submitted to HACS's default catalogue after it is stable,
 branded, released, and passing HACS and Home Assistant validation. HACS indexes
 the GitHub repository; it does not replace or host the source repository.
 
 ## Entities
 
-- `sensor.journey_guardian_status`
-- `sensor.journey_guardian_next_departure`
-- `sensor.journey_guardian_decision_path`
-- `sensor.journey_guardian_transportapi_calls_today`
-- `binary_sensor.journey_guardian_data_healthy`
-- `button.journey_guardian_review_now`
-
-Entity IDs can differ if similarly named entities already exist.
+The integration creates **Status**, **Next departure**, **Prepare at**, **Leave
+home at**, **Station arrival at**, **Decision path**, **TransportAPI calls
+today**, **Data health**, and **Review now** entities. Home Assistant generates
+their entity IDs from the configured device name, so IDs can differ between
+installations.
 
 ## Actions
 
@@ -135,7 +142,7 @@ Please report security concerns according to [SECURITY.md](SECURITY.md).
 1. destination profiles and station-code resolution
 2. TransportAPI station-board client with enforced daily quota
 3. unified manual-review decision tree
-4. scheduled departure and leave-time engine
+4. internal scheduling and actionable departure notifications
 5. lightweight interchange monitoring
 6. Google walking/driving estimates and UK local-transit comparison
 7. notification adapters and wearable entry points

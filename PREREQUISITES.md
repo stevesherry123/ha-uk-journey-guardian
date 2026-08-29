@@ -22,6 +22,10 @@ Each traveller selects two independent safety margins:
 - **preparation buffer** — time to get ready before leaving the current location
 - **station buffer** — time to arrive before the scheduled rail departure
 
+They can also edit an **early-warning margin** and a conservative
+**station-access fallback**. The fallback is used until live routing is enabled
+and is always labelled as inferred in Journey Guardian entities.
+
 They also select a default station-access mode: automatic, walking, driving, or
 cycling. These settings remain in Home Assistant and are not published.
 

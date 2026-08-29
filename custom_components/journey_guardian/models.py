@@ -29,6 +29,29 @@ class JourneyEvent:
 
 
 @dataclass(frozen=True, slots=True)
+class JourneyTiming:
+    """Actionable journey times and their provenance."""
+
+    prepare_at: datetime
+    leave_home_at: datetime
+    station_arrival_at: datetime
+    preparation_minutes: int
+    early_warning_minutes: int
+    station_buffer_minutes: int
+    station_access_minutes: int
+    source: str
+    classification: str
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return a serializable representation."""
+        data = asdict(self)
+        data["prepare_at"] = self.prepare_at.isoformat()
+        data["leave_home_at"] = self.leave_home_at.isoformat()
+        data["station_arrival_at"] = self.station_arrival_at.isoformat()
+        return data
+
+
+@dataclass(frozen=True, slots=True)
 class BudgetSnapshot:
     """Current TransportAPI allowance state."""
 
@@ -67,6 +90,7 @@ class JourneySnapshot:
     checked_at: datetime
     next_journey: JourneyEvent | None
     budget: BudgetSnapshot
+    timing: JourneyTiming | None = None
     error: str | None = None
 
     @property
@@ -82,6 +106,7 @@ class JourneySnapshot:
             "next_journey": (
                 self.next_journey.as_dict() if self.next_journey is not None else None
             ),
+            "timing": self.timing.as_dict() if self.timing is not None else None,
             "budget": self.budget.as_dict(),
             "data_healthy": self.data_healthy,
             "error": self.error,

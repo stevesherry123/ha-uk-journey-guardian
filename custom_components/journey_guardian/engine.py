@@ -10,9 +10,16 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
 from .budget import TransportAPIBudget
-from .const import DEFAULT_LOOKAHEAD_HOURS
+from .const import (
+    DEFAULT_EARLY_WARNING_MINUTES,
+    DEFAULT_LOOKAHEAD_HOURS,
+    DEFAULT_PREPARATION_BUFFER_MINUTES,
+    DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
+    DEFAULT_STATION_BUFFER_MINUTES,
+)
 from .journey import select_next_journey
 from .models import JourneySnapshot
+from .timing import calculate_fallback_timing
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,11 +32,21 @@ class JourneyGuardianEngine:
         hass: HomeAssistant,
         calendar_entity: str,
         budget: TransportAPIBudget,
+        preparation_buffer_minutes: int = DEFAULT_PREPARATION_BUFFER_MINUTES,
+        early_warning_minutes: int = DEFAULT_EARLY_WARNING_MINUTES,
+        station_buffer_minutes: int = DEFAULT_STATION_BUFFER_MINUTES,
+        station_access_fallback_minutes: int = (
+            DEFAULT_STATION_ACCESS_FALLBACK_MINUTES
+        ),
     ) -> None:
         """Initialize the engine."""
         self._hass = hass
         self._calendar_entity = calendar_entity
         self._budget = budget
+        self._preparation_buffer_minutes = preparation_buffer_minutes
+        self._early_warning_minutes = early_warning_minutes
+        self._station_buffer_minutes = station_buffer_minutes
+        self._station_access_fallback_minutes = station_access_fallback_minutes
 
     async def async_review(self) -> JourneySnapshot:
         """Review the next calendar journey without consuming rail API quota."""
@@ -43,11 +60,23 @@ class JourneyGuardianEngine:
                 status = "active"
             else:
                 status = "planned"
+            timing = (
+                calculate_fallback_timing(
+                    next_journey,
+                    preparation_minutes=self._preparation_buffer_minutes,
+                    early_warning_minutes=self._early_warning_minutes,
+                    station_buffer_minutes=self._station_buffer_minutes,
+                    station_access_minutes=self._station_access_fallback_minutes,
+                )
+                if next_journey is not None
+                else None
+            )
             return JourneySnapshot(
                 status=status,
                 checked_at=checked_at,
                 next_journey=next_journey,
                 budget=self._budget.snapshot(),
+                timing=timing,
             )
         except Exception as err:  # Home Assistant service errors vary by provider
             # Exception messages from calendars and future provider clients may

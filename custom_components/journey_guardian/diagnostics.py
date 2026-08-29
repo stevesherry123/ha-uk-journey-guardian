@@ -7,10 +7,12 @@ from homeassistant.core import HomeAssistant
 from .const import (
     CONF_CALENDAR_ENTITY,
     CONF_DESTINATION_ZONES,
+    CONF_EARLY_WARNING_MINUTES,
     CONF_GOOGLE_ROUTES_API_KEY,
     CONF_HOME_ZONE,
     CONF_PERSON_ENTITY,
     CONF_PREPARATION_BUFFER_MINUTES,
+    CONF_STATION_ACCESS_FALLBACK_MINUTES,
     CONF_STATION_ACCESS_MODE,
     CONF_STATION_BUFFER_MINUTES,
     CONF_TRANSPORTAPI_APP_ID,
@@ -22,9 +24,11 @@ TO_REDACT = {
     CONF_PERSON_ENTITY,
     CONF_HOME_ZONE,
     CONF_DESTINATION_ZONES,
+    CONF_EARLY_WARNING_MINUTES,
     CONF_PREPARATION_BUFFER_MINUTES,
     CONF_STATION_BUFFER_MINUTES,
     CONF_STATION_ACCESS_MODE,
+    CONF_STATION_ACCESS_FALLBACK_MINUTES,
     CONF_TRANSPORTAPI_APP_ID,
     CONF_TRANSPORTAPI_APP_KEY,
     CONF_GOOGLE_ROUTES_API_KEY,
@@ -44,6 +48,14 @@ async def async_get_config_entry_diagnostics(
             "data_healthy": snapshot.data_healthy,
             "error": snapshot.error,
             "next_journey": "REDACTED" if snapshot.next_journey else None,
+            "timing": (
+                {
+                    "source": snapshot.timing.source,
+                    "classification": snapshot.timing.classification,
+                }
+                if snapshot.timing
+                else None
+            ),
         },
         "budget": snapshot.budget.as_dict(),
     }

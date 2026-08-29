@@ -11,7 +11,9 @@
           "home_zone": "Home zone",
           "destination_zones": "Destination zones",
           "preparation_buffer_minutes": "Preparation buffer",
+          "early_warning_minutes": "Early warning margin",
           "station_buffer_minutes": "Station arrival buffer",
+          "station_access_fallback_minutes": "Conservative station access fallback",
           "station_access_mode": "Default way to reach the station",
           "transportapi_app_id": "TransportAPI application ID",
           "transportapi_app_key": "TransportAPI application key",
@@ -25,7 +27,9 @@
           "home_zone": "Zone used to identify home departures.",
           "destination_zones": "Optional zones representing one or more regular destinations.",
           "preparation_buffer_minutes": "Minutes allowed to get ready before leaving for the station.",
+          "early_warning_minutes": "Additional conservative margin before preparation should begin.",
           "station_buffer_minutes": "Minutes to arrive at the station before the scheduled train departure.",
+          "station_access_fallback_minutes": "Minutes allowed to reach the station until live routing is available. Timing is labelled inferred.",
           "station_access_mode": "Auto compares suitable modes; a fixed mode can be selected instead.",
           "transportapi_app_id": "Optional until TransportAPI rail monitoring is enabled.",
           "transportapi_app_key": "Optional until TransportAPI rail monitoring is enabled. Stored privately in the Home Assistant config entry.",
@@ -42,10 +46,33 @@
       "already_configured": "UK Journey Guardian is already configured."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Journey timing",
+        "description": "Edit the conservative timing used until live station-access routing is available.",
+        "data": {
+          "preparation_buffer_minutes": "Preparation buffer",
+          "early_warning_minutes": "Early warning margin",
+          "station_buffer_minutes": "Station arrival buffer",
+          "station_access_fallback_minutes": "Conservative station access fallback"
+        },
+        "data_description": {
+          "preparation_buffer_minutes": "Minutes allowed to get ready before leaving for the station.",
+          "early_warning_minutes": "Additional conservative margin before preparation should begin.",
+          "station_buffer_minutes": "Minutes to arrive at the station before the scheduled train departure.",
+          "station_access_fallback_minutes": "Minutes allowed to reach the station until live routing is available. Timing is labelled inferred."
+        }
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "status": {"name": "Status"},
       "next_departure": {"name": "Next departure"},
+      "prepare_at": {"name": "Prepare at"},
+      "leave_home_at": {"name": "Leave home at"},
+      "station_arrival_at": {"name": "Station arrival at"},
       "decision_path": {"name": "Decision path"},
       "transportapi_calls": {"name": "TransportAPI calls today"}
     },

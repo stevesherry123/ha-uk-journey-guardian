@@ -4,15 +4,18 @@ from unittest.mock import patch
 
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.data_entry_flow import FlowResultType
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.journey_guardian.const import (
     CONF_CALENDAR_ENTITY,
     CONF_DAILY_API_LIMIT,
     CONF_DESTINATION_ZONES,
+    CONF_EARLY_WARNING_MINUTES,
     CONF_GOOGLE_ROUTES_API_KEY,
     CONF_HOME_ZONE,
     CONF_PERSON_ENTITY,
     CONF_PREPARATION_BUFFER_MINUTES,
+    CONF_STATION_ACCESS_FALLBACK_MINUTES,
     CONF_STATION_ACCESS_MODE,
     CONF_STATION_BUFFER_MINUTES,
     CONF_TRANSPORTAPI_APP_ID,
@@ -27,7 +30,9 @@ USER_INPUT = {
     CONF_HOME_ZONE: "zone.home",
     CONF_DESTINATION_ZONES: ["zone.example_destination"],
     CONF_PREPARATION_BUFFER_MINUTES: 30,
+    CONF_EARLY_WARNING_MINUTES: 10,
     CONF_STATION_BUFFER_MINUTES: 15,
+    CONF_STATION_ACCESS_FALLBACK_MINUTES: 60,
     CONF_STATION_ACCESS_MODE: "walking",
     CONF_TRANSPORTAPI_APP_ID: "example-app-id",
     CONF_TRANSPORTAPI_APP_KEY: "example-app-key",
@@ -116,3 +121,28 @@ async def test_user_flow_rejects_reserve_at_limit(hass) -> None:
     assert result["errors"] == {
         CONF_URGENT_API_RESERVE: "reserve_must_be_lower"
     }
+
+
+async def test_options_flow_updates_timing_and_reloads(hass) -> None:
+    """Existing installs can edit conservative timing without reinstalling."""
+    entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT)
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+
+    assert result["type"] is FlowResultType.FORM
+    updated = {
+        CONF_PREPARATION_BUFFER_MINUTES: 35,
+        CONF_EARLY_WARNING_MINUTES: 12,
+        CONF_STATION_BUFFER_MINUTES: 20,
+        CONF_STATION_ACCESS_FALLBACK_MINUTES: 75,
+    }
+    with patch.object(hass.config_entries, "async_reload") as async_reload:
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], updated
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options == updated
+    async_reload.assert_awaited_once_with(entry.entry_id)

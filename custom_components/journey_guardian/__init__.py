@@ -12,11 +12,19 @@ from .budget import TransportAPIBudget
 from .const import (
     CONF_CALENDAR_ENTITY,
     CONF_DAILY_API_LIMIT,
+    CONF_EARLY_WARNING_MINUTES,
     CONF_GOOGLE_ROUTES_API_KEY,
+    CONF_PREPARATION_BUFFER_MINUTES,
+    CONF_STATION_ACCESS_FALLBACK_MINUTES,
+    CONF_STATION_BUFFER_MINUTES,
     CONF_TRANSPORTAPI_APP_ID,
     CONF_TRANSPORTAPI_APP_KEY,
     CONF_URGENT_API_RESERVE,
     DEFAULT_DAILY_API_LIMIT,
+    DEFAULT_EARLY_WARNING_MINUTES,
+    DEFAULT_PREPARATION_BUFFER_MINUTES,
+    DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
+    DEFAULT_STATION_BUFFER_MINUTES,
     DEFAULT_URGENT_API_RESERVE,
     DOMAIN,
     SERVICE_REVIEW_NOW,
@@ -47,10 +55,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await budget.async_load()
 
+    settings = {**entry.data, **entry.options}
     engine = JourneyGuardianEngine(
         hass,
         calendar_entity=entry.data[CONF_CALENDAR_ENTITY],
         budget=budget,
+        preparation_buffer_minutes=settings.get(
+            CONF_PREPARATION_BUFFER_MINUTES,
+            DEFAULT_PREPARATION_BUFFER_MINUTES,
+        ),
+        early_warning_minutes=settings.get(
+            CONF_EARLY_WARNING_MINUTES, DEFAULT_EARLY_WARNING_MINUTES
+        ),
+        station_buffer_minutes=settings.get(
+            CONF_STATION_BUFFER_MINUTES, DEFAULT_STATION_BUFFER_MINUTES
+        ),
+        station_access_fallback_minutes=settings.get(
+            CONF_STATION_ACCESS_FALLBACK_MINUTES,
+            DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
+        ),
     )
     coordinator = JourneyGuardianCoordinator(hass, entry, engine)
     entry.runtime_data = JourneyGuardianRuntimeData(

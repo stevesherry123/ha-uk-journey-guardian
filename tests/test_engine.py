@@ -115,6 +115,16 @@ async def test_future_calendar_journey_remains_planned() -> None:
 
     assert snapshot.status == "planned"
     assert snapshot.next_journey is not None
+    assert snapshot.timing is not None
+    assert snapshot.timing.station_arrival_at == datetime(
+        2026, 8, 28, 16, 45, tzinfo=UTC
+    )
+    assert snapshot.timing.leave_home_at == datetime(
+        2026, 8, 28, 15, 45, tzinfo=UTC
+    )
+    assert snapshot.timing.prepare_at == datetime(
+        2026, 8, 28, 15, 5, tzinfo=UTC
+    )
 
 
 async def test_completed_calendar_journey_returns_to_idle() -> None:
@@ -148,3 +158,4 @@ async def test_completed_calendar_journey_returns_to_idle() -> None:
 
     assert snapshot.status == "idle"
     assert snapshot.next_journey is None
+    assert snapshot.timing is None

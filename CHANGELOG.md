@@ -4,6 +4,24 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-08-29
+
+### Added
+
+- Preparation, leave-home, and station-arrival timestamp entities calculated
+  from the recognized journey and conservative safety margins.
+- An editable timing options flow for existing installations.
+- Explicit `configured_fallback` and `inferred` provenance on every calculated
+  timing entity and in privacy-safe diagnostics.
+- A release packaging regression test for the Journey Guardian logo.
+
+### Changed
+
+- Added configurable early-warning and station-access fallback durations while
+  preserving safe defaults for existing config entries.
+
+## [0.1.3] - 2026-08-29
+
 ### Fixed
 
 - Excluded disposable development environments and build outputs from the

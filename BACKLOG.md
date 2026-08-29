@@ -10,7 +10,7 @@ inside each user's Home Assistant installation.
 - [x] retain an underway journey until its calendar event ends
 - [ ] provide manual-review parity through the shared decision engine
 - [ ] monitor direct and split rail legs within the shared provider budget
-- [ ] calculate preparation and leave times with a conservative routing fallback
+- [x] calculate preparation and leave times with a conservative routing fallback
 - [ ] send configurable operational notifications with deduplication
 - [ ] replace rapid wake-up loops with bounded, cancellable announcements
 - [ ] pass direct, split, delayed, cancelled, restart, and provider-outage tests
@@ -88,7 +88,7 @@ inside each user's Home Assistant installation.
 ## Distribution
 
 - publish alpha releases for installation as a HACS custom repository
-- create non-identifying brand assets
+- create non-identifying brand assets (packaged and regression-tested)
 - add and pass HACS Action and Hassfest validation
 - pin or constrain development and CI tooling for reproducible validation
 - update GitHub's checkout and Python setup actions to Node.js 24-based releases

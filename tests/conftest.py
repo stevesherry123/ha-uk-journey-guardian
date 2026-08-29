@@ -8,15 +8,9 @@ ROOT = Path(__file__).parents[1]
 
 
 @pytest.fixture
-def hass_config_dir(tmp_path: Path) -> str:
-    """Expose Journey Guardian inside Home Assistant's test config directory."""
-    components = tmp_path / "custom_components"
-    components.mkdir()
-    (components / "journey_guardian").symlink_to(
-        ROOT / "custom_components/journey_guardian",
-        target_is_directory=True,
-    )
-    return str(tmp_path)
+def hass_config_dir() -> str:
+    """Use the repository root as Home Assistant's test config directory."""
+    return str(ROOT)
 
 
 @pytest.fixture(autouse=True)

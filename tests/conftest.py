@@ -2,8 +2,9 @@
 
 from pathlib import Path
 
-import custom_components
 import pytest
+
+import custom_components
 
 ROOT = Path(__file__).parents[1]
 CUSTOM_COMPONENTS_PATH = str(ROOT / "custom_components")

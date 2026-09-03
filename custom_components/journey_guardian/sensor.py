@@ -62,8 +62,10 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict:
         journey = self.coordinator.data.next_journey
+        observation = self.coordinator.data.rail_observation
         return {
             "checked_at": self.coordinator.data.checked_at.isoformat(),
+            "simulation_active": self.coordinator.data.simulation_active,
             "journey_end": (
                 journey.end.isoformat() if journey and journey.end else None
             ),
@@ -73,6 +75,27 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
                 journey.destination_confirmation if journey else None
             ),
             "error": self.coordinator.data.error,
+            "rail_source": observation.source if observation else None,
+            "rail_classification": (
+                observation.classification if observation else None
+            ),
+            "rail_scenario": observation.scenario if observation else None,
+            "scheduled_departure": (
+                observation.scheduled_departure.isoformat()
+                if observation
+                else None
+            ),
+            "predicted_departure": (
+                observation.predicted_departure.isoformat()
+                if observation and observation.predicted_departure
+                else None
+            ),
+            "delay_minutes": observation.delay_minutes if observation else None,
+            "cancelled": observation.cancelled if observation else None,
+            "leg_count": observation.leg_count if observation else None,
+            "provider_available": (
+                observation.provider_available if observation else None
+            ),
         }
 
 
@@ -85,6 +108,9 @@ class NextDepartureSensor(JourneyGuardianEntity, SensorEntity):
 
     @property
     def native_value(self):
+        observation = self.coordinator.data.rail_observation
+        if observation and observation.predicted_departure:
+            return observation.predicted_departure
         journey = self.coordinator.data.next_journey
         return journey.start if journey else None
 

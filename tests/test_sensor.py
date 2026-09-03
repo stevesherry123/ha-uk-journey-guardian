@@ -6,8 +6,18 @@ from unittest.mock import Mock
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.journey_guardian.const import DOMAIN
-from custom_components.journey_guardian.models import JourneyTiming
-from custom_components.journey_guardian.sensor import JourneyTimingSensor
+from custom_components.journey_guardian.models import (
+    BudgetSnapshot,
+    JourneyEvent,
+    JourneySnapshot,
+    JourneyTiming,
+    RailObservation,
+)
+from custom_components.journey_guardian.sensor import (
+    JourneyStatusSensor,
+    JourneyTimingSensor,
+    NextDepartureSensor,
+)
 
 
 def test_timing_sensor_exposes_provenance() -> None:
@@ -43,3 +53,56 @@ def test_timing_sensor_exposes_provenance() -> None:
         "station_buffer_minutes": 15,
         "station_access_minutes": 60,
     }
+
+
+def test_simulated_delay_is_visible_without_overwriting_schedule() -> None:
+    """Entities expose the prediction while retaining its simulated provenance."""
+    scheduled = datetime(2026, 9, 3, 10, 30, tzinfo=UTC)
+    predicted = datetime(2026, 9, 3, 10, 50, tzinfo=UTC)
+    journey = JourneyEvent(
+        start=scheduled,
+        end=datetime(2026, 9, 3, 11, 50, tzinfo=UTC),
+        summary="Rail simulation - Simulation Origin to Simulation Destination",
+        location="Simulation Origin",
+        origin_code="SIM",
+        origin_name="Simulation Origin",
+        destination_confirmation="Simulation Destination",
+        decision_path="simulation_delayed",
+    )
+    observation = RailObservation(
+        scenario="delayed",
+        source="simulation",
+        classification="simulated",
+        observed_at=datetime(2026, 9, 3, 9, 0, tzinfo=UTC),
+        scheduled_departure=scheduled,
+        predicted_departure=predicted,
+        delay_minutes=20,
+        cancelled=False,
+        leg_count=1,
+        provider_available=True,
+    )
+    coordinator = Mock()
+    coordinator.data = JourneySnapshot(
+        status="delayed",
+        checked_at=datetime(2026, 9, 3, 9, 0, tzinfo=UTC),
+        next_journey=journey,
+        budget=BudgetSnapshot("2026-09-03", 0, 30, 3),
+        rail_observation=observation,
+        simulation_active=True,
+    )
+    entry = MockConfigEntry(domain=DOMAIN)
+
+    next_departure = NextDepartureSensor(
+        coordinator, entry, "next_departure"
+    )
+    status = JourneyStatusSensor(coordinator, entry, "status")
+
+    assert next_departure.native_value == predicted
+    assert status.extra_state_attributes["scheduled_departure"] == (
+        scheduled.isoformat()
+    )
+    assert status.extra_state_attributes["predicted_departure"] == (
+        predicted.isoformat()
+    )
+    assert status.extra_state_attributes["rail_source"] == "simulation"
+    assert status.extra_state_attributes["simulation_active"] is True

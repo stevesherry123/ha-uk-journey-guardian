@@ -4,6 +4,25 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-09-03
+
+### Added
+
+- Quota-free journey simulation actions for on-time, delayed, cancelled,
+  split-journey, and provider-unavailable scenarios.
+- A diagnostic simulation-active entity and explicit simulated rail-observation
+  provenance.
+- Separate scheduled and predicted departure values for simulated delays.
+- Deterministic tests proving simulations bypass calendar calls and cannot
+  reserve TransportAPI allowance.
+
+### Changed
+
+- The actionable next-departure entity uses a simulated predicted departure
+  while preserving the scheduled value in diagnostic attributes.
+- Simulations are deliberately held only in memory and clear automatically when
+  their synthetic journey finishes or Home Assistant restarts.
+
 ## [0.1.4] - 2026-08-29
 
 ### Added

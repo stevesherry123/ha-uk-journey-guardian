@@ -47,6 +47,22 @@ async def async_get_config_entry_diagnostics(
             "status": snapshot.status,
             "data_healthy": snapshot.data_healthy,
             "error": snapshot.error,
+            "simulation_active": snapshot.simulation_active,
+            "rail_observation": (
+                {
+                    "scenario": snapshot.rail_observation.scenario,
+                    "source": snapshot.rail_observation.source,
+                    "classification": snapshot.rail_observation.classification,
+                    "delay_minutes": snapshot.rail_observation.delay_minutes,
+                    "cancelled": snapshot.rail_observation.cancelled,
+                    "leg_count": snapshot.rail_observation.leg_count,
+                    "provider_available": (
+                        snapshot.rail_observation.provider_available
+                    ),
+                }
+                if snapshot.rail_observation
+                else None
+            ),
             "next_journey": "REDACTED" if snapshot.next_journey else None,
             "timing": (
                 {

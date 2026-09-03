@@ -7,9 +7,14 @@ from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.util import dt as dt_util
 
 from .budget import TransportAPIBudget
 from .const import (
+    ATTR_DELAY_MINUTES,
+    ATTR_DEPARTURE_IN_MINUTES,
+    ATTR_DURATION_MINUTES,
+    ATTR_SCENARIO,
     CONF_CALENDAR_ENTITY,
     CONF_DAILY_API_LIMIT,
     CONF_EARLY_WARNING_MINUTES,
@@ -27,11 +32,15 @@ from .const import (
     DEFAULT_STATION_BUFFER_MINUTES,
     DEFAULT_URGENT_API_RESERVE,
     DOMAIN,
+    SERVICE_CLEAR_SIMULATION,
     SERVICE_REVIEW_NOW,
+    SERVICE_SIMULATE_JOURNEY,
+    SIMULATION_SCENARIOS,
 )
 from .coordinator import JourneyGuardianCoordinator
 from .engine import JourneyGuardianEngine
 from .runtime import JourneyGuardianRuntimeData
+from .simulation import JourneySimulation
 
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
 
@@ -56,6 +65,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await budget.async_load()
 
     settings = {**entry.data, **entry.options}
+    simulation = JourneySimulation()
     engine = JourneyGuardianEngine(
         hass,
         calendar_entity=entry.data[CONF_CALENDAR_ENTITY],
@@ -74,10 +84,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             CONF_STATION_ACCESS_FALLBACK_MINUTES,
             DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
         ),
+        simulation=simulation,
     )
     coordinator = JourneyGuardianCoordinator(hass, entry, engine)
     entry.runtime_data = JourneyGuardianRuntimeData(
-        coordinator=coordinator, budget=budget
+        coordinator=coordinator, budget=budget, simulation=simulation
     )
     await coordinator.async_config_entry_first_refresh()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -97,21 +108,66 @@ def _runtime(hass: HomeAssistant) -> JourneyGuardianRuntimeData:
 
 
 def _async_register_services(hass: HomeAssistant) -> None:
-    if hass.services.has_service(DOMAIN, SERVICE_REVIEW_NOW):
-        return
-
     async def async_review_now(call: ServiceCall) -> dict:
         runtime = _runtime(hass)
         await runtime.coordinator.async_request_refresh()
         return runtime.coordinator.data.as_dict()
 
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_REVIEW_NOW,
-        async_review_now,
-        schema=vol.Schema({}),
-        supports_response=SupportsResponse.OPTIONAL,
-    )
+    async def async_simulate_journey(call: ServiceCall) -> dict:
+        runtime = _runtime(hass)
+        runtime.simulation.activate(
+            scenario=call.data[ATTR_SCENARIO],
+            now=dt_util.now(),
+            departure_in_minutes=call.data[ATTR_DEPARTURE_IN_MINUTES],
+            delay_minutes=call.data[ATTR_DELAY_MINUTES],
+            duration_minutes=call.data[ATTR_DURATION_MINUTES],
+        )
+        await runtime.coordinator.async_request_refresh()
+        return runtime.coordinator.data.as_dict()
+
+    async def async_clear_simulation(call: ServiceCall) -> dict:
+        runtime = _runtime(hass)
+        runtime.simulation.clear()
+        await runtime.coordinator.async_request_refresh()
+        return runtime.coordinator.data.as_dict()
+
+    if not hass.services.has_service(DOMAIN, SERVICE_REVIEW_NOW):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_REVIEW_NOW,
+            async_review_now,
+            schema=vol.Schema({}),
+            supports_response=SupportsResponse.OPTIONAL,
+        )
+    if not hass.services.has_service(DOMAIN, SERVICE_SIMULATE_JOURNEY):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SIMULATE_JOURNEY,
+            async_simulate_journey,
+            schema=vol.Schema(
+                {
+                    vol.Required(ATTR_SCENARIO): vol.In(SIMULATION_SCENARIOS),
+                    vol.Optional(ATTR_DEPARTURE_IN_MINUTES, default=90): vol.All(
+                        vol.Coerce(int), vol.Range(min=1, max=1440)
+                    ),
+                    vol.Optional(ATTR_DELAY_MINUTES, default=15): vol.All(
+                        vol.Coerce(int), vol.Range(min=0, max=240)
+                    ),
+                    vol.Optional(ATTR_DURATION_MINUTES, default=60): vol.All(
+                        vol.Coerce(int), vol.Range(min=1, max=720)
+                    ),
+                }
+            ),
+            supports_response=SupportsResponse.OPTIONAL,
+        )
+    if not hass.services.has_service(DOMAIN, SERVICE_CLEAR_SIMULATION):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_CLEAR_SIMULATION,
+            async_clear_simulation,
+            schema=vol.Schema({}),
+            supports_response=SupportsResponse.OPTIONAL,
+        )
 
 
 def configured_provider_credentials(entry: ConfigEntry) -> dict[str, str]:

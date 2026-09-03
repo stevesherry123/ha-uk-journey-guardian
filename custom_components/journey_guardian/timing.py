@@ -14,6 +14,8 @@ def calculate_fallback_timing(
     early_warning_minutes: int,
     station_buffer_minutes: int,
     station_access_minutes: int,
+    source: str = "configured_fallback",
+    classification: str = "inferred",
 ) -> JourneyTiming:
     """Calculate conservative timing from configured fallback durations."""
     station_arrival = journey.start - timedelta(minutes=station_buffer_minutes)
@@ -29,6 +31,6 @@ def calculate_fallback_timing(
         early_warning_minutes=early_warning_minutes,
         station_buffer_minutes=station_buffer_minutes,
         station_access_minutes=station_access_minutes,
-        source="configured_fallback",
-        classification="inferred",
+        source=source,
+        classification=classification,
     )

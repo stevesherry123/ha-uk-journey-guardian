@@ -36,6 +36,8 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - a persistent shared TransportAPI budget with an urgent-call reserve
 - status, next-departure, decision-path, API-budget, and data-health entities
 - a **Review now** button and `journey_guardian.review_now` action
+- quota-free on-time, delayed, cancelled, split, and provider-outage simulations
+- an explicit **Simulation active** diagnostic entity
 - automated validation and unit tests
 
 The alpha does not yet call TransportAPI, Google Routes, or local transit
@@ -127,6 +129,20 @@ installations.
 
 `journey_guardian.review_now` immediately reviews the configured calendar and
 returns the normalized engine snapshot when a response is requested.
+
+`journey_guardian.simulate_journey` activates a synthetic scenario using generic
+locations and an offset from the current time. While it is active, reviews bypass
+the configured calendar and no TransportAPI request or quota reservation can
+occur. Supported scenarios are `on_time`, `delayed`, `cancelled`,
+`split_on_time`, and `provider_unavailable`.
+
+`journey_guardian.clear_simulation` explicitly returns reviews to the configured
+calendar. Simulations are held only in memory and also clear when Home Assistant
+restarts or when the synthetic journey finishes.
+
+> [!IMPORTANT]
+> Always confirm that the **Simulation active** entity is off before relying on
+> Journey Guardian for a real journey.
 
 ## Privacy and security
 

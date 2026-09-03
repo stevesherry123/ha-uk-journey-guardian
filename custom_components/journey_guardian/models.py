@@ -52,6 +52,34 @@ class JourneyTiming:
 
 
 @dataclass(frozen=True, slots=True)
+class RailObservation:
+    """Provider-neutral rail observation used by decisions and simulations."""
+
+    scenario: str
+    source: str
+    classification: str
+    observed_at: datetime
+    scheduled_departure: datetime
+    predicted_departure: datetime | None
+    delay_minutes: int
+    cancelled: bool
+    leg_count: int
+    provider_available: bool
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return a serializable representation."""
+        data = asdict(self)
+        data["observed_at"] = self.observed_at.isoformat()
+        data["scheduled_departure"] = self.scheduled_departure.isoformat()
+        data["predicted_departure"] = (
+            self.predicted_departure.isoformat()
+            if self.predicted_departure is not None
+            else None
+        )
+        return data
+
+
+@dataclass(frozen=True, slots=True)
 class BudgetSnapshot:
     """Current TransportAPI allowance state."""
 
@@ -91,6 +119,8 @@ class JourneySnapshot:
     next_journey: JourneyEvent | None
     budget: BudgetSnapshot
     timing: JourneyTiming | None = None
+    rail_observation: RailObservation | None = None
+    simulation_active: bool = False
     error: str | None = None
 
     @property
@@ -107,6 +137,12 @@ class JourneySnapshot:
                 self.next_journey.as_dict() if self.next_journey is not None else None
             ),
             "timing": self.timing.as_dict() if self.timing is not None else None,
+            "rail_observation": (
+                self.rail_observation.as_dict()
+                if self.rail_observation is not None
+                else None
+            ),
+            "simulation_active": self.simulation_active,
             "budget": self.budget.as_dict(),
             "data_healthy": self.data_healthy,
             "error": self.error,

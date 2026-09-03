@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from .budget import TransportAPIBudget
 from .coordinator import JourneyGuardianCoordinator
+from .simulation import JourneySimulation
 
 
 @dataclass(slots=True)
@@ -12,3 +13,4 @@ class JourneyGuardianRuntimeData:
 
     coordinator: JourneyGuardianCoordinator
     budget: TransportAPIBudget
+    simulation: JourneySimulation

@@ -19,6 +19,7 @@ from .const import (
 )
 from .journey import select_next_journey
 from .models import JourneySnapshot
+from .simulation import JourneySimulation
 from .timing import calculate_fallback_timing
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ class JourneyGuardianEngine:
         station_access_fallback_minutes: int = (
             DEFAULT_STATION_ACCESS_FALLBACK_MINUTES
         ),
+        simulation: JourneySimulation | None = None,
     ) -> None:
         """Initialize the engine."""
         self._hass = hass
@@ -47,10 +49,22 @@ class JourneyGuardianEngine:
         self._early_warning_minutes = early_warning_minutes
         self._station_buffer_minutes = station_buffer_minutes
         self._station_access_fallback_minutes = station_access_fallback_minutes
+        self._simulation = simulation
 
     async def async_review(self) -> JourneySnapshot:
         """Review the next calendar journey without consuming rail API quota."""
         checked_at = dt_util.now()
+        if self._simulation is not None:
+            simulated = self._simulation.snapshot(
+                now=checked_at,
+                budget=self._budget.snapshot(),
+                preparation_minutes=self._preparation_buffer_minutes,
+                early_warning_minutes=self._early_warning_minutes,
+                station_buffer_minutes=self._station_buffer_minutes,
+                station_access_minutes=self._station_access_fallback_minutes,
+            )
+            if simulated is not None:
+                return simulated
         try:
             events = await self._async_calendar_events(checked_at)
             next_journey = select_next_journey(events, checked_at)

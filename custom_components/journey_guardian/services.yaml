@@ -1,3 +1,54 @@
 review_now:
   name: Review journey now
   description: Immediately refresh the calendar and UK Journey Guardian decision path.
+
+simulate_journey:
+  name: Simulate journey
+  description: Activate a deterministic journey scenario without contacting TransportAPI or consuming provider allowance.
+  fields:
+    scenario:
+      name: Scenario
+      description: Synthetic rail condition to apply until simulation is cleared or Home Assistant restarts.
+      required: true
+      selector:
+        select:
+          options:
+            - on_time
+            - delayed
+            - cancelled
+            - split_on_time
+            - provider_unavailable
+    departure_in_minutes:
+      name: Departure in minutes
+      description: Minutes from now to the synthetic scheduled departure.
+      default: 90
+      selector:
+        number:
+          min: 1
+          max: 1440
+          unit_of_measurement: min
+          mode: box
+    delay_minutes:
+      name: Delay minutes
+      description: Delay applied by the delayed scenario; ignored by other scenarios.
+      default: 15
+      selector:
+        number:
+          min: 0
+          max: 240
+          unit_of_measurement: min
+          mode: box
+    duration_minutes:
+      name: Journey duration
+      description: Duration of the synthetic journey after its effective departure.
+      default: 60
+      selector:
+        number:
+          min: 1
+          max: 720
+          unit_of_measurement: min
+          mode: box
+
+clear_simulation:
+  name: Clear simulation
+  description: Return Journey Guardian to its configured calendar source. No provider call is made.

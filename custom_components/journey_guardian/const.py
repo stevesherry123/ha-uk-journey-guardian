@@ -32,6 +32,21 @@ DEFAULT_LOOKAHEAD_HOURS = 30
 DEFAULT_UPDATE_INTERVAL = timedelta(minutes=10)
 
 SERVICE_REVIEW_NOW = "review_now"
+SERVICE_SIMULATE_JOURNEY = "simulate_journey"
+SERVICE_CLEAR_SIMULATION = "clear_simulation"
+
+ATTR_SCENARIO = "scenario"
+ATTR_DEPARTURE_IN_MINUTES = "departure_in_minutes"
+ATTR_DELAY_MINUTES = "delay_minutes"
+ATTR_DURATION_MINUTES = "duration_minutes"
+
+SIMULATION_SCENARIOS = (
+    "on_time",
+    "delayed",
+    "cancelled",
+    "split_on_time",
+    "provider_unavailable",
+)
 
 STORAGE_KEY = f"{DOMAIN}.transportapi_budget"
 STORAGE_VERSION = 1

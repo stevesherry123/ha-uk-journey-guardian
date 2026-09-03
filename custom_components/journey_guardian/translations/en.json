@@ -77,7 +77,8 @@
       "transportapi_calls": {"name": "TransportAPI calls today"}
     },
     "binary_sensor": {
-      "data_healthy": {"name": "Data healthy"}
+      "data_healthy": {"name": "Data healthy"},
+      "simulation_active": {"name": "Simulation active"}
     },
     "button": {
       "review_now": {"name": "Review now"}
@@ -87,6 +88,20 @@
     "review_now": {
       "name": "Review journey now",
       "description": "Immediately refresh the calendar and UK Journey Guardian decision path."
+    },
+    "simulate_journey": {
+      "name": "Simulate journey",
+      "description": "Activate a deterministic journey scenario without contacting TransportAPI or consuming provider allowance.",
+      "fields": {
+        "scenario": {"name": "Scenario", "description": "Synthetic rail condition to apply until simulation is cleared or Home Assistant restarts."},
+        "departure_in_minutes": {"name": "Departure in minutes", "description": "Minutes from now to the synthetic scheduled departure."},
+        "delay_minutes": {"name": "Delay minutes", "description": "Delay applied by the delayed scenario; ignored by other scenarios."},
+        "duration_minutes": {"name": "Journey duration", "description": "Duration of the synthetic journey after its effective departure."}
+      }
+    },
+    "clear_simulation": {
+      "name": "Clear simulation",
+      "description": "Return Journey Guardian to its configured calendar source. No provider call is made."
     }
   }
 }

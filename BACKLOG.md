@@ -61,7 +61,7 @@ inside each user's Home Assistant installation.
 - prevent unchanged coordinator reviews from creating unnecessary entity-state
   and Recorder writes
 - add a privacy-safe `simulate_journey` action for deterministic acceptance tests
-  without calendar-feed latency or provider quota use
+  without calendar-feed latency or provider quota use (implemented in v0.1.5)
 - add a shadow-mode acceptance checklist covering calendar discovery, state
   transitions, restart recovery, stale data, diagnostics, and entity history
 - add privacy-safe structured telemetry for poll times, event and candidate

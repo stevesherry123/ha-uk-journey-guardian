@@ -67,6 +67,9 @@ class RailObservation:
     provider_available: bool
     freshness: str = "current"
     age_seconds: int = 0
+    service_identity: str | None = None
+    platform: str | None = None
+    match_quality: str = "not_applicable"
 
     def as_dict(self) -> dict[str, Any]:
         """Return a serializable representation."""

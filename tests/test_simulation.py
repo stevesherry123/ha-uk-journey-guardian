@@ -111,7 +111,7 @@ def test_split_scenario_is_explicit_without_claiming_live_monitoring() -> None:
     assert snapshot.status == "planned"
     assert snapshot.rail_observation is not None
     assert snapshot.rail_observation.leg_count == 2
-    assert snapshot.rail_observation.classification == "simulated"
+    assert snapshot.rail_observation.classification == "simulated_normalized"
 
 
 def test_completed_simulation_expires_automatically() -> None:

@@ -37,6 +37,8 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - a shared quota-enforcing provider request broker with cache and in-flight
   deduplication
 - explicit rail-data freshness and bounded stale-data handling
+- offline station-code resolution and defensive rail-board normalization
+- deterministic service matching with stable privacy-safe service identities
 - editable conservative station-access and early-warning timing
 - a persistent shared TransportAPI budget with an urgent-call reserve
 - status, next-departure, decision-path, API-budget, and data-health entities
@@ -46,8 +48,9 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - automated validation and unit tests
 
 The alpha does not yet call TransportAPI, Google Routes, or local transit
-providers. The provider broker is present and tested but deliberately has no live
-TransportAPI client in this release. Until live routing is added, station-access
+providers. The provider broker, rail normalizer, and service matcher are present
+and tested but deliberately have no live TransportAPI client in this release.
+Until live routing is added, station-access
 timing uses a configurable conservative fallback and is explicitly classified as
 inferred. Providers will be added behind the shared coordinator and quota guard
 after shadow-mode decisions have been verified.
@@ -69,6 +72,11 @@ start, not only an all-day date. Setting the event location to the departure
 station is strongly recommended as an independent confirmation. For split
 journeys, create or import one event per leg.
 
+When known, a CRS station code can be appended to the origin or location as
+`[EXC]`, `(EXC)`, or `CRS: EXC`. The code is optional: the offline resolver can
+also require one exact station-name match from a future provider Places response.
+Conflicting and ambiguous station evidence is rejected rather than guessed.
+
 A recognized journey remains active until the timed calendar event ends. This
 provides the lifecycle window needed for delayed-service and interchange checks;
 provider monitoring will be added in a later feature slice.
@@ -83,6 +91,8 @@ simulation, and notification safety are recorded in
 [ADR 0002](docs/adr/0002-operational-notification-safety.md).
 Provider acquisition, freshness, quota, and stale-data contracts are recorded in
 [ADR 0003](docs/adr/0003-provider-request-broker.md).
+Rail normalization, station identity, and service matching are recorded in
+[ADR 0004](docs/adr/0004-rail-normalization-and-matching.md).
 
 Accepted development work follows the repository's
 [release policy](docs/RELEASE_POLICY.md): unless explicitly held as draft work, a
@@ -176,8 +186,8 @@ Please report security concerns according to [SECURITY.md](SECURITY.md).
 
 ## Roadmap
 
-1. destination profiles and station-code resolution
-2. TransportAPI station-board client with enforced daily quota
+1. destination profiles and user-facing station resolution
+2. opt-in TransportAPI station-board client behind the enforced quota broker
 3. unified manual-review decision tree
 4. internal scheduling and actionable departure notifications
 5. lightweight interchange monitoring

@@ -27,11 +27,13 @@ inside each user's Home Assistant installation.
 - [x] document the layered, local-first architecture and trust boundaries
 - [x] route every provider request through a caching, deduplicating request broker
 - [x] expose source freshness and distinguish stale data from healthy current data
-- [ ] separate raw provider observations from derived journey decisions
-- [ ] distinguish scheduled, predicted, confirmed, cancelled, and inferred values
+- [x] separate raw provider observations from derived journey decisions
+- [x] distinguish scheduled, predicted, cancelled, and inferred values
+- [ ] add provider confirmation semantics without inferring them from predictions
 - [ ] surface actionable configuration/provider faults through Home Assistant Repairs
 - [ ] version persisted journey state and test idempotent restart/reload recovery
-- [ ] reject or quarantine malformed, duplicate, corrected, and unsupported records
+- [x] reject or normalize malformed, duplicate, corrected, and unsupported rail
+  records before they reach the decision layer
 - [ ] validate calculated departure decisions against authoritative observations
 - [ ] retain the rationale for deferred or rejected engineering decisions
 
@@ -70,6 +72,9 @@ inside each user's Home Assistant installation.
   in v0.1.7)
 - expose rail freshness and a quota-free stale-data simulation (implemented in
   v0.1.7)
+- add offline station resolution, rail-board normalization, deterministic
+  matching, stable service identity, and production-path simulations (implemented
+  in v0.1.8)
 - add a shadow-mode acceptance checklist covering calendar discovery, state
   transitions, restart recovery, stale data, diagnostics, and entity history
 - add privacy-safe structured telemetry for poll times, event and candidate
@@ -81,7 +86,8 @@ inside each user's Home Assistant installation.
 
 - editable traveller profiles with preparation and station-arrival buffers
 - destination profiles supporting any number of regular destinations
-- rail station name and CRS-code resolution without hard-coded personal routes
+- expose rail station name and CRS-code resolution in the user-facing journey
+  flow without hard-coded personal routes (offline resolver implemented in v0.1.8)
 - lightweight monitoring for every leg of a split journey
 - delayed-service checks after scheduled departure when a train has not departed
 - provider failure handling, stale-data warnings, and quota-safe fallbacks

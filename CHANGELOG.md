@@ -4,6 +4,28 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-09-03
+
+### Added
+
+- Offline CRS station resolution from configured codes, explicit calendar codes,
+  and exact unique saved Places results.
+- Defensive station-board normalization with separate scheduled and predicted
+  departures, cancellation, platform, and privacy-safe stable service identity.
+- Deterministic calendar-to-service matching using bounded time, destination, and
+  operator evidence, with explicit rejection of ambiguous results.
+- Coverage for direct, delayed, cancelled, duplicate, corrected, malformed,
+  conflicting, ambiguous, split, and overnight provider records.
+- Architecture decision record for rail normalization and matching boundaries.
+
+### Changed
+
+- On-time, delayed, cancelled, stale-data, and split simulations now traverse the
+  production rail normalizer and matcher using in-memory provider-shaped fixtures.
+- Status and diagnostic attributes expose only derived match evidence; raw
+  provider payloads and raw train identifiers are not retained or exposed.
+- This release remains fully offline and cannot consume TransportAPI allowance.
+
 ## [0.1.7] - 2026-09-03
 
 ### Added

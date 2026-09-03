@@ -64,6 +64,11 @@ async def async_get_config_entry_diagnostics(
                     ),
                     "freshness": snapshot.rail_observation.freshness,
                     "age_seconds": snapshot.rail_observation.age_seconds,
+                    "service_identity": (
+                        snapshot.rail_observation.service_identity
+                    ),
+                    "platform": snapshot.rail_observation.platform,
+                    "match_quality": snapshot.rail_observation.match_quality,
                 }
                 if snapshot.rail_observation
                 else None

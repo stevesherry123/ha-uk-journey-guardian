@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from .models import (
@@ -12,6 +12,7 @@ from .models import (
     RailObservation,
 )
 from .phase import calculate_operational_phase
+from .rail import normalize_station_board
 from .timing import calculate_fallback_timing
 
 
@@ -110,19 +111,14 @@ class JourneySimulation:
             destination_confirmation="Simulation Destination",
             decision_path=f"simulation_{request.scenario}",
         )
-        observation = RailObservation(
-            scenario=request.scenario,
-            source="simulation",
-            classification="simulated",
-            observed_at=now,
-            scheduled_departure=request.scheduled_departure,
+        observation = _simulation_observation(
+            request=request,
+            journey=journey,
+            now=now,
             predicted_departure=predicted_departure,
-            delay_minutes=request.delay_minutes,
-            cancelled=cancelled,
             leg_count=leg_count,
             provider_available=provider_available,
             freshness=freshness,
-            age_seconds=180 if request.scenario == "stale_data" else 0,
         )
 
         if cancelled:
@@ -199,3 +195,81 @@ def _simulation_freshness(scenario: str) -> str:
     if scenario == "stale_data":
         return "stale"
     return "current"
+
+
+def _simulation_observation(
+    *,
+    request: SimulationRequest,
+    journey: JourneyEvent,
+    now: datetime,
+    predicted_departure: datetime | None,
+    leg_count: int,
+    provider_available: bool,
+    freshness: str,
+) -> RailObservation:
+    """Exercise production parsing for simulated provider responses."""
+    if request.scenario == "provider_unavailable":
+        return RailObservation(
+            scenario=request.scenario,
+            source="simulation",
+            classification="simulated_unavailable",
+            observed_at=now,
+            scheduled_departure=request.scheduled_departure,
+            predicted_departure=None,
+            delay_minutes=0,
+            cancelled=False,
+            leg_count=leg_count,
+            provider_available=False,
+            freshness=freshness,
+        )
+
+    expected_departure = (
+        "Cancelled"
+        if request.scenario == "cancelled"
+        else (
+            predicted_departure.strftime("%H:%M:%S")
+            if predicted_departure is not None
+            else request.scheduled_departure.strftime("%H:%M:%S")
+        )
+    )
+    fixture = {
+        "date": request.scheduled_departure.date().isoformat(),
+        "station_code": "SIM",
+        "departures": {
+            "all": [
+                {
+                    "mode": "train",
+                    "service": "simulation-service",
+                    "train_uid": "simulation-uid",
+                    "operator_name": "Rail simulation",
+                    "aimed_departure_time": request.scheduled_departure.strftime(
+                        "%H:%M:%S"
+                    ),
+                    "expected_departure_time": expected_departure,
+                    "destination_name": "Simulation Destination",
+                    "platform": "1",
+                    "status": (
+                        "CANCELLED"
+                        if request.scenario == "cancelled"
+                        else "STARTS HERE"
+                    ),
+                }
+            ]
+        },
+    }
+    normalized = normalize_station_board(
+        fixture,
+        journey=journey,
+        observed_at=now,
+        expected_station_code="SIM",
+        source="simulation",
+        classification="simulated_normalized",
+    )
+    return replace(
+        normalized,
+        scenario=request.scenario,
+        leg_count=leg_count,
+        provider_available=provider_available,
+        freshness=freshness,
+        age_seconds=180 if request.scenario == "stale_data" else 0,
+    )

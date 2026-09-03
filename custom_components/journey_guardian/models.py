@@ -70,6 +70,7 @@ class RailObservation:
     service_identity: str | None = None
     platform: str | None = None
     match_quality: str = "not_applicable"
+    schedule_offset_minutes: int = 0
 
     def as_dict(self) -> dict[str, Any]:
         """Return a serializable representation."""

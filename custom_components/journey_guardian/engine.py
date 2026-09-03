@@ -137,8 +137,21 @@ class JourneyGuardianEngine:
             raise ValueError("transportapi_credentials_missing")
 
         try:
-            station = await self._async_resolve_station(journey)
-            board = await client.async_station_board(station.code, journey.start)
+            station = await self._async_resolve_station(
+                name=journey.origin_name,
+                code=journey.origin_code,
+                location=journey.location,
+            )
+            destination = await self._async_resolve_station(
+                name=journey.destination_confirmation,
+                code="CALENDAR",
+                location="",
+            )
+            board = await client.async_station_board(
+                station.code,
+                journey.start,
+                calling_at=destination.code,
+            )
             observation = normalize_station_board(
                 board.payload,
                 journey=journey,
@@ -165,6 +178,7 @@ class JourneyGuardianEngine:
             journey,
             origin_code=station.code,
             origin_name=station.name,
+            destination_confirmation=destination.name,
             decision_path="transportapi_manual",
         )
         if observation.cancelled:
@@ -214,14 +228,16 @@ class JourneyGuardianEngine:
             error=board.error_category,
         )
 
-    async def _async_resolve_station(self, journey) -> StationResolution:
+    async def _async_resolve_station(
+        self, *, name: str, code: str, location: str
+    ) -> StationResolution:
         """Resolve explicitly or with one cached manual Places lookup."""
         cache_key = hashlib.sha256(
             "|".join(
                 (
-                    journey.origin_code,
-                    journey.origin_name.casefold().strip(),
-                    journey.location.casefold().strip(),
+                    code,
+                    name.casefold().strip(),
+                    location.casefold().strip(),
                 )
             ).encode()
         ).hexdigest()
@@ -229,9 +245,9 @@ class JourneyGuardianEngine:
             return cached
         try:
             station = resolve_station(
-                origin_name=journey.origin_name,
-                origin_code=journey.origin_code,
-                location=journey.location,
+                origin_name=name,
+                origin_code=code,
+                location=location,
             )
         except StationResolutionError as err:
             if err.category != "station_code_unresolved":
@@ -239,12 +255,12 @@ class JourneyGuardianEngine:
             if self._transportapi_client is None:
                 raise
             places = await self._transportapi_client.async_places(
-                journey.origin_name
+                name
             )
             station = resolve_station(
-                origin_name=journey.origin_name,
-                origin_code=journey.origin_code,
-                location=journey.location,
+                origin_name=name,
+                origin_code=code,
+                location=location,
                 places_payload=places.payload,
             )
         if len(self._station_resolutions) >= 20:

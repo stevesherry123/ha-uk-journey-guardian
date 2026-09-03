@@ -84,7 +84,8 @@ def test_simulated_delay_is_visible_without_overwriting_schedule() -> None:
         provider_available=True,
         service_identity="0123456789abcdef",
         platform="4",
-        match_quality="unique_best",
+        match_quality="exact_schedule",
+        schedule_offset_minutes=0,
     )
     coordinator = Mock()
     coordinator.data = JourneySnapshot(
@@ -114,7 +115,8 @@ def test_simulated_delay_is_visible_without_overwriting_schedule() -> None:
         "age_seconds": 0,
         "source": "simulation",
         "classification": "simulated",
-        "match_quality": "unique_best",
+        "match_quality": "exact_schedule",
+        "schedule_offset_minutes": 0,
     }
     assert status.extra_state_attributes["scheduled_departure"] == (
         scheduled.isoformat()
@@ -127,5 +129,6 @@ def test_simulated_delay_is_visible_without_overwriting_schedule() -> None:
         "0123456789abcdef"
     )
     assert status.extra_state_attributes["rail_platform"] == "4"
-    assert status.extra_state_attributes["rail_match_quality"] == "unique_best"
+    assert status.extra_state_attributes["rail_match_quality"] == "exact_schedule"
+    assert status.extra_state_attributes["rail_schedule_offset_minutes"] == 0
     assert status.extra_state_attributes["simulation_active"] is True

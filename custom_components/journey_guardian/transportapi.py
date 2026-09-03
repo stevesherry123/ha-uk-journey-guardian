@@ -57,10 +57,15 @@ class TransportAPIClient:
         )
 
     async def async_station_board(
-        self, station_code: str, departure: datetime
+        self,
+        station_code: str,
+        departure: datetime,
+        *,
+        calling_at: str,
     ) -> ProviderResult:
-        """Fetch a bounded live station board around the calendar departure."""
+        """Fetch trains calling at the intended destination in a time window."""
         code = station_code.strip().upper()
+        destination_code = calling_at.strip().upper()
         parameters: dict[str, Any] = {
             "datetime": departure.isoformat(),
             "from_offset": "-PT00:45:00",
@@ -69,6 +74,8 @@ class TransportAPIClient:
             "live": "true",
             "train_status": "passenger",
             "source_detail": "true",
+            "calling_at": destination_code,
+            "station_detail": "calling_at",
         }
         return await self._broker.async_request(
             ProviderRequest(

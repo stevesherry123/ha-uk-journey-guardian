@@ -2,7 +2,7 @@
 
 import logging
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, call, patch
 
 import pytest
 
@@ -13,6 +13,7 @@ from custom_components.journey_guardian.models import (
     JourneySnapshot,
 )
 from custom_components.journey_guardian.provider_broker import ProviderResult
+from custom_components.journey_guardian.timing import calculate_fallback_timing
 
 CHECKED_AT = datetime(2026, 8, 28, 16, 34, tzinfo=UTC)
 CALENDAR_ENTITY = ".".join(("calendar", "example_travel"))
@@ -45,6 +46,13 @@ def _calendar_snapshot(*, origin_name: str = "Example Central"):
         checked_at=datetime(2026, 9, 3, 8, 30, tzinfo=UTC),
         next_journey=journey,
         budget=BudgetSnapshot("2026-09-03", 0, 30, 3),
+        timing=calculate_fallback_timing(
+            journey,
+            preparation_minutes=30,
+            early_warning_minutes=10,
+            station_buffer_minutes=15,
+            station_access_minutes=60,
+        ),
     )
 
 
@@ -225,17 +233,30 @@ async def test_manual_live_review_resolves_and_normalizes_provider_data() -> Non
     client = Mock()
     client.configured = True
     client.async_places = AsyncMock(
-        return_value=_provider_result(
-            {
-                "member": [
-                    {
-                        "type": "train_station",
-                        "name": "Example Central",
-                        "station_code": "EXC",
-                    }
-                ]
-            }
-        )
+        side_effect=[
+            _provider_result(
+                {
+                    "member": [
+                        {
+                            "type": "train_station",
+                            "name": "Example Central",
+                            "station_code": "EXC",
+                        }
+                    ]
+                }
+            ),
+            _provider_result(
+                {
+                    "member": [
+                        {
+                            "type": "train_station",
+                            "name": "Sample Harbour",
+                            "station_code": "SHA",
+                        }
+                    ]
+                }
+            ),
+        ]
     )
     client.async_station_board = AsyncMock(
         return_value=_provider_result(_board())
@@ -252,9 +273,14 @@ async def test_manual_live_review_resolves_and_normalizes_provider_data() -> Non
 
     result = await engine.async_review_live_rail()
 
-    client.async_places.assert_awaited_once_with("Example Central")
+    assert client.async_places.await_args_list == [
+        call("Example Central"),
+        call("Sample Harbour"),
+    ]
     client.async_station_board.assert_awaited_once_with(
-        "EXC", datetime(2026, 9, 3, 10, 10, tzinfo=UTC)
+        "EXC",
+        datetime(2026, 9, 3, 10, 10, tzinfo=UTC),
+        calling_at="SHA",
     )
     assert result.status == "delayed"
     assert result.next_journey is not None
@@ -274,17 +300,30 @@ async def test_manual_review_reuses_in_memory_station_resolution() -> None:
     client = Mock()
     client.configured = True
     client.async_places = AsyncMock(
-        return_value=_provider_result(
-            {
-                "member": [
-                    {
-                        "type": "train_station",
-                        "name": "Example Central Station",
-                        "station_code": "EXC",
-                    }
-                ]
-            }
-        )
+        side_effect=[
+            _provider_result(
+                {
+                    "member": [
+                        {
+                            "type": "train_station",
+                            "name": "Example Central Station",
+                            "station_code": "EXC",
+                        }
+                    ]
+                }
+            ),
+            _provider_result(
+                {
+                    "member": [
+                        {
+                            "type": "train_station",
+                            "name": "Sample Harbour Station",
+                            "station_code": "SHA",
+                        }
+                    ]
+                }
+            ),
+        ]
     )
     client.async_station_board = AsyncMock(
         return_value=_provider_result(_board())
@@ -300,8 +339,13 @@ async def test_manual_review_reuses_in_memory_station_resolution() -> None:
     await engine.async_review_live_rail()
     await engine.async_review_live_rail()
 
-    client.async_places.assert_awaited_once()
+    assert client.async_places.await_count == 2
     assert client.async_station_board.await_count == 2
+    client.async_station_board.assert_awaited_with(
+        "EXC",
+        datetime(2026, 9, 3, 10, 10, tzinfo=UTC),
+        calling_at="SHA",
+    )
 
 
 async def test_normal_calendar_review_never_invokes_transportapi_client() -> None:
@@ -344,3 +388,58 @@ async def test_manual_live_review_requires_credentials_without_calling_api() -> 
 
     client.async_places.assert_not_called()
     client.async_station_board.assert_not_called()
+
+
+async def test_manual_review_rejects_materially_later_service() -> None:
+    """A unique nearby train cannot silently make conservative advice later."""
+    client = Mock()
+    client.configured = True
+    client.async_places = AsyncMock(
+        side_effect=[
+            _provider_result(
+                {
+                    "member": [
+                        {
+                            "type": "train_station",
+                            "name": "Example Central",
+                            "station_code": "EXC",
+                        }
+                    ]
+                }
+            ),
+            _provider_result(
+                {
+                    "member": [
+                        {
+                            "type": "train_station",
+                            "name": "Sample Harbour",
+                            "station_code": "SHA",
+                        }
+                    ]
+                }
+            ),
+        ]
+    )
+    mismatched_board = _board()
+    service = mismatched_board["departures"]["all"][0]
+    service["aimed_departure_time"] = "10:21"
+    service["expected_departure_time"] = "10:21"
+    client.async_station_board = AsyncMock(
+        return_value=_provider_result(mismatched_board)
+    )
+    base = _calendar_snapshot()
+    engine = JourneyGuardianEngine(
+        Mock(),
+        calendar_entity=CALENDAR_ENTITY,
+        budget=_budget(),
+        transportapi_client=client,
+    )
+    engine.async_review = AsyncMock(return_value=base)
+
+    result = await engine.async_review_live_rail()
+
+    assert result.status == "error"
+    assert result.error == "transportapi_rail_schedule_mismatch"
+    assert result.next_journey == base.next_journey
+    assert result.timing == base.timing
+    assert result.rail_observation is None

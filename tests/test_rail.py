@@ -69,7 +69,8 @@ def test_direct_service_is_normalized_without_delay() -> None:
     assert not observation.cancelled
     assert observation.platform == "4"
     assert len(observation.service_identity or "") == 16
-    assert observation.match_quality == "unique_best"
+    assert observation.match_quality == "exact_schedule"
+    assert observation.schedule_offset_minutes == 0
 
 
 def test_delayed_service_preserves_scheduled_and_predicted_times() -> None:
@@ -145,6 +146,78 @@ def test_operator_evidence_breaks_an_equal_time_tie() -> None:
 
     expected = _normalize(_board(_service(train_uid="uid-correct")))
     assert observation.service_identity == expected.service_identity
+
+
+def test_near_schedule_match_is_explicitly_classified() -> None:
+    """A small published schedule shift remains visible in derived evidence."""
+    observation = _normalize(
+        _board(
+            _service(
+                aimed_departure_time="10:14",
+                expected_departure_time="10:14",
+            )
+        )
+    )
+
+    assert observation.match_quality == "near_schedule"
+    assert observation.schedule_offset_minutes == 4
+
+
+def test_later_unique_service_cannot_delay_calendar_advice() -> None:
+    """A plausible but materially later service is not trusted as the journey."""
+    with pytest.raises(RailDataError, match="rail_schedule_mismatch"):
+        _normalize(
+            _board(
+                _service(
+                    aimed_departure_time="10:21",
+                    expected_departure_time="10:21",
+                )
+            )
+        )
+
+
+def test_exact_calling_service_beats_later_wrong_destination() -> None:
+    """The calendar train may terminate beyond its intended calling point."""
+    journey = JourneyEvent(
+        start=datetime(2026, 9, 3, 19, 2, tzinfo=UTC),
+        end=None,
+        summary="Avanti West Coast - London Euston to Chester",
+        location="London Euston",
+        origin_code="EUS",
+        origin_name="London Euston",
+        destination_confirmation="Chester",
+        decision_path="calendar_route",
+    )
+    observation = normalize_station_board(
+        {
+            "date": "2026-09-03",
+            "station_code": "crs:EUS",
+            "departures": {
+                "all": [
+                    _service(
+                        train_uid="holyhead-service",
+                        operator_name="Avanti West Coast",
+                        aimed_departure_time="19:02",
+                        expected_departure_time="19:02",
+                        destination_name="Holyhead",
+                    ),
+                    _service(
+                        train_uid="manchester-service",
+                        operator_name="Avanti West Coast",
+                        aimed_departure_time="19:13",
+                        expected_departure_time="19:13",
+                        destination_name="Manchester Piccadilly",
+                    ),
+                ]
+            },
+        },
+        journey=journey,
+        observed_at=OBSERVED,
+        expected_station_code="EUS",
+    )
+
+    assert observation.scheduled_departure == journey.start
+    assert observation.match_quality == "exact_schedule"
 
 
 def test_conflicting_duplicate_identity_is_rejected() -> None:

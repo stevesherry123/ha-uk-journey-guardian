@@ -72,7 +72,7 @@ async def test_station_board_requests_bounded_live_window() -> None:
     client, session, broker = _client(payload)
     departure = datetime(2026, 9, 3, 10, 10, tzinfo=UTC)
 
-    await client.async_station_board("exc", departure)
+    await client.async_station_board("exc", departure, calling_at="sha")
 
     request = broker.async_request.await_args.args[0]
     assert request.operation == "station_timetables"
@@ -83,6 +83,8 @@ async def test_station_board_requests_bounded_live_window() -> None:
     assert call.kwargs["params"]["from_offset"] == "-PT00:45:00"
     assert call.kwargs["params"]["to_offset"] == "PT00:45:00"
     assert call.kwargs["params"]["live"] == "true"
+    assert call.kwargs["params"]["calling_at"] == "SHA"
+    assert call.kwargs["params"]["station_detail"] == "calling_at"
 
 
 def test_missing_credentials_leave_client_dormant() -> None:

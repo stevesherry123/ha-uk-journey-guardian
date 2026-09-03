@@ -4,6 +4,31 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-09-03
+
+### Fixed
+
+- Live timetable requests now resolve the intended destination to a CRS code and
+  ask TransportAPI only for services that call there. This supports journeys
+  whose train continues beyond the calendar destination.
+- Destination evidence now uses whole-name boundaries, so a place name such as
+  `Chester` cannot incorrectly match inside `Manchester`.
+- A provider service more than five minutes from the calendar departure is
+  rejected instead of silently changing the user's travel advice. The safe
+  calendar timing remains available with a stable mismatch error.
+
+### Added
+
+- Live observations expose `exact_schedule` or `near_schedule` match quality and
+  a signed schedule-offset attribute for privacy-safe diagnosis.
+- Regression coverage for a train terminating beyond the intended calling point,
+  a later train to a different destination, and unsafe schedule displacement.
+
+### Changed
+
+- The first live check with uncached origin and destination names can use three
+  routine calls: two Places resolutions and one live timetable request.
+
 ## [0.1.9] - 2026-09-03
 
 ### Added

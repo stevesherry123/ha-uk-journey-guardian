@@ -11,6 +11,7 @@ from typing import Any
 from .models import JourneyEvent, RailObservation
 
 MATCH_WINDOW = timedelta(hours=2)
+MAX_SCHEDULE_OFFSET = timedelta(minutes=5)
 
 
 class RailDataError(ValueError):
@@ -52,6 +53,10 @@ def normalize_station_board(
         expected_station_code=expected_station_code,
     )
     selected = match_journey(candidates, journey)
+    schedule_offset = selected.scheduled_departure - journey.start
+    if abs(schedule_offset) > MAX_SCHEDULE_OFFSET:
+        raise RailDataError("rail_schedule_mismatch")
+    schedule_offset_minutes = round(schedule_offset.total_seconds() / 60)
     delay_minutes = 0
     if selected.predicted_departure is not None:
         delay_minutes = max(
@@ -76,7 +81,12 @@ def normalize_station_board(
         provider_available=True,
         service_identity=selected.service_identity,
         platform=selected.platform,
-        match_quality="unique_best",
+        match_quality=(
+            "exact_schedule"
+            if schedule_offset == timedelta(0)
+            else "near_schedule"
+        ),
+        schedule_offset_minutes=schedule_offset_minutes,
     )
 
 
@@ -133,7 +143,8 @@ def match_journey(
             continue
         minutes = round(difference.total_seconds() / 60)
         score = 500 - minutes
-        if destination and destination in _normalise(aligned.destination_name):
+        candidate_destination = _normalise(aligned.destination_name)
+        if destination and f" {destination} " in f" {candidate_destination} ":
             score += 100
         candidate_operator = aligned.operator_name.casefold()
         if journey_operator and candidate_operator and (

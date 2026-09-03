@@ -97,6 +97,8 @@ Rail normalization, station identity, and service matching are recorded in
 [ADR 0004](docs/adr/0004-rail-normalization-and-matching.md).
 The deliberately manual first live-provider gateway is recorded in
 [ADR 0005](docs/adr/0005-manual-live-rail-gateway.md).
+Destination calling-point and strict schedule matching are recorded in
+[ADR 0006](docs/adr/0006-calling-point-and-schedule-match.md).
 
 Accepted development work follows the repository's
 [release policy](docs/RELEASE_POLICY.md): unless explicitly held as draft work, a
@@ -159,11 +161,12 @@ returns the normalized engine snapshot when a response is requested.
 
 `journey_guardian.review_rail_now`—also available as **Check live rail now** on
 the device—first refreshes the calendar and then explicitly checks TransportAPI.
-The first unresolved origin may use two routine calls: one exact station lookup
-and one live departure-board request. Its station resolution is reused in memory,
-and the broker can reuse a very recent board. This action never bypasses the daily
-limit or consumes the urgent reserve. The next ordinary calendar refresh can
-replace the manual rail observation; automatic monitoring is not enabled yet.
+The first unresolved origin and destination may use three routine calls: two
+exact station lookups and one live departure-board request filtered to services
+that call at the intended destination. Station resolutions are reused in memory,
+and the broker can reuse a very recent board. This action never bypasses the
+daily limit or consumes the urgent reserve. The next ordinary calendar refresh
+can replace the manual rail observation; automatic monitoring is not enabled yet.
 
 `journey_guardian.simulate_journey` activates a synthetic scenario using generic
 locations and an offset from the current time. While it is active, reviews bypass

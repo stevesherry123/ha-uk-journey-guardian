@@ -69,6 +69,9 @@ async def async_get_config_entry_diagnostics(
                     ),
                     "platform": snapshot.rail_observation.platform,
                     "match_quality": snapshot.rail_observation.match_quality,
+                    "schedule_offset_minutes": (
+                        snapshot.rail_observation.schedule_offset_minutes
+                    ),
                 }
                 if snapshot.rail_observation
                 else None

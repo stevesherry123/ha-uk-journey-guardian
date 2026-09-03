@@ -107,6 +107,9 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
             "rail_match_quality": (
                 observation.match_quality if observation else None
             ),
+            "rail_schedule_offset_minutes": (
+                observation.schedule_offset_minutes if observation else None
+            ),
         }
 
 
@@ -143,6 +146,9 @@ class RailDataFreshnessSensor(JourneyGuardianEntity, SensorEntity):
                 observation.classification if observation else None
             ),
             "match_quality": observation.match_quality if observation else None,
+            "schedule_offset_minutes": (
+                observation.schedule_offset_minutes if observation else None
+            ),
         }
 
 

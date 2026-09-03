@@ -78,6 +78,9 @@ inside each user's Home Assistant installation.
 - add an explicit manual-only TransportAPI gateway with header authentication,
   quota brokering, bounded live boards, and no background provider calls
   (implemented in v0.1.9)
+- filter live boards by the intended calling-point CRS code, use whole-name
+  destination evidence, and reject material schedule offsets (implemented in
+  v0.1.10)
 - add a shadow-mode acceptance checklist covering calendar discovery, state
   transitions, restart recovery, stale data, diagnostics, and entity history
 - add privacy-safe structured telemetry for poll times, event and candidate

@@ -191,6 +191,18 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                             DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
                         ),
                     ): selector.BooleanSelector(),
+                    vol.Optional(
+                        CONF_TRANSPORTAPI_APP_ID,
+                        default=current.get(CONF_TRANSPORTAPI_APP_ID, ""),
+                    ): selector.TextSelector(),
+                    vol.Optional(
+                        CONF_TRANSPORTAPI_APP_KEY,
+                        default=current.get(CONF_TRANSPORTAPI_APP_KEY, ""),
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD
+                        )
+                    ),
                 }
             ),
         )

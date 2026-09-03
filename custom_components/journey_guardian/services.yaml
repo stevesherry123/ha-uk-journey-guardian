@@ -2,6 +2,10 @@ review_now:
   name: Review journey now
   description: Immediately refresh the calendar and UK Journey Guardian decision path.
 
+review_rail_now:
+  name: Check live rail now
+  description: Explicitly check TransportAPI for the current calendar journey. This can consume provider allowance.
+
 simulate_journey:
   name: Simulate journey
   description: Activate a deterministic journey scenario without contacting TransportAPI or consuming provider allowance.

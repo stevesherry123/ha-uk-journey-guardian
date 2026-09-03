@@ -75,6 +75,9 @@ inside each user's Home Assistant installation.
 - add offline station resolution, rail-board normalization, deterministic
   matching, stable service identity, and production-path simulations (implemented
   in v0.1.8)
+- add an explicit manual-only TransportAPI gateway with header authentication,
+  quota brokering, bounded live boards, and no background provider calls
+  (implemented in v0.1.9)
 - add a shadow-mode acceptance checklist covering calendar discovery, state
   transitions, restart recovery, stale data, diagnostics, and entity history
 - add privacy-safe structured telemetry for poll times, event and candidate
@@ -91,6 +94,8 @@ inside each user's Home Assistant installation.
 - lightweight monitoring for every leg of a split journey
 - delayed-service checks after scheduled departure when a train has not departed
 - provider failure handling, stale-data warnings, and quota-safe fallbacks
+- validate the manual live gateway against representative real journeys before
+  enabling any automatic provider monitoring
 
 ## Routing and notifications
 

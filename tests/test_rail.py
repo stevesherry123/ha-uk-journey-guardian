@@ -180,3 +180,10 @@ def test_station_mismatch_and_malformed_payload_use_stable_errors() -> None:
         _normalize(_board(station_code="WRG"))
     with pytest.raises(RailDataError, match="rail_response_malformed"):
         _normalize({"station_code": "EXC", "date": "not-a-date"})
+
+
+def test_prefixed_provider_crs_matches_canonical_station_code() -> None:
+    """TransportAPI may return the documented crs-prefixed station code."""
+    observation = _normalize(_board(station_code="crs:EXC"))
+
+    assert observation.scheduled_departure == _journey().start

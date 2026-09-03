@@ -89,8 +89,8 @@ def parse_station_board(
     """Return validated services without retaining the raw provider payload."""
     if not isinstance(payload, Mapping):
         raise RailDataError("rail_response_malformed")
-    station_code = str(payload.get("station_code", "")).strip().upper()
-    if station_code != expected_station_code.strip().upper():
+    station_code = _canonical_station_code(payload.get("station_code"))
+    if station_code != _canonical_station_code(expected_station_code):
         raise RailDataError("rail_station_mismatch")
     service_date = _parse_date(payload.get("date"))
     departures = payload.get("departures")
@@ -246,3 +246,8 @@ def _parse_clock(value: Any) -> time | None:
 
 def _normalise(value: str) -> str:
     return " ".join(value.casefold().replace("&", "and").split())
+
+
+def _canonical_station_code(value: Any) -> str:
+    code = str(value or "").strip().upper()
+    return code.removeprefix("CRS:")

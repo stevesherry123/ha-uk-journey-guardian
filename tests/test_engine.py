@@ -1,11 +1,18 @@
 """Tests for privacy-safe Journey Guardian engine failures."""
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
+
 from custom_components.journey_guardian.engine import JourneyGuardianEngine
-from custom_components.journey_guardian.models import BudgetSnapshot
+from custom_components.journey_guardian.models import (
+    BudgetSnapshot,
+    JourneyEvent,
+    JourneySnapshot,
+)
+from custom_components.journey_guardian.provider_broker import ProviderResult
 
 CHECKED_AT = datetime(2026, 8, 28, 16, 34, tzinfo=UTC)
 CALENDAR_ENTITY = ".".join(("calendar", "example_travel"))
@@ -20,6 +27,58 @@ def _budget() -> Mock:
         urgent_reserve=3,
     )
     return budget
+
+
+def _calendar_snapshot(*, origin_name: str = "Example Central"):
+    journey = JourneyEvent(
+        start=datetime(2026, 9, 3, 10, 10, tzinfo=UTC),
+        end=datetime(2026, 9, 3, 11, 10, tzinfo=UTC),
+        summary=f"Example Rail - {origin_name} to Sample Harbour",
+        location=origin_name,
+        origin_code="CALENDAR",
+        origin_name=origin_name,
+        destination_confirmation="Sample Harbour",
+        decision_path="calendar_route",
+    )
+    return JourneySnapshot(
+        status="planned",
+        checked_at=datetime(2026, 9, 3, 8, 30, tzinfo=UTC),
+        next_journey=journey,
+        budget=BudgetSnapshot("2026-09-03", 0, 30, 3),
+    )
+
+
+def _provider_result(payload):
+    observed = datetime(2026, 9, 3, 8, 31, tzinfo=UTC)
+    return ProviderResult(
+        payload=payload,
+        observed_at=observed,
+        fresh_until=observed + timedelta(seconds=30),
+        freshness="current",
+        source="provider",
+        age_seconds=0,
+    )
+
+
+def _board():
+    return {
+        "date": "2026-09-03",
+        "station_code": "crs:EXC",
+        "departures": {
+            "all": [
+                {
+                    "mode": "train",
+                    "train_uid": "uid-one",
+                    "operator_name": "Example Rail",
+                    "aimed_departure_time": "10:10",
+                    "expected_departure_time": "10:18",
+                    "destination_name": "Sample Harbour",
+                    "platform": "3",
+                    "status": "LATE",
+                }
+            ]
+        },
+    }
 
 
 async def test_calendar_error_is_sanitized(caplog) -> None:
@@ -159,3 +218,129 @@ async def test_completed_calendar_journey_returns_to_idle() -> None:
     assert snapshot.status == "idle"
     assert snapshot.next_journey is None
     assert snapshot.timing is None
+
+
+async def test_manual_live_review_resolves_and_normalizes_provider_data() -> None:
+    """One explicit review joins Places, board, matcher, and timing layers."""
+    client = Mock()
+    client.configured = True
+    client.async_places = AsyncMock(
+        return_value=_provider_result(
+            {
+                "member": [
+                    {
+                        "type": "train_station",
+                        "name": "Example Central",
+                        "station_code": "EXC",
+                    }
+                ]
+            }
+        )
+    )
+    client.async_station_board = AsyncMock(
+        return_value=_provider_result(_board())
+    )
+    budget = _budget()
+    budget.snapshot.return_value = BudgetSnapshot("2026-09-03", 2, 30, 3)
+    engine = JourneyGuardianEngine(
+        Mock(),
+        calendar_entity=CALENDAR_ENTITY,
+        budget=budget,
+        transportapi_client=client,
+    )
+    engine.async_review = AsyncMock(return_value=_calendar_snapshot())
+
+    result = await engine.async_review_live_rail()
+
+    client.async_places.assert_awaited_once_with("Example Central")
+    client.async_station_board.assert_awaited_once_with(
+        "EXC", datetime(2026, 9, 3, 10, 10, tzinfo=UTC)
+    )
+    assert result.status == "delayed"
+    assert result.next_journey is not None
+    assert result.next_journey.origin_code == "EXC"
+    assert result.next_journey.decision_path == "transportapi_manual"
+    assert result.rail_observation is not None
+    assert result.rail_observation.platform == "3"
+    assert result.rail_observation.delay_minutes == 8
+    assert result.timing is not None
+    assert result.timing.source == "transportapi"
+    assert result.timing.classification == "predicted"
+    assert result.budget.calls_used == 2
+
+
+async def test_manual_review_reuses_in_memory_station_resolution() -> None:
+    """Repeated checks do not spend another Places call for the same origin."""
+    client = Mock()
+    client.configured = True
+    client.async_places = AsyncMock(
+        return_value=_provider_result(
+            {
+                "member": [
+                    {
+                        "type": "train_station",
+                        "name": "Example Central Station",
+                        "station_code": "EXC",
+                    }
+                ]
+            }
+        )
+    )
+    client.async_station_board = AsyncMock(
+        return_value=_provider_result(_board())
+    )
+    engine = JourneyGuardianEngine(
+        Mock(),
+        calendar_entity=CALENDAR_ENTITY,
+        budget=_budget(),
+        transportapi_client=client,
+    )
+    engine.async_review = AsyncMock(return_value=_calendar_snapshot())
+
+    await engine.async_review_live_rail()
+    await engine.async_review_live_rail()
+
+    client.async_places.assert_awaited_once()
+    assert client.async_station_board.await_count == 2
+
+
+async def test_normal_calendar_review_never_invokes_transportapi_client() -> None:
+    """Scheduled polling stays provider-free even with credentials configured."""
+    hass = Mock()
+    hass.services.async_call = AsyncMock(return_value={CALENDAR_ENTITY: {}})
+    client = Mock()
+    client.configured = True
+    engine = JourneyGuardianEngine(
+        hass,
+        calendar_entity=CALENDAR_ENTITY,
+        budget=_budget(),
+        transportapi_client=client,
+    )
+
+    with patch(
+        "custom_components.journey_guardian.engine.dt_util.now",
+        return_value=CHECKED_AT,
+    ):
+        await engine.async_review()
+
+    client.async_places.assert_not_called()
+    client.async_station_board.assert_not_called()
+
+
+async def test_manual_live_review_requires_credentials_without_calling_api() -> None:
+    """Missing credentials fail before station resolution or quota use."""
+    client = Mock()
+    client.configured = False
+    engine = JourneyGuardianEngine(
+        Mock(),
+        calendar_entity=CALENDAR_ENTITY,
+        budget=_budget(),
+        transportapi_client=client,
+    )
+    engine.async_review = AsyncMock(return_value=_calendar_snapshot())
+
+    with pytest.raises(ValueError, match="transportapi_credentials_missing"):
+        await engine.async_review_live_rail()
+
+    client.async_places.assert_not_called()
+    client.async_station_board.assert_not_called()

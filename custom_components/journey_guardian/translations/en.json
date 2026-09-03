@@ -51,21 +51,25 @@
   "options": {
     "step": {
       "init": {
-        "title": "Journey timing",
-        "description": "Edit the conservative timing used until live station-access routing is available.",
+        "title": "Journey settings",
+        "description": "Edit conservative timing, notifications, and optional TransportAPI credentials.",
         "data": {
           "preparation_buffer_minutes": "Preparation buffer",
           "early_warning_minutes": "Early warning margin",
           "station_buffer_minutes": "Station arrival buffer",
           "station_access_fallback_minutes": "Conservative station access fallback",
-          "live_notifications_enabled": "Enable live journey notifications"
+          "live_notifications_enabled": "Enable live journey notifications",
+          "transportapi_app_id": "TransportAPI application ID",
+          "transportapi_app_key": "TransportAPI application key"
         },
         "data_description": {
           "preparation_buffer_minutes": "Minutes allowed to get ready before leaving for the station.",
           "early_warning_minutes": "Additional conservative margin before preparation should begin.",
           "station_buffer_minutes": "Minutes to arrive at the station before the scheduled train departure.",
           "station_access_fallback_minutes": "Minutes allowed to reach the station until live routing is available. Timing is labelled inferred.",
-          "live_notifications_enabled": "Off keeps real calendar journeys in shadow mode while allowing simulation notifications."
+          "live_notifications_enabled": "Off keeps real calendar journeys in shadow mode while allowing simulation notifications.",
+          "transportapi_app_id": "Required only for the explicit live-rail check.",
+          "transportapi_app_key": "Required only for the explicit live-rail check. Stored privately in the Home Assistant config entry."
         }
       }
     }
@@ -87,13 +91,18 @@
       "simulation_active": {"name": "Simulation active"}
     },
     "button": {
-      "review_now": {"name": "Review now"}
+      "review_now": {"name": "Review now"},
+      "review_rail_now": {"name": "Check live rail now"}
     }
   },
   "services": {
     "review_now": {
       "name": "Review journey now",
       "description": "Immediately refresh the calendar and UK Journey Guardian decision path."
+    },
+    "review_rail_now": {
+      "name": "Check live rail now",
+      "description": "Explicitly check TransportAPI for the current calendar journey. This can consume provider allowance."
     },
     "simulate_journey": {
       "name": "Simulate journey",

@@ -8,6 +8,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import dt as dt_util
 
 from .budget import TransportAPIBudget
@@ -39,6 +40,7 @@ from .const import (
     DOMAIN,
     SERVICE_CLEAR_SIMULATION,
     SERVICE_REVIEW_NOW,
+    SERVICE_REVIEW_RAIL_NOW,
     SERVICE_SIMULATE_JOURNEY,
     SIMULATION_SCENARIOS,
 )
@@ -48,6 +50,7 @@ from .notification import JourneyNotificationScheduler, NotificationLedger
 from .provider_broker import ProviderRequestBroker
 from .runtime import JourneyGuardianRuntimeData
 from .simulation import JourneySimulation
+from .transportapi import TransportAPIClient
 
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
 
@@ -74,6 +77,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     settings = {**entry.data, **entry.options}
     simulation = JourneySimulation()
+    transportapi_client = TransportAPIClient(
+        async_get_clientsession(hass),
+        provider_broker,
+        app_id=settings.get(CONF_TRANSPORTAPI_APP_ID, ""),
+        app_key=settings.get(CONF_TRANSPORTAPI_APP_KEY, ""),
+    )
     engine = JourneyGuardianEngine(
         hass,
         calendar_entity=entry.data[CONF_CALENDAR_ENTITY],
@@ -93,6 +102,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
         ),
         simulation=simulation,
+        transportapi_client=transportapi_client,
     )
     coordinator = JourneyGuardianCoordinator(hass, entry, engine)
     notification_ledger = NotificationLedger(hass)
@@ -152,6 +162,11 @@ def _async_register_services(hass: HomeAssistant) -> None:
         await runtime.coordinator.async_request_refresh()
         return runtime.coordinator.data.as_dict()
 
+    async def async_review_rail_now(call: ServiceCall) -> dict:
+        runtime = _runtime(hass)
+        snapshot = await runtime.coordinator.async_review_live_rail()
+        return snapshot.as_dict()
+
     async def async_clear_simulation(call: ServiceCall) -> dict:
         runtime = _runtime(hass)
         runtime.simulation.clear()
@@ -189,6 +204,14 @@ def _async_register_services(hass: HomeAssistant) -> None:
             ),
             supports_response=SupportsResponse.OPTIONAL,
         )
+    if not hass.services.has_service(DOMAIN, SERVICE_REVIEW_RAIL_NOW):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_REVIEW_RAIL_NOW,
+            async_review_rail_now,
+            schema=vol.Schema({}),
+            supports_response=SupportsResponse.OPTIONAL,
+        )
     if not hass.services.has_service(DOMAIN, SERVICE_CLEAR_SIMULATION):
         hass.services.async_register(
             DOMAIN,
@@ -201,8 +224,9 @@ def _async_register_services(hass: HomeAssistant) -> None:
 
 def configured_provider_credentials(entry: ConfigEntry) -> dict[str, str]:
     """Return provider credentials for future clients without logging them."""
+    settings = {**entry.data, **entry.options}
     return {
-        CONF_TRANSPORTAPI_APP_ID: entry.data.get(CONF_TRANSPORTAPI_APP_ID, ""),
-        CONF_TRANSPORTAPI_APP_KEY: entry.data.get(CONF_TRANSPORTAPI_APP_KEY, ""),
-        CONF_GOOGLE_ROUTES_API_KEY: entry.data.get(CONF_GOOGLE_ROUTES_API_KEY, ""),
+        CONF_TRANSPORTAPI_APP_ID: settings.get(CONF_TRANSPORTAPI_APP_ID, ""),
+        CONF_TRANSPORTAPI_APP_KEY: settings.get(CONF_TRANSPORTAPI_APP_KEY, ""),
+        CONF_GOOGLE_ROUTES_API_KEY: settings.get(CONF_GOOGLE_ROUTES_API_KEY, ""),
     }

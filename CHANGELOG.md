@@ -4,6 +4,30 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-09-03
+
+### Added
+
+- A dedicated **Check live rail now** button and
+  `journey_guardian.review_rail_now` action for explicitly controlled first live
+  TransportAPI checks.
+- A TransportAPI client using header credentials, the current Places endpoint,
+  and a bounded live `station_timetables` request around the calendar departure.
+- In-memory, bounded station-resolution reuse keyed by a privacy-safe hash.
+- End-to-end contract tests for live client parameters, credential isolation,
+  station resolution, delayed observations, timing updates, and quota-free polling.
+- An architecture decision record defining the manual-only live gateway.
+
+### Changed
+
+- TransportAPI may now be contacted only through the dedicated manual control.
+  Setup, reload, scheduled calendar polling, ordinary review, and simulation do
+  not invoke the provider.
+- TransportAPI's documented `crs:`-prefixed response codes normalize to the same
+  canonical CRS identity used by calendar and Places data.
+- A first unresolved station can consume two routine calls (Places plus timetable);
+  repeated checks can reuse station and short-lived board caches.
+
 ## [0.1.8] - 2026-09-03
 
 ### Added

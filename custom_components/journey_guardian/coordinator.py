@@ -6,6 +6,7 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import DEFAULT_UPDATE_INTERVAL, NAME
@@ -38,3 +39,12 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
     async def _async_update_data(self) -> JourneySnapshot:
         """Return the latest normalized journey state."""
         return await self.engine.async_review()
+
+    async def async_review_live_rail(self) -> JourneySnapshot:
+        """Run an explicit provider review and publish its derived snapshot."""
+        try:
+            snapshot = await self.engine.async_review_live_rail()
+        except ValueError as err:
+            raise HomeAssistantError(str(err)) from None
+        self.async_set_updated_data(snapshot)
+        return snapshot

@@ -39,6 +39,7 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - explicit rail-data freshness and bounded stale-data handling
 - offline station-code resolution and defensive rail-board normalization
 - deterministic service matching with stable privacy-safe service identities
+- an explicit manual live-rail check through the shared quota broker
 - editable conservative station-access and early-warning timing
 - a persistent shared TransportAPI budget with an urgent-call reserve
 - status, next-departure, decision-path, API-budget, and data-health entities
@@ -47,13 +48,14 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - an explicit **Simulation active** diagnostic entity
 - automated validation and unit tests
 
-The alpha does not yet call TransportAPI, Google Routes, or local transit
-providers. The provider broker, rail normalizer, and service matcher are present
-and tested but deliberately have no live TransportAPI client in this release.
-Until live routing is added, station-access
+The alpha never calls TransportAPI automatically. A dedicated **Check live rail
+now** control can make an explicitly requested TransportAPI check when credentials
+are configured. Setup, reload, ordinary calendar polling, **Review now**, and
+simulations remain provider-free. Google Routes and local-transit providers are
+not called. Until live station-access routing is added,
 timing uses a configurable conservative fallback and is explicitly classified as
-inferred. Providers will be added behind the shared coordinator and quota guard
-after shadow-mode decisions have been verified.
+inferred. Automatic provider use remains deferred until manual live results and
+shadow-mode decisions have been verified.
 
 ## Calendar format
 
@@ -93,6 +95,8 @@ Provider acquisition, freshness, quota, and stale-data contracts are recorded in
 [ADR 0003](docs/adr/0003-provider-request-broker.md).
 Rail normalization, station identity, and service matching are recorded in
 [ADR 0004](docs/adr/0004-rail-normalization-and-matching.md).
+The deliberately manual first live-provider gateway is recorded in
+[ADR 0005](docs/adr/0005-manual-live-rail-gateway.md).
 
 Accepted development work follows the repository's
 [release policy](docs/RELEASE_POLICY.md): unless explicitly held as draft work, a
@@ -126,7 +130,7 @@ After downloading it:
 2. Open **Settings → Devices & services → Add integration**.
 3. Search for **UK Journey Guardian**.
 4. Select the calendar, traveller, and zones. Provider credentials can be
-   deferred until the related monitoring feature is enabled.
+   deferred until the manual live-rail check is needed.
 5. Keep existing travel alarms enabled while validating shadow-mode results.
 
 After installation, open **Settings → Devices & services → UK Journey
@@ -144,13 +148,22 @@ the GitHub repository; it does not replace or host the source repository.
 The integration creates **Status**, **Operational phase**, **Rail data
 freshness**, **Next departure**, **Prepare at**, **Leave home at**, **Station
 arrival at**, **Decision path**, **TransportAPI calls today**, **Data health**,
-and **Review now** entities. Home Assistant generates their entity IDs from the
-configured device name, so IDs can differ between installations.
+**Review now**, and **Check live rail now** entities. Home Assistant generates
+their entity IDs from the configured device name, so IDs can differ between
+installations.
 
 ## Actions
 
 `journey_guardian.review_now` immediately reviews the configured calendar and
 returns the normalized engine snapshot when a response is requested.
+
+`journey_guardian.review_rail_now`—also available as **Check live rail now** on
+the device—first refreshes the calendar and then explicitly checks TransportAPI.
+The first unresolved origin may use two routine calls: one exact station lookup
+and one live departure-board request. Its station resolution is reused in memory,
+and the broker can reuse a very recent board. This action never bypasses the daily
+limit or consumes the urgent reserve. The next ordinary calendar refresh can
+replace the manual rail observation; automatic monitoring is not enabled yet.
 
 `journey_guardian.simulate_journey` activates a synthetic scenario using generic
 locations and an offset from the current time. While it is active, reviews bypass
@@ -187,7 +200,7 @@ Please report security concerns according to [SECURITY.md](SECURITY.md).
 ## Roadmap
 
 1. destination profiles and user-facing station resolution
-2. opt-in TransportAPI station-board client behind the enforced quota broker
+2. validate manual TransportAPI results, then design opt-in automatic monitoring
 3. unified manual-review decision tree
 4. internal scheduling and actionable departure notifications
 5. lightweight interchange monitoring

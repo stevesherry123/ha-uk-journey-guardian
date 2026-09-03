@@ -25,8 +25,8 @@ inside each user's Home Assistant installation.
 - [x] sanitize calendar/provider exceptions into stable public categories
 - [x] keep integration actions safe across config-entry reloads
 - [x] document the layered, local-first architecture and trust boundaries
-- [ ] route every provider request through a caching, deduplicating request broker
-- [ ] expose source freshness and distinguish stale data from healthy current data
+- [x] route every provider request through a caching, deduplicating request broker
+- [x] expose source freshness and distinguish stale data from healthy current data
 - [ ] separate raw provider observations from derived journey decisions
 - [ ] distinguish scheduled, predicted, confirmed, cancelled, and inferred values
 - [ ] surface actionable configuration/provider faults through Home Assistant Repairs
@@ -65,6 +65,11 @@ inside each user's Home Assistant installation.
   without calendar-feed latency or provider quota use (implemented in v0.1.5)
 - add accelerated operational-phase simulations plus restart-safe local
   notification deduplication (implemented in v0.1.6)
+- add a quota-enforcing request broker with cache, in-flight deduplication,
+  sanitized errors, bounded stale fallback, and unload cancellation (implemented
+  in v0.1.7)
+- expose rail freshness and a quota-free stale-data simulation (implemented in
+  v0.1.7)
 - add a shadow-mode acceptance checklist covering calendar discovery, state
   transitions, restart recovery, stale data, diagnostics, and entity history
 - add privacy-safe structured telemetry for poll times, event and candidate

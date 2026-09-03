@@ -62,6 +62,8 @@ async def async_get_config_entry_diagnostics(
                     "provider_available": (
                         snapshot.rail_observation.provider_available
                     ),
+                    "freshness": snapshot.rail_observation.freshness,
+                    "age_seconds": snapshot.rail_observation.age_seconds,
                 }
                 if snapshot.rail_observation
                 else None

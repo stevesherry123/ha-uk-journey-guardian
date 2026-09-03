@@ -4,6 +4,28 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-09-03
+
+### Added
+
+- A shared provider request broker with short-lived caching, concurrent request
+  deduplication, hard quota enforcement, and protected urgent retries.
+- Explicit current and stale provider-result contracts with privacy-safe
+  acquisition metadata and bounded stale fallback.
+- Strict JSON provider-payload validation and detached cached responses.
+- A **Rail data freshness** diagnostic entity and quota-free `stale_data`
+  simulation scenario.
+- Regression tests for concurrent consumers, quota denial, urgent reserve races,
+  malformed responses, provider outages, stale expiry, unload cancellation, and
+  budget restoration after restart.
+
+### Changed
+
+- Malformed persisted quota usage now fails closed at the daily limit instead of
+  risking additional provider allowance.
+- The provider broker is created during config-entry setup but remains dormant;
+  this release does not enable or call TransportAPI.
+
 ## [0.1.6] - 2026-09-03
 
 ### Added

@@ -84,6 +84,23 @@ def test_provider_outage_is_unhealthy_but_retains_fallback_timing() -> None:
     assert snapshot.timing is not None
     assert snapshot.rail_observation is not None
     assert not snapshot.rail_observation.provider_available
+    assert snapshot.rail_observation.freshness == "unavailable"
+
+
+def test_stale_provider_data_is_visible_and_not_healthy() -> None:
+    """Cached rail data remains usable but cannot appear current or healthy."""
+    snapshot = _snapshot(_activate("stale_data"))
+
+    assert snapshot is not None
+    assert snapshot.status == "planned"
+    assert snapshot.error == "simulated_stale_provider_data"
+    assert not snapshot.data_healthy
+    assert snapshot.operational_phase == "prepare_now"
+    assert snapshot.timing is not None
+    assert snapshot.rail_observation is not None
+    assert snapshot.rail_observation.freshness == "stale"
+    assert snapshot.rail_observation.age_seconds == 180
+    assert not snapshot.rail_observation.provider_available
 
 
 def test_split_scenario_is_explicit_without_claiming_live_monitoring() -> None:

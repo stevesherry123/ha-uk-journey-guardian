@@ -4,13 +4,69 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 from homeassistant.setup import async_setup_component
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.journey_guardian import async_setup_entry
 from custom_components.journey_guardian.const import (
+    CONF_CALENDAR_ENTITY,
     DOMAIN,
     SERVICE_CLEAR_SIMULATION,
     SERVICE_REVIEW_NOW,
     SERVICE_SIMULATE_JOURNEY,
 )
+from custom_components.journey_guardian.provider_broker import ProviderRequestBroker
+
+
+async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
+    """Loading the integration cannot reserve quota or contact a provider."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_CALENDAR_ENTITY: ".".join(("calendar", "example_travel"))
+        },
+    )
+    entry.add_to_hass(hass)
+    budget = Mock()
+    budget.async_load = AsyncMock()
+    budget.async_reserve_call = AsyncMock()
+    coordinator = Mock()
+    coordinator.async_config_entry_first_refresh = AsyncMock()
+    ledger = Mock()
+    ledger.async_load = AsyncMock()
+    scheduler = Mock()
+
+    with (
+        patch(
+            "custom_components.journey_guardian.TransportAPIBudget",
+            return_value=budget,
+        ),
+        patch("custom_components.journey_guardian.JourneyGuardianEngine"),
+        patch(
+            "custom_components.journey_guardian.JourneyGuardianCoordinator",
+            return_value=coordinator,
+        ),
+        patch(
+            "custom_components.journey_guardian.NotificationLedger",
+            return_value=ledger,
+        ),
+        patch(
+            "custom_components.journey_guardian.JourneyNotificationScheduler",
+            return_value=scheduler,
+        ),
+        patch.object(
+            hass.config_entries,
+            "async_forward_entry_setups",
+            new=AsyncMock(),
+        ),
+    ):
+        assert await async_setup_entry(hass, entry)
+
+    assert isinstance(entry.runtime_data.provider_broker, ProviderRequestBroker)
+    assert entry.runtime_data.provider_broker._budget is budget
+    budget.async_load.assert_awaited_once_with()
+    budget.async_reserve_call.assert_not_awaited()
+    coordinator.async_config_entry_first_refresh.assert_awaited_once_with()
+    scheduler.start.assert_called_once_with()
 
 
 async def test_review_action_registered_without_entry(hass) -> None:

@@ -18,6 +18,7 @@ from custom_components.journey_guardian.sensor import (
     JourneyTimingSensor,
     NextDepartureSensor,
     OperationalPhaseSensor,
+    RailDataFreshnessSensor,
 )
 
 
@@ -99,9 +100,18 @@ def test_simulated_delay_is_visible_without_overwriting_schedule() -> None:
     )
     status = JourneyStatusSensor(coordinator, entry, "status")
     phase = OperationalPhaseSensor(coordinator, entry, "operational_phase")
+    freshness = RailDataFreshnessSensor(
+        coordinator, entry, "rail_data_freshness"
+    )
 
     assert next_departure.native_value == predicted
     assert phase.native_value == "prepare_now"
+    assert freshness.native_value == "current"
+    assert freshness.extra_state_attributes == {
+        "age_seconds": 0,
+        "source": "simulation",
+        "classification": "simulated",
+    }
     assert status.extra_state_attributes["scheduled_departure"] == (
         scheduled.isoformat()
     )

@@ -65,6 +65,8 @@ class RailObservation:
     cancelled: bool
     leg_count: int
     provider_available: bool
+    freshness: str = "current"
+    age_seconds: int = 0
 
     def as_dict(self) -> dict[str, Any]:
         """Return a serializable representation."""

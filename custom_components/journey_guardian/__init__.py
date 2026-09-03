@@ -45,6 +45,7 @@ from .const import (
 from .coordinator import JourneyGuardianCoordinator
 from .engine import JourneyGuardianEngine
 from .notification import JourneyNotificationScheduler, NotificationLedger
+from .provider_broker import ProviderRequestBroker
 from .runtime import JourneyGuardianRuntimeData
 from .simulation import JourneySimulation
 
@@ -69,6 +70,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
     )
     await budget.async_load()
+    provider_broker = ProviderRequestBroker(hass, budget)
 
     settings = {**entry.data, **entry.options}
     simulation = JourneySimulation()
@@ -109,7 +111,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         budget=budget,
         simulation=simulation,
         notification_scheduler=notification_scheduler,
+        provider_broker=provider_broker,
     )
+    entry.async_on_unload(provider_broker.shutdown)
     await coordinator.async_config_entry_first_refresh()
     notification_scheduler.start()
     entry.async_on_unload(notification_scheduler.stop)

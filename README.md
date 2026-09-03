@@ -34,6 +34,9 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - preparation, leave-home, and station-arrival timestamp entities
 - an operational-phase entity with exact, cancellable boundary scheduling
 - restart-safe local notification deduplication
+- a shared quota-enforcing provider request broker with cache and in-flight
+  deduplication
+- explicit rail-data freshness and bounded stale-data handling
 - editable conservative station-access and early-warning timing
 - a persistent shared TransportAPI budget with an urgent-call reserve
 - status, next-departure, decision-path, API-budget, and data-health entities
@@ -43,10 +46,11 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - automated validation and unit tests
 
 The alpha does not yet call TransportAPI, Google Routes, or local transit
-providers. Until live routing is added, station-access timing uses a configurable
-conservative fallback and is explicitly classified as inferred. Providers will
-be added behind the shared coordinator and quota guard after shadow-mode
-decisions have been verified.
+providers. The provider broker is present and tested but deliberately has no live
+TransportAPI client in this release. Until live routing is added, station-access
+timing uses a configurable conservative fallback and is explicitly classified as
+inferred. Providers will be added behind the shared coordinator and quota guard
+after shadow-mode decisions have been verified.
 
 ## Calendar format
 
@@ -77,6 +81,8 @@ rules, and provider trust model are recorded in
 [ADR 0001](docs/adr/0001-layered-journey-engine.md). Operational scheduling,
 simulation, and notification safety are recorded in
 [ADR 0002](docs/adr/0002-operational-notification-safety.md).
+Provider acquisition, freshness, quota, and stale-data contracts are recorded in
+[ADR 0003](docs/adr/0003-provider-request-broker.md).
 
 Accepted development work follows the repository's
 [release policy](docs/RELEASE_POLICY.md): unless explicitly held as draft work, a
@@ -125,11 +131,11 @@ the GitHub repository; it does not replace or host the source repository.
 
 ## Entities
 
-The integration creates **Status**, **Operational phase**, **Next departure**,
-**Prepare at**, **Leave home at**, **Station arrival at**, **Decision path**,
-**TransportAPI calls today**, **Data health**, and **Review now** entities. Home
-Assistant generates their entity IDs from the configured device name, so IDs can
-differ between installations.
+The integration creates **Status**, **Operational phase**, **Rail data
+freshness**, **Next departure**, **Prepare at**, **Leave home at**, **Station
+arrival at**, **Decision path**, **TransportAPI calls today**, **Data health**,
+and **Review now** entities. Home Assistant generates their entity IDs from the
+configured device name, so IDs can differ between installations.
 
 ## Actions
 
@@ -140,7 +146,9 @@ returns the normalized engine snapshot when a response is requested.
 locations and an offset from the current time. While it is active, reviews bypass
 the configured calendar and no TransportAPI request or quota reservation can
 occur. Supported scenarios are `on_time`, `delayed`, `cancelled`,
-`split_on_time`, and `provider_unavailable`.
+`split_on_time`, `stale_data`, and `provider_unavailable`. The stale-data case
+keeps conservative timing available while making **Data health** off and **Rail
+data freshness** explicitly stale.
 
 `journey_guardian.clear_simulation` explicitly returns reviews to the configured
 calendar. Simulations are held only in memory and also clear when Home Assistant

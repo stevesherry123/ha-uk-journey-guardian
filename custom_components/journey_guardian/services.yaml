@@ -17,6 +17,7 @@ simulate_journey:
             - delayed
             - cancelled
             - split_on_time
+            - stale_data
             - provider_unavailable
     departure_in_minutes:
       name: Departure in minutes

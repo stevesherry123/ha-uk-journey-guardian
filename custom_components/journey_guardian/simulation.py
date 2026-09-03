@@ -90,7 +90,11 @@ class JourneySimulation:
         )
         leg_count = 2 if request.scenario == "split_on_time" else 1
         cancelled = request.scenario == "cancelled"
-        provider_available = request.scenario != "provider_unavailable"
+        provider_available = request.scenario not in {
+            "provider_unavailable",
+            "stale_data",
+        }
+        freshness = _simulation_freshness(request.scenario)
 
         if now >= journey_end:
             self.clear()
@@ -117,13 +121,15 @@ class JourneySimulation:
             cancelled=cancelled,
             leg_count=leg_count,
             provider_available=provider_available,
+            freshness=freshness,
+            age_seconds=180 if request.scenario == "stale_data" else 0,
         )
 
         if cancelled:
             status = "cancelled"
             timing = None
         else:
-            if not provider_available:
+            if request.scenario == "provider_unavailable":
                 status = "error"
             elif now >= effective_departure:
                 status = "active"
@@ -173,15 +179,23 @@ class JourneySimulation:
                 timing=timing,
                 departure=effective_departure,
                 now=now,
-                error=(
-                    "simulated_provider_unavailable"
-                    if not provider_available
-                    else None
-                ),
+                error=_simulation_error(request.scenario),
             ),
-            error=(
-                "simulated_provider_unavailable"
-                if not provider_available
-                else None
-            ),
+            error=_simulation_error(request.scenario),
         )
+
+
+def _simulation_error(scenario: str) -> str | None:
+    if scenario == "provider_unavailable":
+        return "simulated_provider_unavailable"
+    if scenario == "stale_data":
+        return "simulated_stale_provider_data"
+    return None
+
+
+def _simulation_freshness(scenario: str) -> str:
+    if scenario == "provider_unavailable":
+        return "unavailable"
+    if scenario == "stale_data":
+        return "stale"
+    return "current"

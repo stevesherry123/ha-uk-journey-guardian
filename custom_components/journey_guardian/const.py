@@ -49,6 +49,7 @@ SIMULATION_SCENARIOS = (
     "delayed",
     "cancelled",
     "split_on_time",
+    "stale_data",
     "provider_unavailable",
 )
 

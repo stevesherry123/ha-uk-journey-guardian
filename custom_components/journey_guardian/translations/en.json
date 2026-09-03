@@ -74,6 +74,7 @@
     "sensor": {
       "status": {"name": "Status"},
       "operational_phase": {"name": "Operational phase"},
+      "rail_data_freshness": {"name": "Rail data freshness"},
       "next_departure": {"name": "Next departure"},
       "prepare_at": {"name": "Prepare at"},
       "leave_home_at": {"name": "Leave home at"},

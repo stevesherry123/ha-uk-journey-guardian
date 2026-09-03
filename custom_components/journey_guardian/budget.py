@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -35,10 +36,13 @@ class TransportAPIBudget:
 
     async def async_load(self) -> None:
         """Restore the persisted budget and roll over stale days."""
-        stored = await self._store.async_load() or {}
+        loaded = await self._store.async_load() or {}
+        stored = loaded if isinstance(loaded, Mapping) else {}
         today = dt_util.now().date().isoformat()
         if stored.get("date") == today:
-            self._calls_used = max(0, int(stored.get("calls_used", 0)))
+            self._calls_used = _safe_calls_used(
+                stored.get("calls_used"), self._daily_limit
+            )
         else:
             self._calls_used = 0
         self._date = today
@@ -79,3 +83,12 @@ class TransportAPIBudget:
         await self._store.async_save(
             {"date": self._date, "calls_used": self._calls_used}
         )
+
+
+def _safe_calls_used(value: Any, daily_limit: int) -> int:
+    """Treat malformed persisted quota state as exhausted, never permissive."""
+    try:
+        calls_used = int(value)
+    except (TypeError, ValueError):
+        return daily_limit
+    return min(daily_limit, max(0, calls_used))

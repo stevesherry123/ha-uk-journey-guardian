@@ -22,6 +22,7 @@ async def async_setup_entry(
         [
             JourneyStatusSensor(coordinator, entry, "status"),
             OperationalPhaseSensor(coordinator, entry, "operational_phase"),
+            RailDataFreshnessSensor(coordinator, entry, "rail_data_freshness"),
             NextDepartureSensor(coordinator, entry, "next_departure"),
             JourneyTimingSensor(
                 coordinator,
@@ -97,6 +98,8 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
             "provider_available": (
                 observation.provider_available if observation else None
             ),
+            "rail_freshness": observation.freshness if observation else None,
+            "rail_age_seconds": observation.age_seconds if observation else None,
         }
 
 
@@ -109,6 +112,30 @@ class OperationalPhaseSensor(JourneyGuardianEntity, SensorEntity):
     @property
     def native_value(self) -> str:
         return self.coordinator.data.operational_phase
+
+
+class RailDataFreshnessSensor(JourneyGuardianEntity, SensorEntity):
+    """Freshness of the latest provider-neutral rail observation."""
+
+    _attr_translation_key = "rail_data_freshness"
+    _attr_icon = "mdi:database-clock-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    @property
+    def native_value(self) -> str:
+        observation = self.coordinator.data.rail_observation
+        return observation.freshness if observation else "not_checked"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        observation = self.coordinator.data.rail_observation
+        return {
+            "age_seconds": observation.age_seconds if observation else None,
+            "source": observation.source if observation else None,
+            "classification": (
+                observation.classification if observation else None
+            ),
+        }
 
 
 class NextDepartureSensor(JourneyGuardianEntity, SensorEntity):

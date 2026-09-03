@@ -10,6 +10,7 @@ from .const import (
     CONF_EARLY_WARNING_MINUTES,
     CONF_GOOGLE_ROUTES_API_KEY,
     CONF_HOME_ZONE,
+    CONF_LIVE_NOTIFICATIONS_ENABLED,
     CONF_PERSON_ENTITY,
     CONF_PREPARATION_BUFFER_MINUTES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
@@ -29,6 +30,7 @@ TO_REDACT = {
     CONF_STATION_BUFFER_MINUTES,
     CONF_STATION_ACCESS_MODE,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
+    CONF_LIVE_NOTIFICATIONS_ENABLED,
     CONF_TRANSPORTAPI_APP_ID,
     CONF_TRANSPORTAPI_APP_KEY,
     CONF_GOOGLE_ROUTES_API_KEY,
@@ -48,6 +50,7 @@ async def async_get_config_entry_diagnostics(
             "data_healthy": snapshot.data_healthy,
             "error": snapshot.error,
             "simulation_active": snapshot.simulation_active,
+            "operational_phase": snapshot.operational_phase,
             "rail_observation": (
                 {
                     "scenario": snapshot.rail_observation.scenario,

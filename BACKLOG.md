@@ -11,8 +11,9 @@ inside each user's Home Assistant installation.
 - [ ] provide manual-review parity through the shared decision engine
 - [ ] monitor direct and split rail legs within the shared provider budget
 - [x] calculate preparation and leave times with a conservative routing fallback
-- [ ] send configurable operational notifications with deduplication
-- [ ] replace rapid wake-up loops with bounded, cancellable announcements
+- [x] send configurable local operational notifications with restart-safe
+  deduplication
+- [x] replace rapid wake-up loops with bounded, cancellable phase scheduling
 - [ ] pass direct, split, delayed, cancelled, restart, and provider-outage tests
 - [ ] disable the legacy packages and complete an observation period
 - [ ] remove the legacy packages only after the observation period succeeds
@@ -62,6 +63,8 @@ inside each user's Home Assistant installation.
   and Recorder writes
 - add a privacy-safe `simulate_journey` action for deterministic acceptance tests
   without calendar-feed latency or provider quota use (implemented in v0.1.5)
+- add accelerated operational-phase simulations plus restart-safe local
+  notification deduplication (implemented in v0.1.6)
 - add a shadow-mode acceptance checklist covering calendar discovery, state
   transitions, restart recovery, stale data, diagnostics, and entity history
 - add privacy-safe structured telemetry for poll times, event and candidate

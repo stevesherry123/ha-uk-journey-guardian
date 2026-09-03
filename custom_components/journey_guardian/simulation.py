@@ -11,6 +11,7 @@ from .models import (
     JourneySnapshot,
     RailObservation,
 )
+from .phase import calculate_operational_phase
 from .timing import calculate_fallback_timing
 
 
@@ -23,6 +24,7 @@ class SimulationRequest:
     delay_minutes: int
     duration_minutes: int
     activated_at: datetime
+    accelerated: bool
 
 
 class JourneySimulation:
@@ -45,6 +47,7 @@ class JourneySimulation:
         departure_in_minutes: int,
         delay_minutes: int,
         duration_minutes: int,
+        accelerated: bool = False,
     ) -> None:
         """Activate a synthetic scenario without calling an external provider."""
         self._request = SimulationRequest(
@@ -53,6 +56,7 @@ class JourneySimulation:
             delay_minutes=delay_minutes if scenario == "delayed" else 0,
             duration_minutes=duration_minutes,
             activated_at=now,
+            accelerated=accelerated,
         )
 
     def clear(self) -> None:
@@ -138,10 +142,16 @@ class JourneySimulation:
                     destination_confirmation=journey.destination_confirmation,
                     decision_path=journey.decision_path,
                 ),
-                preparation_minutes=preparation_minutes,
-                early_warning_minutes=early_warning_minutes,
-                station_buffer_minutes=station_buffer_minutes,
-                station_access_minutes=station_access_minutes,
+                preparation_minutes=(2 if request.accelerated else preparation_minutes),
+                early_warning_minutes=(
+                    0 if request.accelerated else early_warning_minutes
+                ),
+                station_buffer_minutes=(
+                    1 if request.accelerated else station_buffer_minutes
+                ),
+                station_access_minutes=(
+                    2 if request.accelerated else station_access_minutes
+                ),
                 source="simulation",
                 classification=(
                     "simulated_predicted"
@@ -158,6 +168,17 @@ class JourneySimulation:
             timing=timing,
             rail_observation=observation,
             simulation_active=True,
+            operational_phase=calculate_operational_phase(
+                status=status,
+                timing=timing,
+                departure=effective_departure,
+                now=now,
+                error=(
+                    "simulated_provider_unavailable"
+                    if not provider_available
+                    else None
+                ),
+            ),
             error=(
                 "simulated_provider_unavailable"
                 if not provider_available

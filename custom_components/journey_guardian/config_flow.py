@@ -17,6 +17,7 @@ from .const import (
     CONF_EARLY_WARNING_MINUTES,
     CONF_GOOGLE_ROUTES_API_KEY,
     CONF_HOME_ZONE,
+    CONF_LIVE_NOTIFICATIONS_ENABLED,
     CONF_PERSON_ENTITY,
     CONF_PREPARATION_BUFFER_MINUTES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
@@ -28,6 +29,7 @@ from .const import (
     DEFAULT_DAILY_API_LIMIT,
     DEFAULT_EARLY_WARNING_MINUTES,
     DEFAULT_HOME_ZONE,
+    DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
     DEFAULT_PREPARATION_BUFFER_MINUTES,
     DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
     DEFAULT_STATION_ACCESS_MODE,
@@ -128,6 +130,10 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_URGENT_API_RESERVE,
                     default=DEFAULT_URGENT_API_RESERVE,
                 ): vol.All(vol.Coerce(int), vol.Range(min=0, max=20)),
+                vol.Required(
+                    CONF_LIVE_NOTIFICATIONS_ENABLED,
+                    default=DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
+                ): selector.BooleanSelector(),
             }
         )
         return self.async_show_form(
@@ -178,6 +184,13 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                             DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
                         ),
                     ): vol.All(vol.Coerce(int), vol.Range(min=1, max=240)),
+                    vol.Required(
+                        CONF_LIVE_NOTIFICATIONS_ENABLED,
+                        default=current.get(
+                            CONF_LIVE_NOTIFICATIONS_ENABLED,
+                            DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
+                        ),
+                    ): selector.BooleanSelector(),
                 }
             ),
         )

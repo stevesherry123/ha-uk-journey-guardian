@@ -21,6 +21,7 @@ async def async_setup_entry(
     async_add_entities(
         [
             JourneyStatusSensor(coordinator, entry, "status"),
+            OperationalPhaseSensor(coordinator, entry, "operational_phase"),
             NextDepartureSensor(coordinator, entry, "next_departure"),
             JourneyTimingSensor(
                 coordinator,
@@ -97,6 +98,17 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
                 observation.provider_available if observation else None
             ),
         }
+
+
+class OperationalPhaseSensor(JourneyGuardianEntity, SensorEntity):
+    """Current actionable phase for scheduling and notifications."""
+
+    _attr_translation_key = "operational_phase"
+    _attr_icon = "mdi:timeline-clock-outline"
+
+    @property
+    def native_value(self) -> str:
+        return self.coordinator.data.operational_phase
 
 
 class NextDepartureSensor(JourneyGuardianEntity, SensorEntity):

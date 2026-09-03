@@ -17,6 +17,7 @@ from custom_components.journey_guardian.sensor import (
     JourneyStatusSensor,
     JourneyTimingSensor,
     NextDepartureSensor,
+    OperationalPhaseSensor,
 )
 
 
@@ -89,6 +90,7 @@ def test_simulated_delay_is_visible_without_overwriting_schedule() -> None:
         budget=BudgetSnapshot("2026-09-03", 0, 30, 3),
         rail_observation=observation,
         simulation_active=True,
+        operational_phase="prepare_now",
     )
     entry = MockConfigEntry(domain=DOMAIN)
 
@@ -96,8 +98,10 @@ def test_simulated_delay_is_visible_without_overwriting_schedule() -> None:
         coordinator, entry, "next_departure"
     )
     status = JourneyStatusSensor(coordinator, entry, "status")
+    phase = OperationalPhaseSensor(coordinator, entry, "operational_phase")
 
     assert next_departure.native_value == predicted
+    assert phase.native_value == "prepare_now"
     assert status.extra_state_attributes["scheduled_departure"] == (
         scheduled.isoformat()
     )

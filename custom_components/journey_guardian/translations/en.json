@@ -19,7 +19,8 @@
           "transportapi_app_key": "TransportAPI application key",
           "google_routes_api_key": "Google Routes API key",
           "daily_api_limit": "Daily TransportAPI call limit",
-          "urgent_api_reserve": "Calls reserved for urgent checks"
+          "urgent_api_reserve": "Calls reserved for urgent checks",
+          "live_notifications_enabled": "Enable live journey notifications"
         },
         "data_description": {
           "calendar_entity": "Calendar containing timed rail journey events.",
@@ -35,7 +36,8 @@
           "transportapi_app_key": "Optional until TransportAPI rail monitoring is enabled. Stored privately in the Home Assistant config entry.",
           "google_routes_api_key": "Optional until Google routing is enabled. Use a dedicated restricted server-side Routes API key.",
           "daily_api_limit": "Maximum TransportAPI calls permitted each local day.",
-          "urgent_api_reserve": "Routine checks stop before consuming this final reserve."
+          "urgent_api_reserve": "Routine checks stop before consuming this final reserve.",
+          "live_notifications_enabled": "Off by default during shadow testing. Simulations can still create test notifications."
         }
       }
     },
@@ -55,13 +57,15 @@
           "preparation_buffer_minutes": "Preparation buffer",
           "early_warning_minutes": "Early warning margin",
           "station_buffer_minutes": "Station arrival buffer",
-          "station_access_fallback_minutes": "Conservative station access fallback"
+          "station_access_fallback_minutes": "Conservative station access fallback",
+          "live_notifications_enabled": "Enable live journey notifications"
         },
         "data_description": {
           "preparation_buffer_minutes": "Minutes allowed to get ready before leaving for the station.",
           "early_warning_minutes": "Additional conservative margin before preparation should begin.",
           "station_buffer_minutes": "Minutes to arrive at the station before the scheduled train departure.",
-          "station_access_fallback_minutes": "Minutes allowed to reach the station until live routing is available. Timing is labelled inferred."
+          "station_access_fallback_minutes": "Minutes allowed to reach the station until live routing is available. Timing is labelled inferred.",
+          "live_notifications_enabled": "Off keeps real calendar journeys in shadow mode while allowing simulation notifications."
         }
       }
     }
@@ -69,6 +73,7 @@
   "entity": {
     "sensor": {
       "status": {"name": "Status"},
+      "operational_phase": {"name": "Operational phase"},
       "next_departure": {"name": "Next departure"},
       "prepare_at": {"name": "Prepare at"},
       "leave_home_at": {"name": "Leave home at"},
@@ -96,7 +101,8 @@
         "scenario": {"name": "Scenario", "description": "Synthetic rail condition to apply until simulation is cleared or Home Assistant restarts."},
         "departure_in_minutes": {"name": "Departure in minutes", "description": "Minutes from now to the synthetic scheduled departure."},
         "delay_minutes": {"name": "Delay minutes", "description": "Delay applied by the delayed scenario; ignored by other scenarios."},
-        "duration_minutes": {"name": "Journey duration", "description": "Duration of the synthetic journey after its effective departure."}
+        "duration_minutes": {"name": "Journey duration", "description": "Duration of the synthetic journey after its effective departure."},
+        "accelerated": {"name": "Accelerated timeline", "description": "Compress preparation, access, and station stages into minutes for rapid end-to-end testing."}
       }
     },
     "clear_simulation": {

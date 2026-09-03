@@ -121,6 +121,7 @@ class JourneySnapshot:
     timing: JourneyTiming | None = None
     rail_observation: RailObservation | None = None
     simulation_active: bool = False
+    operational_phase: str = "idle"
     error: str | None = None
 
     @property
@@ -143,6 +144,7 @@ class JourneySnapshot:
                 else None
             ),
             "simulation_active": self.simulation_active,
+            "operational_phase": self.operational_phase,
             "budget": self.budget.as_dict(),
             "data_healthy": self.data_healthy,
             "error": self.error,

@@ -55,9 +55,10 @@ async def test_simulation_action_uses_safe_defaults_and_returns_snapshot(hass) -
     runtime.simulation.activate.assert_called_once_with(
         scenario="on_time",
         now=now,
-        departure_in_minutes=90,
+        departure_in_minutes=180,
         delay_minutes=15,
         duration_minutes=60,
+        accelerated=False,
     )
     runtime.coordinator.async_request_refresh.assert_awaited_once()
     assert response == {"simulation_active": True, "status": "planned"}

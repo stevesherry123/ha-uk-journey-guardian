@@ -19,6 +19,7 @@ from .const import (
 )
 from .journey import select_next_journey
 from .models import JourneySnapshot
+from .phase import calculate_operational_phase
 from .simulation import JourneySimulation
 from .timing import calculate_fallback_timing
 
@@ -91,6 +92,12 @@ class JourneyGuardianEngine:
                 next_journey=next_journey,
                 budget=self._budget.snapshot(),
                 timing=timing,
+                operational_phase=calculate_operational_phase(
+                    status=status,
+                    timing=timing,
+                    departure=(next_journey.start if next_journey else None),
+                    now=checked_at,
+                ),
             )
         except Exception as err:  # Home Assistant service errors vary by provider
             # Exception messages from calendars and future provider clients may
@@ -104,6 +111,7 @@ class JourneyGuardianEngine:
                 checked_at=checked_at,
                 next_journey=None,
                 budget=self._budget.snapshot(),
+                operational_phase="error",
                 error="calendar_unavailable",
             )
 

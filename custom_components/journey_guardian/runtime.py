@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from .budget import TransportAPIBudget
 from .coordinator import JourneyGuardianCoordinator
+from .notification import JourneyNotificationScheduler
 from .simulation import JourneySimulation
 
 
@@ -14,3 +15,4 @@ class JourneyGuardianRuntimeData:
     coordinator: JourneyGuardianCoordinator
     budget: TransportAPIBudget
     simulation: JourneySimulation
+    notification_scheduler: JourneyNotificationScheduler

@@ -7,10 +7,12 @@ from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation as cv
 from homeassistant.util import dt as dt_util
 
 from .budget import TransportAPIBudget
 from .const import (
+    ATTR_ACCELERATED,
     ATTR_DELAY_MINUTES,
     ATTR_DEPARTURE_IN_MINUTES,
     ATTR_DURATION_MINUTES,
@@ -19,6 +21,7 @@ from .const import (
     CONF_DAILY_API_LIMIT,
     CONF_EARLY_WARNING_MINUTES,
     CONF_GOOGLE_ROUTES_API_KEY,
+    CONF_LIVE_NOTIFICATIONS_ENABLED,
     CONF_PREPARATION_BUFFER_MINUTES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
     CONF_STATION_BUFFER_MINUTES,
@@ -27,7 +30,9 @@ from .const import (
     CONF_URGENT_API_RESERVE,
     DEFAULT_DAILY_API_LIMIT,
     DEFAULT_EARLY_WARNING_MINUTES,
+    DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
     DEFAULT_PREPARATION_BUFFER_MINUTES,
+    DEFAULT_SIMULATION_DEPARTURE_MINUTES,
     DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
     DEFAULT_STATION_BUFFER_MINUTES,
     DEFAULT_URGENT_API_RESERVE,
@@ -39,6 +44,7 @@ from .const import (
 )
 from .coordinator import JourneyGuardianCoordinator
 from .engine import JourneyGuardianEngine
+from .notification import JourneyNotificationScheduler, NotificationLedger
 from .runtime import JourneyGuardianRuntimeData
 from .simulation import JourneySimulation
 
@@ -87,10 +93,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         simulation=simulation,
     )
     coordinator = JourneyGuardianCoordinator(hass, entry, engine)
+    notification_ledger = NotificationLedger(hass)
+    await notification_ledger.async_load()
+    notification_scheduler = JourneyNotificationScheduler(
+        hass,
+        coordinator,
+        notification_ledger,
+        live_notifications_enabled=settings.get(
+            CONF_LIVE_NOTIFICATIONS_ENABLED,
+            DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
+        ),
+    )
     entry.runtime_data = JourneyGuardianRuntimeData(
-        coordinator=coordinator, budget=budget, simulation=simulation
+        coordinator=coordinator,
+        budget=budget,
+        simulation=simulation,
+        notification_scheduler=notification_scheduler,
     )
     await coordinator.async_config_entry_first_refresh()
+    notification_scheduler.start()
+    entry.async_on_unload(notification_scheduler.stop)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -121,6 +143,7 @@ def _async_register_services(hass: HomeAssistant) -> None:
             departure_in_minutes=call.data[ATTR_DEPARTURE_IN_MINUTES],
             delay_minutes=call.data[ATTR_DELAY_MINUTES],
             duration_minutes=call.data[ATTR_DURATION_MINUTES],
+            accelerated=call.data[ATTR_ACCELERATED],
         )
         await runtime.coordinator.async_request_refresh()
         return runtime.coordinator.data.as_dict()
@@ -147,15 +170,17 @@ def _async_register_services(hass: HomeAssistant) -> None:
             schema=vol.Schema(
                 {
                     vol.Required(ATTR_SCENARIO): vol.In(SIMULATION_SCENARIOS),
-                    vol.Optional(ATTR_DEPARTURE_IN_MINUTES, default=90): vol.All(
-                        vol.Coerce(int), vol.Range(min=1, max=1440)
-                    ),
+                    vol.Optional(
+                        ATTR_DEPARTURE_IN_MINUTES,
+                        default=DEFAULT_SIMULATION_DEPARTURE_MINUTES,
+                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
                     vol.Optional(ATTR_DELAY_MINUTES, default=15): vol.All(
                         vol.Coerce(int), vol.Range(min=0, max=240)
                     ),
                     vol.Optional(ATTR_DURATION_MINUTES, default=60): vol.All(
                         vol.Coerce(int), vol.Range(min=1, max=720)
                     ),
+                    vol.Optional(ATTR_ACCELERATED, default=False): cv.boolean,
                 }
             ),
             supports_response=SupportsResponse.OPTIONAL,

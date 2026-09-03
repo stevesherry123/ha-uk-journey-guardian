@@ -32,6 +32,8 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - optional multiple destination zones
 - per-traveller preparation time, station buffer, and station-access preference
 - preparation, leave-home, and station-arrival timestamp entities
+- an operational-phase entity with exact, cancellable boundary scheduling
+- restart-safe local notification deduplication
 - editable conservative station-access and early-warning timing
 - a persistent shared TransportAPI budget with an urgent-call reserve
 - status, next-departure, decision-path, API-budget, and data-health entities
@@ -72,7 +74,9 @@ API-key security, and notification requirements.
 
 The integration's architectural boundaries, security defaults, state-handling
 rules, and provider trust model are recorded in
-[ADR 0001](docs/adr/0001-layered-journey-engine.md).
+[ADR 0001](docs/adr/0001-layered-journey-engine.md). Operational scheduling,
+simulation, and notification safety are recorded in
+[ADR 0002](docs/adr/0002-operational-notification-safety.md).
 
 Accepted development work follows the repository's
 [release policy](docs/RELEASE_POLICY.md): unless explicitly held as draft work, a
@@ -111,7 +115,9 @@ After downloading it:
 
 After installation, open **Settings → Devices & services → UK Journey
 Guardian → Configure** to tune the preparation, early-warning,
-station-arrival, and conservative station-access durations.
+station-arrival, and conservative station-access durations. Live-calendar
+notifications are deliberately disabled by default during shadow testing and can
+be enabled on this screen. Simulation notifications remain enabled for testing.
 
 The project may be submitted to HACS's default catalogue after it is stable,
 branded, released, and passing HACS and Home Assistant validation. HACS indexes
@@ -119,11 +125,11 @@ the GitHub repository; it does not replace or host the source repository.
 
 ## Entities
 
-The integration creates **Status**, **Next departure**, **Prepare at**, **Leave
-home at**, **Station arrival at**, **Decision path**, **TransportAPI calls
-today**, **Data health**, and **Review now** entities. Home Assistant generates
-their entity IDs from the configured device name, so IDs can differ between
-installations.
+The integration creates **Status**, **Operational phase**, **Next departure**,
+**Prepare at**, **Leave home at**, **Station arrival at**, **Decision path**,
+**TransportAPI calls today**, **Data health**, and **Review now** entities. Home
+Assistant generates their entity IDs from the configured device name, so IDs can
+differ between installations.
 
 ## Actions
 
@@ -139,6 +145,13 @@ occur. Supported scenarios are `on_time`, `delayed`, `cancelled`,
 `journey_guardian.clear_simulation` explicitly returns reviews to the configured
 calendar. Simulations are held only in memory and also clear when Home Assistant
 restarts or when the synthetic journey finishes.
+
+For a rapid acceptance test, select the `on_time` scenario, set **Departure in
+minutes** to `6`, and enable **Accelerated timeline**. The operational phase then
+changes to preparation after one minute, leaving after three, station arrival
+after five, and active travel after six. Preparation and leaving create local
+Home Assistant persistent notifications once each, including across a restart.
+This path does not call or reserve allowance from TransportAPI.
 
 > [!IMPORTANT]
 > Always confirm that the **Simulation active** entity is off before relying on

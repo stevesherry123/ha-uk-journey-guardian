@@ -4,6 +4,27 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-09-03
+
+### Added
+
+- An operational-phase entity covering waiting, preparation, leaving, station
+  arrival, active travel, cancellation, and provider-unavailable states.
+- Exact, cancellable Home Assistant timers for each operational boundary.
+- Restart-safe notification deduplication using privacy-safe hashed fingerprints.
+- Local persistent notifications for preparation, leaving, cancellation, and
+  provider-unavailable phases.
+- An accelerated simulation timeline for observing the complete phase sequence
+  in minutes without contacting TransportAPI.
+
+### Changed
+
+- Live-calendar notifications remain off by default during shadow testing and
+  can be enabled explicitly from the integration options; simulation alerts are
+  always available.
+- The normal simulated departure default is now 180 minutes, keeping the default
+  preparation time in the future with the conservative timing settings.
+
 ## [0.1.5] - 2026-09-03
 
 ### Added

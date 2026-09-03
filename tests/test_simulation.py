@@ -66,6 +66,7 @@ def test_cancelled_scenario_suppresses_actionable_timing() -> None:
 
     assert snapshot is not None
     assert snapshot.status == "cancelled"
+    assert snapshot.operational_phase == "cancelled"
     assert snapshot.timing is None
     assert snapshot.rail_observation is not None
     assert snapshot.rail_observation.cancelled
@@ -78,6 +79,7 @@ def test_provider_outage_is_unhealthy_but_retains_fallback_timing() -> None:
     assert snapshot is not None
     assert snapshot.status == "error"
     assert snapshot.error == "simulated_provider_unavailable"
+    assert snapshot.operational_phase == "provider_unavailable"
     assert not snapshot.data_healthy
     assert snapshot.timing is not None
     assert snapshot.rail_observation is not None
@@ -111,6 +113,28 @@ def test_simulation_can_be_cleared_explicitly() -> None:
     simulation.clear()
     assert not simulation.active
     assert _snapshot(simulation) is None
+
+
+def test_accelerated_simulation_compresses_operational_boundaries() -> None:
+    """Rapid tests can exercise every phase without changing live settings."""
+    simulation = JourneySimulation()
+    simulation.activate(
+        scenario="on_time",
+        now=NOW,
+        departure_in_minutes=6,
+        delay_minutes=0,
+        duration_minutes=5,
+        accelerated=True,
+    )
+
+    snapshot = _snapshot(simulation)
+
+    assert snapshot is not None
+    assert snapshot.timing is not None
+    assert snapshot.timing.prepare_at == NOW + timedelta(minutes=1)
+    assert snapshot.timing.leave_home_at == NOW + timedelta(minutes=3)
+    assert snapshot.timing.station_arrival_at == NOW + timedelta(minutes=5)
+    assert snapshot.operational_phase == "waiting"
 
 
 async def test_active_simulation_bypasses_calendar_and_provider_budget() -> None:

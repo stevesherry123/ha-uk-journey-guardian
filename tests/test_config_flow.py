@@ -13,6 +13,7 @@ from custom_components.journey_guardian.const import (
     CONF_EARLY_WARNING_MINUTES,
     CONF_GOOGLE_ROUTES_API_KEY,
     CONF_HOME_ZONE,
+    CONF_LIVE_NOTIFICATIONS_ENABLED,
     CONF_PERSON_ENTITY,
     CONF_PREPARATION_BUFFER_MINUTES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
@@ -39,6 +40,7 @@ USER_INPUT = {
     CONF_GOOGLE_ROUTES_API_KEY: "",
     CONF_DAILY_API_LIMIT: 30,
     CONF_URGENT_API_RESERVE: 3,
+    CONF_LIVE_NOTIFICATIONS_ENABLED: False,
 }
 
 
@@ -136,6 +138,7 @@ async def test_options_flow_updates_timing_and_reloads(hass) -> None:
         CONF_EARLY_WARNING_MINUTES: 12,
         CONF_STATION_BUFFER_MINUTES: 20,
         CONF_STATION_ACCESS_FALLBACK_MINUTES: 75,
+        CONF_LIVE_NOTIFICATIONS_ENABLED: False,
     }
     with patch.object(hass.config_entries, "async_reload") as async_reload:
         result = await hass.config_entries.options.async_configure(

@@ -21,7 +21,7 @@ simulate_journey:
     departure_in_minutes:
       name: Departure in minutes
       description: Minutes from now to the synthetic scheduled departure.
-      default: 90
+      default: 180
       selector:
         number:
           min: 1
@@ -48,6 +48,12 @@ simulate_journey:
           max: 720
           unit_of_measurement: min
           mode: box
+    accelerated:
+      name: Accelerated timeline
+      description: Use two-minute preparation and access stages plus a one-minute station buffer for rapid end-to-end testing.
+      default: false
+      selector:
+        boolean:
 
 clear_simulation:
   name: Clear simulation

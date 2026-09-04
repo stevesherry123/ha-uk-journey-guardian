@@ -60,6 +60,7 @@ class JourneyGuardianEngine:
         self._simulation = simulation
         self._transportapi_client = transportapi_client
         self._station_resolutions: dict[str, StationResolution] = {}
+        self._last_live_rail_error: str | None = None
 
     async def async_review(self) -> JourneySnapshot:
         """Review the next calendar journey without consuming rail API quota."""
@@ -74,7 +75,10 @@ class JourneyGuardianEngine:
                 station_access_minutes=self._station_access_fallback_minutes,
             )
             if simulated is not None:
-                return simulated
+                return replace(
+                    simulated,
+                    last_live_rail_error=self._last_live_rail_error,
+                )
         try:
             events = await self._async_calendar_events(checked_at)
             next_journey = select_next_journey(events, checked_at)
@@ -107,6 +111,7 @@ class JourneyGuardianEngine:
                     departure=(next_journey.start if next_journey else None),
                     now=checked_at,
                 ),
+                last_live_rail_error=self._last_live_rail_error,
             )
         except Exception as err:  # Home Assistant service errors vary by provider
             # Exception messages from calendars and future provider clients may
@@ -122,6 +127,7 @@ class JourneyGuardianEngine:
                 budget=self._budget.snapshot(),
                 operational_phase="error",
                 error="calendar_unavailable",
+                last_live_rail_error=self._last_live_rail_error,
             )
 
     async def async_review_live_rail(self) -> JourneySnapshot:
@@ -166,14 +172,18 @@ class JourneyGuardianEngine:
             )
         except (ProviderBrokerError, RailDataError, StationResolutionError) as err:
             category = getattr(err, "category", "provider_unavailable")
+            self._last_live_rail_error = f"transportapi_{category}"
             _LOGGER.warning("Manual rail review failed: %s", category)
             return replace(
                 snapshot,
                 status="error",
                 operational_phase="error",
-                error=f"transportapi_{category}",
+                budget=self._budget.snapshot(),
+                error=self._last_live_rail_error,
+                last_live_rail_error=self._last_live_rail_error,
             )
 
+        self._last_live_rail_error = None
         resolved_journey = replace(
             journey,
             origin_code=station.code,
@@ -226,6 +236,7 @@ class JourneyGuardianEngine:
                 now=snapshot.checked_at,
             ),
             error=board.error_category,
+            last_live_rail_error=None,
         )
 
     async def _async_resolve_station(

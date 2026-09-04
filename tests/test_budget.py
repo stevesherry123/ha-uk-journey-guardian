@@ -73,3 +73,23 @@ async def test_impossible_stored_usage_is_clamped_to_hard_limit(hass) -> None:
 
     assert not reserved
     assert calls_used == 30
+
+
+async def test_provider_exhaustion_reconciles_local_budget(hass) -> None:
+    """An upstream exhausted response closes a locally optimistic budget."""
+    budget = TransportAPIBudget(hass, daily_limit=30, urgent_reserve=3)
+    budget._store = AsyncMock()
+    budget._date = NOW.date().isoformat()
+    budget._calls_used = 4
+
+    with patch(
+        "custom_components.journey_guardian.budget.dt_util.now",
+        return_value=NOW,
+    ):
+        await budget.async_mark_exhausted()
+        calls_used = budget.snapshot().calls_used
+
+    assert calls_used == 30
+    budget._store.async_save.assert_awaited_once_with(
+        {"date": "2026-09-03", "calls_used": 30}
+    )

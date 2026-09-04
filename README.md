@@ -99,6 +99,8 @@ The deliberately manual first live-provider gateway is recorded in
 [ADR 0005](docs/adr/0005-manual-live-rail-gateway.md).
 Destination calling-point and strict schedule matching are recorded in
 [ADR 0006](docs/adr/0006-calling-point-and-schedule-match.md).
+Shared-account quota reconciliation and durable live-error evidence are recorded
+in [ADR 0007](docs/adr/0007-shared-provider-account-quota.md).
 
 Accepted development work follows the repository's
 [release policy](docs/RELEASE_POLICY.md): unless explicitly held as draft work, a
@@ -149,7 +151,8 @@ the GitHub repository; it does not replace or host the source repository.
 
 The integration creates **Status**, **Operational phase**, **Rail data
 freshness**, **Next departure**, **Prepare at**, **Leave home at**, **Station
-arrival at**, **Decision path**, **TransportAPI calls today**, **Data health**,
+arrival at**, **Decision path**, **Journey Guardian TransportAPI budget**,
+**Data health**,
 **Review now**, and **Check live rail now** entities. Home Assistant generates
 their entity IDs from the configured device name, so IDs can differ between
 installations.
@@ -167,6 +170,12 @@ that call at the intended destination. Station resolutions are reused in memory,
 and the broker can reuse a very recent board. This action never bypasses the
 daily limit or consumes the urgent reserve. The next ordinary calendar refresh
 can replace the manual rail observation; automatic monitoring is not enabled yet.
+
+The TransportAPI budget entity counts requests reserved by Journey Guardian. It
+cannot observe requests made with the same provider account by legacy packages,
+other integrations, scripts, or external applications. If TransportAPI reports
+that the account allocation is exhausted, Journey Guardian immediately closes
+its local budget for the rest of that provider day and records a stable error.
 
 `journey_guardian.simulate_journey` activates a synthetic scenario using generic
 locations and an offset from the current time. While it is active, reviews bypass

@@ -84,7 +84,7 @@
       "leave_home_at": {"name": "Leave home at"},
       "station_arrival_at": {"name": "Station arrival at"},
       "decision_path": {"name": "Decision path"},
-      "transportapi_calls": {"name": "TransportAPI calls today"}
+      "transportapi_calls": {"name": "Journey Guardian TransportAPI budget"}
     },
     "binary_sensor": {
       "data_healthy": {"name": "Data healthy"},

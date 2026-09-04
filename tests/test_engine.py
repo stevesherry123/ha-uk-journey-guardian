@@ -428,10 +428,12 @@ async def test_manual_review_rejects_materially_later_service() -> None:
         return_value=_provider_result(mismatched_board)
     )
     base = _calendar_snapshot()
+    budget = _budget()
+    budget.snapshot.return_value = BudgetSnapshot("2026-09-03", 3, 30, 3)
     engine = JourneyGuardianEngine(
         Mock(),
         calendar_entity=CALENDAR_ENTITY,
-        budget=_budget(),
+        budget=budget,
         transportapi_client=client,
     )
     engine.async_review = AsyncMock(return_value=base)
@@ -440,6 +442,29 @@ async def test_manual_review_rejects_materially_later_service() -> None:
 
     assert result.status == "error"
     assert result.error == "transportapi_rail_schedule_mismatch"
+    assert (
+        result.last_live_rail_error
+        == "transportapi_rail_schedule_mismatch"
+    )
     assert result.next_journey == base.next_journey
     assert result.timing == base.timing
     assert result.rail_observation is None
+    assert result.budget.calls_used == 3
+
+    engine.async_review = JourneyGuardianEngine.async_review.__get__(engine)
+    engine._hass.services.async_call = AsyncMock(
+        return_value={CALENDAR_ENTITY: {"events": []}}
+    )
+    with patch(
+        "custom_components.journey_guardian.engine.dt_util.now",
+        return_value=datetime(2026, 9, 3, 8, 40, tzinfo=UTC),
+    ):
+        calendar_result = await engine.async_review()
+
+    assert calendar_result.status == "idle"
+    assert calendar_result.error is None
+    assert calendar_result.data_healthy
+    assert (
+        calendar_result.last_live_rail_error
+        == "transportapi_rail_schedule_mismatch"
+    )

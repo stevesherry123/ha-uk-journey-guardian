@@ -49,6 +49,7 @@ async def async_get_config_entry_diagnostics(
             "status": snapshot.status,
             "data_healthy": snapshot.data_healthy,
             "error": snapshot.error,
+            "last_live_rail_error": snapshot.last_live_rail_error,
             "simulation_active": snapshot.simulation_active,
             "operational_phase": snapshot.operational_phase,
             "rail_observation": (

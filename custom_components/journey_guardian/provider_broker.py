@@ -234,6 +234,12 @@ class ProviderRequestBroker:
 
         try:
             raw_payload = await fetcher()
+        except ProviderBrokerError as err:
+            if err.category == ERROR_QUOTA_EXHAUSTED:
+                await self._budget.async_mark_exhausted()
+            return self._stale_or_raise(
+                fingerprint, err.category, dt_util.utcnow()
+            )
         except Exception:  # Provider/library exceptions are untrusted.
             return self._stale_or_raise(
                 fingerprint, ERROR_PROVIDER_UNAVAILABLE, dt_util.utcnow()

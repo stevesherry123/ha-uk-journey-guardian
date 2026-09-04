@@ -129,6 +129,7 @@ class JourneySnapshot:
     simulation_active: bool = False
     operational_phase: str = "idle"
     error: str | None = None
+    last_live_rail_error: str | None = None
 
     @property
     def data_healthy(self) -> bool:
@@ -154,4 +155,5 @@ class JourneySnapshot:
             "budget": self.budget.as_dict(),
             "data_healthy": self.data_healthy,
             "error": self.error,
+            "last_live_rail_error": self.last_live_rail_error,
         }

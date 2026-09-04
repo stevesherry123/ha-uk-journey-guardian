@@ -77,6 +77,9 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
                 journey.destination_confirmation if journey else None
             ),
             "error": self.coordinator.data.error,
+            "last_live_rail_error": (
+                self.coordinator.data.last_live_rail_error
+            ),
             "rail_source": observation.source if observation else None,
             "rail_classification": (
                 observation.classification if observation else None
@@ -221,7 +224,7 @@ class DecisionPathSensor(JourneyGuardianEntity, SensorEntity):
 
 
 class TransportAPICallsSensor(JourneyGuardianEntity, SensorEntity):
-    """Daily shared TransportAPI call count."""
+    """Daily TransportAPI reservations made by this integration."""
 
     _attr_translation_key = "transportapi_calls"
     _attr_icon = "mdi:counter"
@@ -233,4 +236,8 @@ class TransportAPICallsSensor(JourneyGuardianEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict:
-        return self.coordinator.data.budget.as_dict()
+        return {
+            **self.coordinator.data.budget.as_dict(),
+            "scope": "journey_guardian_with_provider_exhaustion_reconciliation",
+            "external_consumers_included": False,
+        }

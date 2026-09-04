@@ -4,6 +4,25 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-09-04
+
+### Fixed
+
+- Failed live checks now publish the latest durable budget snapshot immediately,
+  rather than temporarily displaying the count from before the attempt.
+- TransportAPI allocation responses are classified as quota exhaustion and close
+  the local budget for the rest of the provider day. This prevents repeated
+  attempts when legacy or external consumers have used the same account quota.
+- The last privacy-safe live-rail error remains visible after routine calendar
+  refreshes restore healthy calendar planning.
+
+### Changed
+
+- The budget entity is labelled **Journey Guardian TransportAPI budget** and
+  explicitly identifies its scope. Its normal count covers this integration's
+  reservations, not unseen requests made by other consumers of the provider
+  account.
+
 ## [0.1.10] - 2026-09-03
 
 ### Fixed

@@ -186,6 +186,28 @@ async def test_quota_denial_prevents_provider_call(hass) -> None:
     fetcher.assert_not_awaited()
 
 
+async def test_upstream_quota_exhaustion_closes_local_budget(hass) -> None:
+    """External consumers cannot leave the integration budget permissive."""
+    budget = _budget(True)
+    budget.async_mark_exhausted = AsyncMock()
+    fetcher = AsyncMock(
+        side_effect=ProviderBrokerError(ERROR_QUOTA_EXHAUSTED)
+    )
+    broker = ProviderRequestBroker(hass, budget)
+
+    with (
+        patch(
+            "custom_components.journey_guardian.provider_broker.dt_util.utcnow",
+            return_value=NOW,
+        ),
+        pytest.raises(ProviderBrokerError) as raised,
+    ):
+        await broker.async_request(REQUEST, fetcher)
+
+    assert raised.value.category == ERROR_QUOTA_EXHAUSTED
+    budget.async_mark_exhausted.assert_awaited_once_with()
+
+
 async def test_failed_refresh_returns_explicitly_stale_cache(hass) -> None:
     """A provider outage cannot make old data look current or healthy."""
     budget = _budget(True, True)

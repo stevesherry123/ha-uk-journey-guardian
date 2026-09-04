@@ -73,6 +73,13 @@ class TransportAPIBudget:
             await self._async_save()
             return True
 
+    async def async_mark_exhausted(self) -> None:
+        """Fail closed when the provider reports account-level exhaustion."""
+        async with self._lock:
+            self._rollover_if_needed()
+            self._calls_used = self._daily_limit
+            await self._async_save()
+
     def _rollover_if_needed(self) -> None:
         today = dt_util.now().date().isoformat()
         if self._date != today:

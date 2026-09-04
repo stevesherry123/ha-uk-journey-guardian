@@ -9,6 +9,8 @@ from typing import Any
 from aiohttp import ClientSession, ClientTimeout
 
 from .provider_broker import (
+    ERROR_QUOTA_EXHAUSTED,
+    ProviderBrokerError,
     ProviderRequest,
     ProviderRequestBroker,
     ProviderResult,
@@ -103,6 +105,8 @@ class TransportAPIClient:
             },
             timeout=REQUEST_TIMEOUT,
         )
+        if response.status in {402, 429}:
+            raise ProviderBrokerError(ERROR_QUOTA_EXHAUSTED)
         response.raise_for_status()
         payload = await response.json(content_type=None)
         if not isinstance(payload, Mapping):

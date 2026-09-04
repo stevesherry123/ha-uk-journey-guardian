@@ -3,7 +3,13 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, Mock
 
-from custom_components.journey_guardian.provider_broker import ProviderResult
+import pytest
+
+from custom_components.journey_guardian.provider_broker import (
+    ERROR_QUOTA_EXHAUSTED,
+    ProviderBrokerError,
+    ProviderResult,
+)
 from custom_components.journey_guardian.transportapi import (
     BASE_URL,
     TransportAPIClient,
@@ -25,6 +31,7 @@ def _result(payload):
 
 def _client(payload):
     response = Mock()
+    response.status = 200
     response.raise_for_status = Mock()
     response.json = AsyncMock(return_value=payload)
     session = Mock()
@@ -85,6 +92,17 @@ async def test_station_board_requests_bounded_live_window() -> None:
     assert call.kwargs["params"]["live"] == "true"
     assert call.kwargs["params"]["calling_at"] == "SHA"
     assert call.kwargs["params"]["station_detail"] == "calling_at"
+
+
+async def test_provider_allocation_exhaustion_has_a_stable_category() -> None:
+    """An upstream allocation response is not hidden as a generic outage."""
+    client, session, _broker = _client({})
+    session.get.return_value.status = 429
+
+    with pytest.raises(ProviderBrokerError) as raised:
+        await client.async_places("Example Central")
+
+    assert raised.value.category == ERROR_QUOTA_EXHAUSTED
 
 
 def test_missing_credentials_leave_client_dormant() -> None:

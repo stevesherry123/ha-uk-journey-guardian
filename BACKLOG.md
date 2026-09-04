@@ -18,6 +18,61 @@ inside each user's Home Assistant installation.
 - [ ] disable the legacy packages and complete an observation period
 - [ ] remove the legacy packages only after the observation period succeeds
 
+## Legacy capability parity inventory
+
+The legacy packages remain the acceptance specification until every applicable
+capability below is implemented, deliberately retired, or recorded as an
+accepted replacement decision. Route names and private entity IDs are omitted.
+
+- [ ] support multiple configured origin stations and choose only the assistant
+  whose origin matches the timed calendar leg
+- [ ] calculate a dynamic preparation alarm from preparation time, station
+  access duration, station buffer, and an early-warning margin
+- [ ] provide an optional persistent wake-up alarm that repeats until bounded
+  timeout, explicit acknowledgement, or configured movement/activity evidence
+- [ ] support road-routing station access with freshness checks, per-origin
+  conservative fallbacks, and one warning per journey when routing is unavailable
+- [ ] support public-transport and walking access to a station, including an
+  arrive-by request, conservative fallback, and one warning per journey
+- [ ] schedule quota-aware rail checkpoints approximately 150, 90, 45, and 10
+  minutes before departure without duplicate requests across route profiles
+- [ ] report live service status, predicted time, platform, destination evidence,
+  ambiguous same-time matches, missing services, cancellations, delays, and
+  station-wide disruption
+- [ ] notify on meaningful rail-state transitions while suppressing unchanged
+  repeats across reviews, reloads, restarts, and date rollover
+- [ ] issue a leave-now notification using current access time and retain a
+  conservative last-chance warning when normal confirmation cannot be produced
+- [ ] monitor a delayed service after scheduled departure at bounded follow-up
+  intervals, stopping when it leaves the board or is cancelled
+- [ ] make manual review cover no upcoming journey, departed journey, unknown
+  origin, board-not-yet-open, provider unavailable, ambiguous match, and the
+  configured station-access mode
+- [ ] provide configurable notification adapters for mobile push, spoken
+  announcements, and wearable delivery without private entity IDs in integration
+  code
+- [ ] optionally trigger a destination-area local-transit review from presence,
+  with a cooldown and manual-review control
+- [ ] compare a preferred local-transit route with the fastest available route,
+  apply a configurable time tolerance, account for disruption, and provide safe
+  fallback instructions
+- [ ] expose enough privacy-safe state and diagnostics to prove each legacy helper
+  can be removed without losing deduplication, alarm, routing, or disruption state
+
+## Legacy defects and temporary controls
+
+- [ ] correct the legacy timed-event predicates if the packages remain enabled:
+  their negated all-day tests currently admit unrelated timed events and can make
+  several route assistants refresh provider sensors for one journey
+- [ ] remove the duplicated event loop in the legacy return assistant if that
+  package remains in service
+- [ ] during shadow testing, disable the legacy route-assistant automations,
+  delayed-service monitors, and manual provider-review script before enabling
+  Journey Guardian live requests
+- [ ] after cutover, remove the three legacy REST rail sensors and their stored
+  provider credentials from core configuration; do not rely on their long scan
+  interval as a permanent quota control
+
 ## Engineering gates for cutover
 
 - [x] use Home Assistant-native configuration and privacy-safe diagnostics
@@ -81,6 +136,9 @@ inside each user's Home Assistant installation.
 - filter live boards by the intended calling-point CRS code, use whole-name
   destination evidence, and reject material schedule offsets (implemented in
   v0.1.10)
+- reconcile provider-reported account exhaustion, retain live-check errors across
+  calendar refreshes, and clarify integration-local budget scope (implemented in
+  v0.1.11)
 - add a shadow-mode acceptance checklist covering calendar discovery, state
   transitions, restart recovery, stale data, diagnostics, and entity history
 - add privacy-safe structured telemetry for poll times, event and candidate

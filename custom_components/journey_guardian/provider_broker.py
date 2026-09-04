@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import math
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
@@ -15,6 +16,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
 from .budget import TransportAPIBudget
+
+_LOGGER = logging.getLogger(__name__)
 
 ProviderPayload = dict[str, Any]
 ProviderFetcher = Callable[[], Awaitable[Mapping[str, Any]]]
@@ -138,6 +141,11 @@ class ProviderRequestBroker:
         self._cache: dict[str, _CacheEntry] = {}
         self._inflight: dict[str, _PendingRequest] = {}
         self._lock = asyncio.Lock()
+        self._last_request: dict[str, Any] | None = None
+
+    def diagnostics(self) -> dict[str, Any] | None:
+        """Return privacy-safe metadata for the most recent provider request."""
+        return dict(self._last_request) if self._last_request else None
 
     async def async_request(
         self,
@@ -149,6 +157,19 @@ class ProviderRequestBroker:
         """Return current or explicitly stale data through the quota guard."""
         fingerprint = request.fingerprint()
         now = dt_util.utcnow()
+        self._last_request = {
+            "provider": request.provider,
+            "operation": request.operation,
+            "request_fingerprint": fingerprint[:16],
+            "urgent": urgent,
+            "requested_at": now.isoformat(),
+        }
+        _LOGGER.debug(
+            "Provider request operation=%s fingerprint=%s urgent=%s",
+            request.operation,
+            fingerprint[:16],
+            urgent,
+        )
         async with self._lock:
             cached = self._usable_cache(fingerprint, now)
             if cached is not None and now < cached.fresh_until:

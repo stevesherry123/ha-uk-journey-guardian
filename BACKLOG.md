@@ -59,6 +59,11 @@ accepted replacement decision. Route names and private entity IDs are omitted.
 - [ ] expose enough privacy-safe state and diagnostics to prove each legacy helper
   can be removed without losing deduplication, alarm, routing, or disruption state
 
+## Release polish
+
+- [ ] ship the options-flow translation regression fix so the automatic live rail
+  toggle always displays a human label in Home Assistant
+
 ## Legacy defects and temporary controls
 
 - [ ] correct the legacy timed-event predicates if the packages remain enabled:

@@ -18,6 +18,20 @@ def test_json_metadata_is_valid() -> None:
             assert isinstance(json.load(file_handle), dict)
 
 
+def test_automatic_live_rail_option_has_human_label() -> None:
+    """Keep the options-flow toggle translatable instead of showing its key."""
+    translations = json.loads(
+        (
+            ROOT / "custom_components/journey_guardian/translations/en.json"
+        ).read_text(encoding="utf-8")
+    )
+    label = translations["options"]["step"]["init"]["data"][
+        "automatic_live_rail_enabled"
+    ]
+    assert label == "Enable automatic live rail checkpoints"
+    assert label != "automatic_live_rail_enabled"
+
+
 def test_manifest_contains_no_embedded_credentials() -> None:
     manifest = (
         ROOT / "custom_components/journey_guardian/manifest.json"

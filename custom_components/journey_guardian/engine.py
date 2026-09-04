@@ -130,8 +130,21 @@ class JourneyGuardianEngine:
                 last_live_rail_error=self._last_live_rail_error,
             )
 
-    async def async_review_live_rail(self) -> JourneySnapshot:
-        """Perform one explicit live rail review; never called by polling."""
+    @property
+    def live_rail_configured(self) -> bool:
+        """Return whether quota-controlled live rail acquisition is available."""
+        return bool(
+            self._transportapi_client is not None
+            and self._transportapi_client.configured
+        )
+
+    async def async_review_live_rail(
+        self,
+        *,
+        decision_path: str = "transportapi_manual",
+        urgent: bool = False,
+    ) -> JourneySnapshot:
+        """Perform one quota-controlled live rail review."""
         snapshot = await self.async_review()
         if snapshot.simulation_active:
             raise ValueError("simulation_active")
@@ -147,16 +160,19 @@ class JourneyGuardianEngine:
                 name=journey.origin_name,
                 code=journey.origin_code,
                 location=journey.location,
+                urgent=urgent,
             )
             destination = await self._async_resolve_station(
                 name=journey.destination_confirmation,
                 code="CALENDAR",
                 location="",
+                urgent=urgent,
             )
             board = await client.async_station_board(
                 station.code,
                 journey.start,
                 calling_at=destination.code,
+                urgent=urgent,
             )
             observation = normalize_station_board(
                 board.payload,
@@ -189,7 +205,7 @@ class JourneyGuardianEngine:
             origin_code=station.code,
             origin_name=station.name,
             destination_confirmation=destination.name,
-            decision_path="transportapi_manual",
+            decision_path=decision_path,
         )
         if observation.cancelled:
             status = "cancelled"
@@ -240,7 +256,7 @@ class JourneyGuardianEngine:
         )
 
     async def _async_resolve_station(
-        self, *, name: str, code: str, location: str
+        self, *, name: str, code: str, location: str, urgent: bool = False
     ) -> StationResolution:
         """Resolve explicitly or with one cached manual Places lookup."""
         cache_key = hashlib.sha256(
@@ -266,7 +282,7 @@ class JourneyGuardianEngine:
             if self._transportapi_client is None:
                 raise
             places = await self._transportapi_client.async_places(
-                name
+                name, urgent=urgent
             )
             station = resolve_station(
                 origin_name=name,

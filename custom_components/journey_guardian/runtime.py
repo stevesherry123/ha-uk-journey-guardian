@@ -6,6 +6,7 @@ from .budget import TransportAPIBudget
 from .coordinator import JourneyGuardianCoordinator
 from .notification import JourneyNotificationScheduler
 from .provider_broker import ProviderRequestBroker
+from .rail_monitor import AutomaticRailMonitor
 from .simulation import JourneySimulation
 
 
@@ -18,3 +19,4 @@ class JourneyGuardianRuntimeData:
     simulation: JourneySimulation
     notification_scheduler: JourneyNotificationScheduler
     provider_broker: ProviderRequestBroker
+    automatic_rail_monitor: AutomaticRailMonitor

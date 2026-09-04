@@ -11,6 +11,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
     CONF_CALENDAR_ENTITY,
     CONF_DAILY_API_LIMIT,
     CONF_DESTINATION_ZONES,
@@ -26,6 +27,7 @@ from .const import (
     CONF_TRANSPORTAPI_APP_ID,
     CONF_TRANSPORTAPI_APP_KEY,
     CONF_URGENT_API_RESERVE,
+    DEFAULT_AUTOMATIC_LIVE_RAIL_ENABLED,
     DEFAULT_DAILY_API_LIMIT,
     DEFAULT_EARLY_WARNING_MINUTES,
     DEFAULT_HOME_ZONE,
@@ -131,6 +133,10 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     default=DEFAULT_URGENT_API_RESERVE,
                 ): vol.All(vol.Coerce(int), vol.Range(min=0, max=20)),
                 vol.Required(
+                    CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
+                    default=DEFAULT_AUTOMATIC_LIVE_RAIL_ENABLED,
+                ): selector.BooleanSelector(),
+                vol.Required(
                     CONF_LIVE_NOTIFICATIONS_ENABLED,
                     default=DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
                 ): selector.BooleanSelector(),
@@ -184,6 +190,13 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                             DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
                         ),
                     ): vol.All(vol.Coerce(int), vol.Range(min=1, max=240)),
+                    vol.Required(
+                        CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
+                        default=current.get(
+                            CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
+                            DEFAULT_AUTOMATIC_LIVE_RAIL_ENABLED,
+                        ),
+                    ): selector.BooleanSelector(),
                     vol.Required(
                         CONF_LIVE_NOTIFICATIONS_ENABLED,
                         default=current.get(

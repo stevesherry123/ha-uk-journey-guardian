@@ -40,10 +40,18 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         """Return the latest normalized journey state."""
         return await self.engine.async_review()
 
-    async def async_review_live_rail(self) -> JourneySnapshot:
-        """Run an explicit provider review and publish its derived snapshot."""
+    async def async_review_live_rail(
+        self,
+        *,
+        decision_path: str = "transportapi_manual",
+        urgent: bool = False,
+    ) -> JourneySnapshot:
+        """Run a quota-controlled provider review and publish its snapshot."""
         try:
-            snapshot = await self.engine.async_review_live_rail()
+            snapshot = await self.engine.async_review_live_rail(
+                decision_path=decision_path,
+                urgent=urgent,
+            )
         except ValueError as err:
             raise HomeAssistantError(str(err)) from None
         self.async_set_updated_data(snapshot)

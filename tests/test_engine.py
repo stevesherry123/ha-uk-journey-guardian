@@ -274,13 +274,14 @@ async def test_manual_live_review_resolves_and_normalizes_provider_data() -> Non
     result = await engine.async_review_live_rail()
 
     assert client.async_places.await_args_list == [
-        call("Example Central"),
-        call("Sample Harbour"),
+        call("Example Central", urgent=False),
+        call("Sample Harbour", urgent=False),
     ]
     client.async_station_board.assert_awaited_once_with(
         "EXC",
         datetime(2026, 9, 3, 10, 10, tzinfo=UTC),
         calling_at="SHA",
+        urgent=False,
     )
     assert result.status == "delayed"
     assert result.next_journey is not None
@@ -345,6 +346,7 @@ async def test_manual_review_reuses_in_memory_station_resolution() -> None:
         "EXC",
         datetime(2026, 9, 3, 10, 10, tzinfo=UTC),
         calling_at="SHA",
+        urgent=False,
     )
 
 

@@ -34,7 +34,7 @@ accepted replacement decision. Route names and private entity IDs are omitted.
   conservative fallbacks, and one warning per journey when routing is unavailable
 - [ ] support public-transport and walking access to a station, including an
   arrive-by request, conservative fallback, and one warning per journey
-- [ ] schedule quota-aware rail checkpoints approximately 150, 90, 45, and 10
+- [x] schedule quota-aware rail checkpoints approximately 150, 90, 45, and 10
   minutes before departure without duplicate requests across route profiles
 - [ ] report live service status, predicted time, platform, destination evidence,
   ambiguous same-time matches, missing services, cancellations, delays, and
@@ -139,6 +139,8 @@ accepted replacement decision. Route names and private entity IDs are omitted.
 - reconcile provider-reported account exhaustion, retain live-check errors across
   calendar refreshes, and clarify integration-local budget scope (implemented in
   v0.1.11)
+- add opt-in restart-safe automatic live-rail checkpoints with bounded catch-up
+  and urgent-reserve use only at the final checkpoint (implemented in v0.1.12)
 - add a shadow-mode acceptance checklist covering calendar discovery, state
   transitions, restart recovery, stale data, diagnostics, and entity history
 - add privacy-safe structured telemetry for poll times, event and candidate

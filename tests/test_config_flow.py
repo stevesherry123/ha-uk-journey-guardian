@@ -7,6 +7,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.journey_guardian.const import (
+    CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
     CONF_CALENDAR_ENTITY,
     CONF_DAILY_API_LIMIT,
     CONF_DESTINATION_ZONES,
@@ -40,6 +41,7 @@ USER_INPUT = {
     CONF_GOOGLE_ROUTES_API_KEY: "",
     CONF_DAILY_API_LIMIT: 30,
     CONF_URGENT_API_RESERVE: 3,
+    CONF_AUTOMATIC_LIVE_RAIL_ENABLED: False,
     CONF_LIVE_NOTIFICATIONS_ENABLED: False,
 }
 
@@ -138,6 +140,7 @@ async def test_options_flow_updates_timing_and_reloads(hass) -> None:
         CONF_EARLY_WARNING_MINUTES: 12,
         CONF_STATION_BUFFER_MINUTES: 20,
         CONF_STATION_ACCESS_FALLBACK_MINUTES: 75,
+        CONF_AUTOMATIC_LIVE_RAIL_ENABLED: True,
         CONF_LIVE_NOTIFICATIONS_ENABLED: False,
         CONF_TRANSPORTAPI_APP_ID: "updated-app-id",
         CONF_TRANSPORTAPI_APP_KEY: "updated-app-key",

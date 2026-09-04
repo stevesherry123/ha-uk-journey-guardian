@@ -20,6 +20,7 @@
           "google_routes_api_key": "Google Routes API key",
           "daily_api_limit": "Daily TransportAPI call limit",
           "urgent_api_reserve": "Calls reserved for urgent checks",
+          "automatic_live_rail_enabled": "Enable automatic live rail checkpoints",
           "live_notifications_enabled": "Enable live journey notifications"
         },
         "data_description": {
@@ -37,6 +38,7 @@
           "google_routes_api_key": "Optional until Google routing is enabled. Use a dedicated restricted server-side Routes API key.",
           "daily_api_limit": "Maximum TransportAPI calls permitted each local day.",
           "urgent_api_reserve": "Routine checks stop before consuming this final reserve.",
+          "automatic_live_rail_enabled": "Off by default. When enabled, Journey Guardian makes one quota-controlled live rail check at each planned checkpoint.",
           "live_notifications_enabled": "Off by default during shadow testing. Simulations can still create test notifications."
         }
       }
@@ -58,6 +60,7 @@
           "early_warning_minutes": "Early warning margin",
           "station_buffer_minutes": "Station arrival buffer",
           "station_access_fallback_minutes": "Conservative station access fallback",
+          "automatic_live_rail_enabled": "Enable automatic live rail checkpoints",
           "live_notifications_enabled": "Enable live journey notifications",
           "transportapi_app_id": "TransportAPI application ID",
           "transportapi_app_key": "TransportAPI application key"
@@ -67,9 +70,10 @@
           "early_warning_minutes": "Additional conservative margin before preparation should begin.",
           "station_buffer_minutes": "Minutes to arrive at the station before the scheduled train departure.",
           "station_access_fallback_minutes": "Minutes allowed to reach the station until live routing is available. Timing is labelled inferred.",
+          "automatic_live_rail_enabled": "Runs restart-safe, quota-controlled checks about 150, 90, 45, and 10 minutes before departure.",
           "live_notifications_enabled": "Off keeps real calendar journeys in shadow mode while allowing simulation notifications.",
-          "transportapi_app_id": "Required only for the explicit live-rail check.",
-          "transportapi_app_key": "Required only for the explicit live-rail check. Stored privately in the Home Assistant config entry."
+          "transportapi_app_id": "Required for manual or automatic live-rail checks.",
+          "transportapi_app_key": "Required for manual or automatic live-rail checks. Stored privately in the Home Assistant config entry."
         }
       }
     }

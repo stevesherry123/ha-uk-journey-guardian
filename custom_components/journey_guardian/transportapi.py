@@ -1,4 +1,4 @@
-"""Manual-only TransportAPI acquisition behind the shared request broker."""
+"""TransportAPI acquisition behind the shared request broker."""
 
 from __future__ import annotations
 
@@ -42,7 +42,9 @@ class TransportAPIClient:
         """Return whether both required credentials are present."""
         return bool(self._app_id and self._app_key)
 
-    async def async_places(self, query: str) -> ProviderResult:
+    async def async_places(
+        self, query: str, *, urgent: bool = False
+    ) -> ProviderResult:
         """Resolve a station name using one quota-controlled Places request."""
         parameters = {
             "query": query,
@@ -56,6 +58,7 @@ class TransportAPIClient:
                 parameters=parameters,
             ),
             lambda: self._async_json("/v3/uk/places.json", parameters),
+            urgent=urgent,
         )
 
     async def async_station_board(
@@ -64,6 +67,7 @@ class TransportAPIClient:
         departure: datetime,
         *,
         calling_at: str,
+        urgent: bool = False,
     ) -> ProviderResult:
         """Fetch trains calling at the intended destination in a time window."""
         code = station_code.strip().upper()
@@ -89,6 +93,7 @@ class TransportAPIClient:
                 f"/v3/uk/train/station_timetables/{code}.json",
                 parameters,
             ),
+            urgent=urgent,
         )
 
     async def _async_json(

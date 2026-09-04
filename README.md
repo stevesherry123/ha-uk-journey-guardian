@@ -39,7 +39,7 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - explicit rail-data freshness and bounded stale-data handling
 - offline station-code resolution and defensive rail-board normalization
 - deterministic service matching with stable privacy-safe service identities
-- an explicit manual live-rail check through the shared quota broker
+- manual and opt-in automatic live-rail checks through the shared quota broker
 - editable conservative station-access and early-warning timing
 - a persistent shared TransportAPI budget with an urgent-call reserve
 - status, next-departure, decision-path, API-budget, and data-health entities
@@ -48,14 +48,14 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - an explicit **Simulation active** diagnostic entity
 - automated validation and unit tests
 
-The alpha never calls TransportAPI automatically. A dedicated **Check live rail
-now** control can make an explicitly requested TransportAPI check when credentials
-are configured. Setup, reload, ordinary calendar polling, **Review now**, and
+Automatic TransportAPI monitoring is off by default. When explicitly enabled in
+the integration options, Journey Guardian makes one live check approximately 150,
+90, 45, and 10 minutes before the selected departure. Each checkpoint is claimed
+in persistent private storage before network access, and every request remains
+behind the durable budget. Ordinary calendar polling, **Review now**, and
 simulations remain provider-free. Google Routes and local-transit providers are
-not called. Until live station-access routing is added,
-timing uses a configurable conservative fallback and is explicitly classified as
-inferred. Automatic provider use remains deferred until manual live results and
-shadow-mode decisions have been verified.
+not called. Until live station-access routing is added, timing uses a configurable
+conservative fallback and is explicitly classified as inferred.
 
 ## Calendar format
 
@@ -169,7 +169,15 @@ exact station lookups and one live departure-board request filtered to services
 that call at the intended destination. Station resolutions are reused in memory,
 and the broker can reuse a very recent board. This action never bypasses the
 daily limit or consumes the urgent reserve. The next ordinary calendar refresh
-can replace the manual rail observation; automatic monitoring is not enabled yet.
+can replace the manual rail observation.
+
+**Automatic live rail checkpoints** are opt-in under the integration's
+**Configure** menu. They run approximately 150, 90, 45, and 10 minutes before a
+departure. The first three are routine; the final check may use the protected
+urgent reserve. A restart-safe hashed ledger prevents duplicate checks, and a
+12-minute catch-up window tolerates modest calendar synchronization or startup
+latency. Enabling or reloading inside that window can therefore perform the one
+recently due check.
 
 The TransportAPI budget entity counts requests reserved by Journey Guardian. It
 cannot observe requests made with the same provider account by legacy packages,
@@ -212,9 +220,9 @@ Please report security concerns according to [SECURITY.md](SECURITY.md).
 ## Roadmap
 
 1. destination profiles and user-facing station resolution
-2. validate manual TransportAPI results, then design opt-in automatic monitoring
+2. validate automatic TransportAPI checkpoints against representative journeys
 3. unified manual-review decision tree
-4. internal scheduling and actionable departure notifications
+4. richer actionable departure and disruption notifications
 5. lightweight interchange monitoring
 6. Google walking/driving estimates and UK local-transit comparison
 7. notification adapters and wearable entry points

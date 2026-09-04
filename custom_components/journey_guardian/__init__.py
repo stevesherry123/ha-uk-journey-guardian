@@ -18,6 +18,7 @@ from .const import (
     ATTR_DEPARTURE_IN_MINUTES,
     ATTR_DURATION_MINUTES,
     ATTR_SCENARIO,
+    CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
     CONF_CALENDAR_ENTITY,
     CONF_DAILY_API_LIMIT,
     CONF_EARLY_WARNING_MINUTES,
@@ -29,6 +30,7 @@ from .const import (
     CONF_TRANSPORTAPI_APP_ID,
     CONF_TRANSPORTAPI_APP_KEY,
     CONF_URGENT_API_RESERVE,
+    DEFAULT_AUTOMATIC_LIVE_RAIL_ENABLED,
     DEFAULT_DAILY_API_LIMIT,
     DEFAULT_EARLY_WARNING_MINUTES,
     DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
@@ -48,6 +50,7 @@ from .coordinator import JourneyGuardianCoordinator
 from .engine import JourneyGuardianEngine
 from .notification import JourneyNotificationScheduler, NotificationLedger
 from .provider_broker import ProviderRequestBroker
+from .rail_monitor import AutomaticRailLedger, AutomaticRailMonitor
 from .runtime import JourneyGuardianRuntimeData
 from .simulation import JourneySimulation
 from .transportapi import TransportAPIClient
@@ -116,17 +119,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
         ),
     )
+    automatic_rail_ledger = AutomaticRailLedger(hass)
+    await automatic_rail_ledger.async_load()
+    automatic_rail_monitor = AutomaticRailMonitor(
+        hass,
+        coordinator,
+        automatic_rail_ledger,
+        enabled=settings.get(
+            CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
+            DEFAULT_AUTOMATIC_LIVE_RAIL_ENABLED,
+        ),
+    )
     entry.runtime_data = JourneyGuardianRuntimeData(
         coordinator=coordinator,
         budget=budget,
         simulation=simulation,
         notification_scheduler=notification_scheduler,
         provider_broker=provider_broker,
+        automatic_rail_monitor=automatic_rail_monitor,
     )
     entry.async_on_unload(provider_broker.shutdown)
     await coordinator.async_config_entry_first_refresh()
     notification_scheduler.start()
     entry.async_on_unload(notification_scheduler.stop)
+    automatic_rail_monitor.start()
+    entry.async_on_unload(automatic_rail_monitor.stop)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

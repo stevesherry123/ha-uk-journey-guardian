@@ -38,6 +38,9 @@ async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
     ledger = Mock()
     ledger.async_load = AsyncMock()
     scheduler = Mock()
+    automatic_rail_ledger = Mock()
+    automatic_rail_ledger.async_load = AsyncMock()
+    automatic_rail_monitor = Mock()
     transportapi_client = Mock()
 
     with (
@@ -57,6 +60,14 @@ async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
         patch(
             "custom_components.journey_guardian.JourneyNotificationScheduler",
             return_value=scheduler,
+        ),
+        patch(
+            "custom_components.journey_guardian.AutomaticRailLedger",
+            return_value=automatic_rail_ledger,
+        ),
+        patch(
+            "custom_components.journey_guardian.AutomaticRailMonitor",
+            return_value=automatic_rail_monitor,
         ),
         patch(
             "custom_components.journey_guardian.TransportAPIClient",
@@ -82,6 +93,8 @@ async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
     budget.async_reserve_call.assert_not_awaited()
     coordinator.async_config_entry_first_refresh.assert_awaited_once_with()
     scheduler.start.assert_called_once_with()
+    automatic_rail_ledger.async_load.assert_awaited_once_with()
+    automatic_rail_monitor.start.assert_called_once_with()
 
 
 async def test_review_action_registered_without_entry(hass) -> None:

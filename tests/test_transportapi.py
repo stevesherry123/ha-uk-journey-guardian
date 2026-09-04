@@ -38,7 +38,7 @@ def _client(payload):
     session.get = AsyncMock(return_value=response)
     broker = Mock()
 
-    async def acquire(_request, fetcher):
+    async def acquire(_request, fetcher, *, urgent=False):
         return _result(await fetcher())
 
     broker.async_request = AsyncMock(side_effect=acquire)
@@ -64,6 +64,7 @@ async def test_places_uses_headers_and_broker_without_query_credentials() -> Non
     assert result.payload == payload
     request = broker.async_request.await_args.args[0]
     assert request.operation == "places"
+    assert broker.async_request.await_args.kwargs["urgent"] is False
     assert "example-key" not in str(request.parameters)
     call = session.get.await_args
     assert call.args[0] == f"{BASE_URL}/v3/uk/places.json"
@@ -84,6 +85,7 @@ async def test_station_board_requests_bounded_live_window() -> None:
     request = broker.async_request.await_args.args[0]
     assert request.operation == "station_timetables"
     assert request.parameters["station_code"] == "EXC"
+    assert broker.async_request.await_args.kwargs["urgent"] is False
     call = session.get.await_args
     assert call.args[0].endswith("/station_timetables/EXC.json")
     assert call.kwargs["params"]["datetime"] == departure.isoformat()
@@ -103,6 +105,15 @@ async def test_provider_allocation_exhaustion_has_a_stable_category() -> None:
         await client.async_places("Example Central")
 
     assert raised.value.category == ERROR_QUOTA_EXHAUSTED
+
+
+async def test_urgent_checkpoint_reaches_broker_reserve_path() -> None:
+    """A final automatic checkpoint can use the protected urgent reserve."""
+    client, _session, broker = _client({"member": []})
+
+    await client.async_places("Example Central", urgent=True)
+
+    assert broker.async_request.await_args.kwargs["urgent"] is True
 
 
 def test_missing_credentials_leave_client_dormant() -> None:

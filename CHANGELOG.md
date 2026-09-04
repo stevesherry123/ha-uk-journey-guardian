@@ -4,6 +4,24 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.12] - 2026-09-04
+
+### Added
+
+- Opt-in automatic live-rail checks approximately 150, 90, 45, and 10 minutes
+  before the selected calendar departure.
+- A restart-safe privacy-preserving checkpoint ledger prevents the same journey
+  checkpoint from reserving provider allowance twice.
+- A bounded catch-up window allows a recently due checkpoint to run when calendar
+  synchronization or Home Assistant startup is slightly late.
+
+### Changed
+
+- The final ten-minute automatic checkpoint may use the configured urgent reserve;
+  earlier checkpoints remain routine and stop before consuming it.
+- The legacy capability audit now records every behaviour that must be replaced or
+  deliberately retired before the old packages are removed.
+
 ## [0.1.11] - 2026-09-04
 
 ### Fixed

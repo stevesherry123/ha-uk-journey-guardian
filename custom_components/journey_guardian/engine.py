@@ -160,6 +160,7 @@ class JourneyGuardianEngine:
 
         station = None
         destination = None
+        stage = "resolve_origin"
         try:
             station = await self._async_resolve_station(
                 name=journey.origin_name,
@@ -167,18 +168,21 @@ class JourneyGuardianEngine:
                 location=journey.location,
                 urgent=urgent,
             )
+            stage = "resolve_destination"
             destination = await self._async_resolve_station(
                 name=journey.destination_confirmation,
                 code="CALENDAR",
                 location="",
                 urgent=urgent,
             )
+            stage = "station_timetable"
             board = await client.async_station_board(
                 station.code,
                 journey.start,
                 calling_at=destination.code,
                 urgent=urgent,
             )
+            stage = "match_timetable"
             observation = normalize_station_board(
                 board.payload,
                 journey=journey,
@@ -201,7 +205,13 @@ class JourneyGuardianEngine:
                 last_live_rail_error=self._last_live_rail_error,
             )
             await self._async_record_live_check(
-                degraded, decision_path, "failed", category, station, destination
+                degraded,
+                decision_path,
+                "failed",
+                category,
+                station,
+                destination,
+                stage,
             )
             return degraded
 
@@ -261,12 +271,25 @@ class JourneyGuardianEngine:
             last_live_rail_error=None,
         )
         await self._async_record_live_check(
-            result, decision_path, "success", None, station, destination
+            result,
+            decision_path,
+            "success",
+            None,
+            station,
+            destination,
+            "complete",
         )
         return result
 
     async def _async_record_live_check(
-        self, snapshot, trigger, outcome, error_category, station, destination
+        self,
+        snapshot,
+        trigger,
+        outcome,
+        error_category,
+        station,
+        destination,
+        stage,
     ) -> None:
         """Persist a privacy-safe live-check audit record."""
         if self._check_history is None:
@@ -290,6 +313,7 @@ class JourneyGuardianEngine:
                 ),
                 "destination_code": destination.code if destination else None,
                 "operation": "station_timetables",
+                "stage": stage,
                 "outcome": outcome,
                 "error_category": error_category,
                 "match_quality": observation.match_quality if observation else None,

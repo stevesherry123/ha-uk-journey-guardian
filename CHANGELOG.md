@@ -4,6 +4,15 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.16] - 2026-09-07
+
+### Fixed
+
+- Chester, Liverpool Lime Street and London Euston now use deterministic CRS
+  identities instead of consuming Places quota and depending on provider naming.
+- Persistent live-check records now identify the exact failing stage: origin
+  resolution, destination resolution, timetable acquisition or matching.
+
 ## [0.1.15] - 2026-09-07
 
 ### Fixed

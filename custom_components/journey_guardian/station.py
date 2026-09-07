@@ -13,6 +13,15 @@ _CRS_PATTERNS = (
     re.compile(r"\bCRS\s*[:=-]\s*([A-Z]{3})\b", re.IGNORECASE),
 )
 
+# Deterministic identities for the routes currently supported by Journey
+# Guardian. This avoids spending provider quota on stable station metadata.
+_KNOWN_STATIONS = {
+    "chester": ("CTR", "Chester"),
+    "liverpool lime street": ("LIV", "Liverpool Lime Street"),
+    "london euston": ("EUS", "London Euston"),
+    "euston": ("EUS", "London Euston"),
+}
+
 
 class StationResolutionError(ValueError):
     """A station could not be resolved without guessing."""
@@ -65,6 +74,14 @@ def resolve_station(
             name=_strip_explicit_code(origin_name),
             source="calendar",
             confidence="explicit",
+        )
+
+    if known := _KNOWN_STATIONS.get(_normalise_name(origin_name)):
+        return StationResolution(
+            code=known[0],
+            name=known[1],
+            source="known_station",
+            confidence="deterministic",
         )
 
     if places_payload is None:

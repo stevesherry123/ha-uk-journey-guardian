@@ -58,21 +58,30 @@ def test_saved_places_fixture_resolves_one_exact_station() -> None:
 def test_provider_rail_station_suffix_matches_calendar_name() -> None:
     """Common provider suffixes do not prevent an exact station match."""
     result = resolve_station(
-        origin_name="London Euston",
+        origin_name="Example Central",
         places_payload={
             "member": [
                 {
                     "type": "train_station",
-                    "name": "London Euston Rail Station",
-                    "station_code": "EUS",
+                    "name": "Example Central Rail Station",
+                    "station_code": "EXC",
                 }
             ]
         },
     )
 
-    assert result.code == "EUS"
+    assert result.code == "EXC"
     assert result.source == "provider_places"
     assert result.confidence == "exact_name"
+
+
+def test_supported_station_resolves_without_provider_payload() -> None:
+    """Supported routes use deterministic CRS identities without API quota."""
+    result = resolve_station(origin_name="London Euston")
+
+    assert result.code == "EUS"
+    assert result.source == "known_station"
+    assert result.confidence == "deterministic"
 
 
 def test_places_fixture_rejects_ambiguous_exact_matches() -> None:

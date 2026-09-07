@@ -1,6 +1,7 @@
 """Tests for privacy-safe Journey Guardian engine failures."""
 
 import logging
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, Mock, call, patch
 
@@ -346,6 +347,42 @@ async def test_manual_review_reuses_in_memory_station_resolution() -> None:
         "EXC",
         datetime(2026, 9, 3, 10, 10, tzinfo=UTC),
         calling_at="SHA",
+        urgent=False,
+    )
+
+
+async def test_supported_route_skips_places_calls() -> None:
+    """Known station metadata does not consume Places API quota."""
+    client = Mock()
+    client.configured = True
+    client.async_places = AsyncMock()
+    client.async_station_board = AsyncMock(return_value=_provider_result(_board()))
+    journey = _calendar_snapshot(origin_name="Chester")
+    journey = replace(
+        journey,
+        next_journey=replace(
+            journey.next_journey,
+            destination_confirmation="London Euston",
+        ),
+    )
+    board = _board()
+    board["station_code"] = "crs:CTR"
+    client.async_station_board.return_value = _provider_result(board)
+    engine = JourneyGuardianEngine(
+        Mock(),
+        calendar_entity=CALENDAR_ENTITY,
+        budget=_budget(),
+        transportapi_client=client,
+    )
+    engine.async_review = AsyncMock(return_value=journey)
+
+    await engine.async_review_live_rail()
+
+    client.async_places.assert_not_awaited()
+    client.async_station_board.assert_awaited_once_with(
+        "CTR",
+        journey.next_journey.start,
+        calling_at="EUS",
         urgent=False,
     )
 

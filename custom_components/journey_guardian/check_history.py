@@ -36,7 +36,7 @@ class CheckHistory:
         """Append a sanitized record and persist it immediately."""
         allowed = {
             "checked_at", "trigger", "journey_fingerprint", "origin_code",
-            "destination_code", "operation", "outcome", "error_category",
+            "destination_code", "operation", "stage", "outcome", "error_category",
             "match_quality", "calls_used", "status",
         }
         self._records.append({key: record.get(key) for key in allowed})

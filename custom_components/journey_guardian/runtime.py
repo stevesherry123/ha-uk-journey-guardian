@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from .budget import TransportAPIBudget
+from .check_history import CheckHistory
 from .coordinator import JourneyGuardianCoordinator
 from .notification import JourneyNotificationScheduler
 from .provider_broker import ProviderRequestBroker
@@ -20,3 +21,4 @@ class JourneyGuardianRuntimeData:
     notification_scheduler: JourneyNotificationScheduler
     provider_broker: ProviderRequestBroker
     automatic_rail_monitor: AutomaticRailMonitor
+    check_history: CheckHistory

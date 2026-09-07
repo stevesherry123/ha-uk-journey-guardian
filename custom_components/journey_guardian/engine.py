@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
 from .budget import TransportAPIBudget
+from .check_history import CheckHistory
 from .const import (
     DEFAULT_EARLY_WARNING_MINUTES,
     DEFAULT_LOOKAHEAD_HOURS,
@@ -48,6 +49,7 @@ class JourneyGuardianEngine:
         ),
         simulation: JourneySimulation | None = None,
         transportapi_client: TransportAPIClient | None = None,
+        check_history: CheckHistory | None = None,
     ) -> None:
         """Initialize the engine."""
         self._hass = hass
@@ -59,6 +61,7 @@ class JourneyGuardianEngine:
         self._station_access_fallback_minutes = station_access_fallback_minutes
         self._simulation = simulation
         self._transportapi_client = transportapi_client
+        self._check_history = check_history
         self._station_resolutions: dict[str, StationResolution] = {}
         self._last_live_rail_error: str | None = None
 
@@ -155,6 +158,8 @@ class JourneyGuardianEngine:
         if client is None or not client.configured:
             raise ValueError("transportapi_credentials_missing")
 
+        station = None
+        destination = None
         try:
             station = await self._async_resolve_station(
                 name=journey.origin_name,
@@ -190,14 +195,15 @@ class JourneyGuardianEngine:
             category = getattr(err, "category", "provider_unavailable")
             self._last_live_rail_error = f"transportapi_{category}"
             _LOGGER.warning("Manual rail review failed: %s", category)
-            return replace(
+            degraded = replace(
                 snapshot,
-                status="error",
-                operational_phase="error",
                 budget=self._budget.snapshot(),
-                error=self._last_live_rail_error,
                 last_live_rail_error=self._last_live_rail_error,
             )
+            await self._async_record_live_check(
+                degraded, decision_path, "failed", category, station, destination
+            )
+            return degraded
 
         self._last_live_rail_error = None
         resolved_journey = replace(
@@ -238,7 +244,7 @@ class JourneyGuardianEngine:
             observation.predicted_departure
             or observation.scheduled_departure
         )
-        return JourneySnapshot(
+        result = JourneySnapshot(
             status=status,
             checked_at=snapshot.checked_at,
             next_journey=resolved_journey,
@@ -253,6 +259,43 @@ class JourneyGuardianEngine:
             ),
             error=board.error_category,
             last_live_rail_error=None,
+        )
+        await self._async_record_live_check(
+            result, decision_path, "success", None, station, destination
+        )
+        return result
+
+    async def _async_record_live_check(
+        self, snapshot, trigger, outcome, error_category, station, destination
+    ) -> None:
+        """Persist a privacy-safe live-check audit record."""
+        if self._check_history is None:
+            return
+        journey = snapshot.next_journey
+        fingerprint = None
+        if journey is not None:
+            fingerprint = hashlib.sha256(
+                f"{journey.start.isoformat()}|{journey.origin_name}|{journey.destination_confirmation}".encode()
+            ).hexdigest()[:16]
+        observation = snapshot.rail_observation
+        await self._check_history.async_record(
+            {
+                "checked_at": snapshot.checked_at.isoformat(),
+                "trigger": trigger,
+                "journey_fingerprint": fingerprint,
+                "origin_code": (
+                    station.code
+                    if station
+                    else journey.origin_code if journey else None
+                ),
+                "destination_code": destination.code if destination else None,
+                "operation": "station_timetables",
+                "outcome": outcome,
+                "error_category": error_category,
+                "match_quality": observation.match_quality if observation else None,
+                "calls_used": snapshot.budget.calls_used,
+                "status": snapshot.status,
+            }
         )
 
     async def _async_resolve_station(

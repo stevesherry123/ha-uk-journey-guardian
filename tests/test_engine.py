@@ -442,8 +442,8 @@ async def test_manual_review_rejects_materially_later_service() -> None:
 
     result = await engine.async_review_live_rail()
 
-    assert result.status == "error"
-    assert result.error == "transportapi_rail_schedule_mismatch"
+    assert result.status == "planned"
+    assert result.error is None
     assert (
         result.last_live_rail_error
         == "transportapi_rail_schedule_mismatch"

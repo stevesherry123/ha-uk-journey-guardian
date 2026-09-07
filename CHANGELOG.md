@@ -4,6 +4,26 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.14] - 2026-09-07
+
+### Added
+
+- A bounded, privacy-safe history of the latest 20 live-rail checks is persisted
+  across Home Assistant restarts and included in downloaded diagnostics.
+- Audit records include the trigger, journey fingerprint, resolved CRS codes,
+  provider operation, sanitized outcome, match quality, budget and journey state.
+
+### Changed
+
+- A failed live-rail lookup no longer replaces a valid calendar journey with a
+  generic error state. Calendar timing and operational phase remain actionable,
+  while `last_live_rail_error` records that live data is degraded.
+
+### Fixed
+
+- Failed automatic checkpoints now retain enough evidence to distinguish station
+  resolution, timetable, matching and quota failures after a restart.
+
 ## [0.1.12] - 2026-09-04
 
 ### Added

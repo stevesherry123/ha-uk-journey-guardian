@@ -12,6 +12,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import dt as dt_util
 
 from .budget import TransportAPIBudget
+from .check_history import CheckHistory
 from .const import (
     ATTR_ACCELERATED,
     ATTR_DELAY_MINUTES,
@@ -77,6 +78,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await budget.async_load()
     provider_broker = ProviderRequestBroker(hass, budget)
+    check_history = CheckHistory(hass)
+    await check_history.async_load()
 
     settings = {**entry.data, **entry.options}
     simulation = JourneySimulation()
@@ -106,6 +109,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
         simulation=simulation,
         transportapi_client=transportapi_client,
+        check_history=check_history,
     )
     coordinator = JourneyGuardianCoordinator(hass, entry, engine)
     notification_ledger = NotificationLedger(hass)
@@ -137,6 +141,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         notification_scheduler=notification_scheduler,
         provider_broker=provider_broker,
         automatic_rail_monitor=automatic_rail_monitor,
+        check_history=check_history,
     )
     entry.async_on_unload(provider_broker.shutdown)
     await coordinator.async_config_entry_first_refresh()

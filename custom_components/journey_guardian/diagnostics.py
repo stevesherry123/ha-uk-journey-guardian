@@ -88,4 +88,5 @@ async def async_get_config_entry_diagnostics(
             ),
         },
         "budget": snapshot.budget.as_dict(),
+        "recent_live_checks": runtime.check_history.records(),
     }

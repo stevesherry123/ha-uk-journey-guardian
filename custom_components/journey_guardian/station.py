@@ -140,4 +140,6 @@ def _normalise_name(value: str) -> str:
     words = re.sub(r"[^a-z0-9]+", " ", ascii_value.casefold()).split()
     if words and words[-1] == "station":
         words.pop()
+        if words and words[-1] in {"rail", "railway"}:
+            words.pop()
     return " ".join(words)

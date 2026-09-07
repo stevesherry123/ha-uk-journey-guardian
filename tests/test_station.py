@@ -53,6 +53,24 @@ def test_saved_places_fixture_resolves_one_exact_station() -> None:
     )
 
     assert result.code == "EXC"
+
+
+def test_provider_rail_station_suffix_matches_calendar_name() -> None:
+    """Common provider suffixes do not prevent an exact station match."""
+    result = resolve_station(
+        origin_name="London Euston",
+        places_payload={
+            "member": [
+                {
+                    "type": "train_station",
+                    "name": "London Euston Rail Station",
+                    "station_code": "EUS",
+                }
+            ]
+        },
+    )
+
+    assert result.code == "EUS"
     assert result.source == "provider_places"
     assert result.confidence == "exact_name"
 

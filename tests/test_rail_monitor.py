@@ -111,3 +111,25 @@ def test_disabled_monitor_registers_no_listener(hass) -> None:
     monitor.start()
 
     coordinator.async_add_listener.assert_not_called()
+
+
+async def test_future_timer_schedules_checkpoint_task(hass) -> None:
+    """The HA timer callback schedules rather than leaks its coroutine."""
+    coordinator = _coordinator(NOW + timedelta(minutes=200))
+    ledger = Mock()
+    ledger.async_claim = AsyncMock(return_value=True)
+    monitor = AutomaticRailMonitor(hass, coordinator, ledger, enabled=True)
+
+    with patch(
+        "custom_components.journey_guardian.rail_monitor.async_track_point_in_utc_time"
+    ) as track, patch(
+        "custom_components.journey_guardian.rail_monitor.dt_util.now",
+        return_value=NOW,
+    ):
+        monitor.start()
+        callback = track.call_args_list[0].args[1]
+        callback(NOW + timedelta(minutes=50))
+        await hass.async_block_till_done()
+
+    coordinator.async_review_live_rail.assert_awaited_once()
+    monitor.stop()

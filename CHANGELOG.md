@@ -4,6 +4,15 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.15] - 2026-09-07
+
+### Fixed
+
+- Provider names ending in `Rail Station` or `Railway Station` now match the
+  corresponding calendar station name without weakening ambiguity safeguards.
+- Future automatic-checkpoint callbacks now schedule their coroutine through
+  Home Assistant instead of creating an unawaited coroutine.
+
 ## [0.1.14] - 2026-09-07
 
 ### Added

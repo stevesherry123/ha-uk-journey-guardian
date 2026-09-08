@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
@@ -9,6 +11,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .entity import JourneyGuardianEntity
+
+
+def _datetime_attribute(value) -> str | None:
+    """Return an ISO timestamp only for a concrete datetime value."""
+    return value.isoformat() if isinstance(value, datetime) else None
 
 
 async def async_setup_entry(
@@ -80,6 +87,31 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
             "last_live_rail_error": (
                 self.coordinator.data.last_live_rail_error
             ),
+            "last_live_check_at": (
+                _datetime_attribute(
+                    getattr(self.coordinator, "last_live_check_at", None)
+                )
+            ),
+            "next_live_check_at": (
+                _datetime_attribute(
+                    getattr(self.coordinator, "next_live_check_at", None)
+                )
+            ),
+            "last_notification": (
+                value
+                if isinstance(
+                    value := getattr(
+                        self.coordinator, "last_notification", None
+                    ),
+                    str,
+                )
+                else None
+            ),
+            "last_notification_at": (
+                _datetime_attribute(
+                    getattr(self.coordinator, "last_notification_at", None)
+                )
+            ),
             "rail_source": observation.source if observation else None,
             "rail_classification": (
                 observation.classification if observation else None
@@ -112,6 +144,9 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
             ),
             "rail_schedule_offset_minutes": (
                 observation.schedule_offset_minutes if observation else None
+            ),
+            "rail_observation_retained": (
+                observation.retained if observation else False
             ),
         }
 
@@ -152,6 +187,7 @@ class RailDataFreshnessSensor(JourneyGuardianEntity, SensorEntity):
             "schedule_offset_minutes": (
                 observation.schedule_offset_minutes if observation else None
             ),
+            "retained": observation.retained if observation else False,
         }
 
 

@@ -45,7 +45,8 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - editable conservative station-access and early-warning timing
 - a persistent shared TransportAPI budget with an urgent-call reserve
 - status, next-departure, decision-path, API-budget, and data-health entities
-- a **Review now** button and `journey_guardian.review_now` action
+- a **Refresh calendar and timings** button and
+  `journey_guardian.review_now` action
 - quota-free on-time, delayed, cancelled, split, and provider-outage simulations
 - an explicit **Simulation active** diagnostic entity
 - automated validation and unit tests
@@ -54,7 +55,8 @@ Automatic TransportAPI monitoring is off by default. When explicitly enabled in
 the integration options, Journey Guardian makes one live check approximately 150,
 90, 45, and 10 minutes before the selected departure. Each checkpoint is claimed
 in persistent private storage before network access, and every request remains
-behind the durable budget. Ordinary calendar polling, **Review now**, and
+behind the durable budget. Ordinary calendar polling, **Refresh calendar and
+timings**, and
 simulations remain provider-free. Google Routes and local-transit providers are
 not called. Until live station-access routing is added, timing uses a configurable
 conservative fallback and is explicitly classified as inferred.
@@ -155,13 +157,13 @@ The integration creates **Status**, **Operational phase**, **Rail data
 freshness**, **Next departure**, **Prepare at**, **Leave home at**, **Station
 arrival at**, **Decision path**, **Journey Guardian TransportAPI budget**,
 **Data health**,
-**Review now**, and **Check live rail now** entities. Home Assistant generates
+**Refresh calendar and timings**, and **Check live rail now** entities. Home Assistant generates
 their entity IDs from the configured device name, so IDs can differ between
 installations.
 
 ## Actions
 
-`journey_guardian.review_now` immediately reviews the configured calendar and
+`journey_guardian.review_now` immediately refreshes the configured calendar and
 returns the normalized engine snapshot when a response is requested.
 
 `journey_guardian.review_rail_now`—also available as **Check live rail now** on

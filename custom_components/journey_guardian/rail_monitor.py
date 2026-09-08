@@ -102,6 +102,7 @@ class AutomaticRailMonitor:
     def _handle_coordinator_update(self) -> None:
         """Rebuild checkpoints for the currently selected calendar journey."""
         self._cancel_checkpoints()
+        self._coordinator.next_live_check_at = None
         snapshot = self._coordinator.data
         journey = snapshot.next_journey
         if (
@@ -113,9 +114,11 @@ class AutomaticRailMonitor:
             return
 
         now = dt_util.now()
+        future_points: list[datetime] = []
         for lead_minutes in CHECKPOINT_MINUTES:
             point = journey.start - timedelta(minutes=lead_minutes)
             if point > now:
+                future_points.append(point)
                 self._checkpoint_cancellers.append(
                     async_track_point_in_utc_time(
                         self._hass,
@@ -132,6 +135,8 @@ class AutomaticRailMonitor:
                     self._async_run_checkpoint(journey.start, lead_minutes),
                     f"{DOMAIN} catch up automatic rail checkpoint",
                 )
+        if future_points:
+            self._coordinator.next_live_check_at = min(future_points)
 
     @callback
     def _cancel_checkpoints(self) -> None:

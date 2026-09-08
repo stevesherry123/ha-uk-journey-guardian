@@ -4,6 +4,23 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.18] - 2026-09-08
+
+### Added
+
+- Status diagnostics now expose the last live-rail check, the next scheduled
+  automatic checkpoint, and the last notification type and time.
+- Rail observations expose whether they have been retained from the final live
+  check rather than acquired by the current calendar refresh.
+
+### Changed
+
+- The manual calendar button is now labelled **Refresh calendar and timings** so
+  it cannot be confused with the quota-consuming live-rail button.
+- The final successful rail observation remains visible after departure with
+  `historical` freshness, preserving the matched service, platform and calling
+  point evidence throughout the active journey.
+
 ## [0.1.17] - 2026-09-08
 
 ### Added

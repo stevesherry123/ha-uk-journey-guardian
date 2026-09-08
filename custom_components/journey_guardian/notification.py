@@ -215,6 +215,7 @@ class JourneyNotificationScheduler:
             title=title,
             notification_id=f"{DOMAIN}_{fingerprint}",
         )
+        self._coordinator.record_notification(kind, dt_util.now())
 
 
 def _actionable_departure(snapshot: JourneySnapshot) -> datetime:

@@ -137,8 +137,9 @@ async def test_live_notification_can_be_enabled_explicitly() -> None:
     """Calendar notifications require and respect the opt-in setting."""
     ledger = Mock()
     ledger.async_claim = AsyncMock(return_value=True)
+    coordinator = Mock()
     scheduler = JourneyNotificationScheduler(
-        Mock(), Mock(), ledger, live_notifications_enabled=True
+        Mock(), coordinator, ledger, live_notifications_enabled=True
     )
 
     with patch(
@@ -150,6 +151,8 @@ async def test_live_notification_can_be_enabled_explicitly() -> None:
     ledger.async_claim.assert_awaited_once()
     create_notification.assert_called_once()
     assert create_notification.call_args.kwargs["title"] == "UK Journey Guardian"
+    coordinator.record_notification.assert_called_once()
+    assert coordinator.record_notification.call_args.args[0] == "leave_now"
 
 
 async def test_live_observation_reports_on_time_platform_and_calling_point() -> None:

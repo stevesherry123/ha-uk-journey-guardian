@@ -95,7 +95,7 @@
       "simulation_active": {"name": "Simulation active"}
     },
     "button": {
-      "review_now": {"name": "Review now"},
+      "review_now": {"name": "Refresh calendar and timings"},
       "review_rail_now": {"name": "Check live rail now"}
     }
   },

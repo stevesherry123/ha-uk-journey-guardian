@@ -133,3 +133,21 @@ async def test_future_timer_schedules_checkpoint_task(hass) -> None:
 
     coordinator.async_review_live_rail.assert_awaited_once()
     monitor.stop()
+
+
+def test_monitor_exposes_next_scheduled_live_check(hass) -> None:
+    """Diagnostics show the earliest future provider checkpoint."""
+    departure = NOW + timedelta(minutes=200)
+    coordinator = _coordinator(departure)
+    monitor = AutomaticRailMonitor(
+        hass, coordinator, Mock(), enabled=True
+    )
+
+    with patch(
+        "custom_components.journey_guardian.rail_monitor.dt_util.now",
+        return_value=NOW,
+    ):
+        monitor.start()
+
+    assert coordinator.next_live_check_at == departure - timedelta(minutes=150)
+    monitor.stop()

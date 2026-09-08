@@ -71,6 +71,7 @@ class RailObservation:
     platform: str | None = None
     match_quality: str = "not_applicable"
     schedule_offset_minutes: int = 0
+    retained: bool = False
 
     def as_dict(self) -> dict[str, Any]:
         """Return a serializable representation."""

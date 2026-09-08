@@ -117,6 +117,7 @@ def test_simulated_delay_is_visible_without_overwriting_schedule() -> None:
         "classification": "simulated",
         "match_quality": "exact_schedule",
         "schedule_offset_minutes": 0,
+        "retained": False,
     }
     assert status.extra_state_attributes["scheduled_departure"] == (
         scheduled.isoformat()
@@ -131,5 +132,10 @@ def test_simulated_delay_is_visible_without_overwriting_schedule() -> None:
     assert status.extra_state_attributes["rail_platform"] == "4"
     assert status.extra_state_attributes["rail_match_quality"] == "exact_schedule"
     assert status.extra_state_attributes["rail_schedule_offset_minutes"] == 0
+    assert status.extra_state_attributes["rail_observation_retained"] is False
+    assert status.extra_state_attributes["last_live_check_at"] is None
+    assert status.extra_state_attributes["next_live_check_at"] is None
+    assert status.extra_state_attributes["last_notification"] is None
+    assert status.extra_state_attributes["last_notification_at"] is None
     assert status.extra_state_attributes["last_live_rail_error"] is None
     assert status.extra_state_attributes["simulation_active"] is True

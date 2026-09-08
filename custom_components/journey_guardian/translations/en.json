@@ -63,7 +63,8 @@
           "automatic_live_rail_enabled": "Enable automatic live rail checkpoints",
           "live_notifications_enabled": "Enable live journey notifications",
           "transportapi_app_id": "TransportAPI application ID",
-          "transportapi_app_key": "TransportAPI application key"
+          "transportapi_app_key": "TransportAPI application key",
+          "google_routes_api_key": "Google Routes API key"
         },
         "data_description": {
           "preparation_buffer_minutes": "Minutes allowed to get ready before leaving for the station.",
@@ -73,7 +74,8 @@
           "automatic_live_rail_enabled": "Runs restart-safe, quota-controlled checks about 150, 90, 45, and 10 minutes before departure.",
           "live_notifications_enabled": "Off keeps real calendar journeys in shadow mode while allowing simulation notifications.",
           "transportapi_app_id": "Required for manual or automatic live-rail checks.",
-          "transportapi_app_key": "Required for manual or automatic live-rail checks. Stored privately in the Home Assistant config entry."
+          "transportapi_app_key": "Required for manual or automatic live-rail checks. Stored privately in the Home Assistant config entry.",
+          "google_routes_api_key": "Optional Google Routes key for live station-access timing. Stored privately in the Home Assistant config entry."
         }
       }
     }

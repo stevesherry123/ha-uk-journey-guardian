@@ -4,6 +4,28 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.19] - 2026-09-08
+
+### Added
+
+- Google Routes can now provide live station-access durations and distances for
+  driving, walking, cycling, and public transport.
+- Automatic access mode selects traffic-aware driving while the traveller is
+  home and public transport while away, avoiding a driving assumption on return
+  legs.
+- Equivalent route requests use a bounded adaptive cache to prevent calendar
+  polling from multiplying provider calls while refreshing more frequently near
+  departure.
+
+### Changed
+
+- Station-access notifications name the effective live mode selected by the
+  timing engine.
+- Missing credentials, coordinates, routes, or provider availability preserve
+  the configured conservative duration and its `inferred` provenance.
+- Routing failures expose a sanitized timing attribute and log only once per
+  journey and failure category.
+
 ## [0.1.18] - 2026-09-08
 
 ### Added

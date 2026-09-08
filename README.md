@@ -55,11 +55,15 @@ Automatic TransportAPI monitoring is off by default. When explicitly enabled in
 the integration options, Journey Guardian makes one live check approximately 150,
 90, 45, and 10 minutes before the selected departure. Each checkpoint is claimed
 in persistent private storage before network access, and every request remains
-behind the durable budget. Ordinary calendar polling, **Refresh calendar and
-timings**, and
-simulations remain provider-free. Google Routes and local-transit providers are
-not called. Until live station-access routing is added, timing uses a configurable
-conservative fallback and is explicitly classified as inferred.
+behind the durable budget. Rail simulations remain provider-free.
+
+When a Google Routes key is configured, calendar reviews calculate the
+station-access leg using the traveller's current Home Assistant coordinates.
+Automatic mode uses traffic-aware driving while the traveller is home and public
+transport while away. Equivalent requests use an adaptive cache, refreshing more
+often only as the planned station departure approaches. Missing
+coordinates, credentials, routes, or provider availability retain the configured
+conservative fallback and its explicit `inferred` classification.
 
 ## Calendar format
 
@@ -121,10 +125,12 @@ start getting ready = leave time - preparation buffer - early-warning margin
 ```
 
 The safety margins and conservative station-access duration are user choices.
-Until live routing is enabled, the timing entities include
-`source: configured_fallback` and `classification: inferred`. Selecting walking
-explicitly will use a walking route when that capability is implemented;
-automatic mode may compare suitable modes.
+Provider results include `source: google_routes`, a `live_<mode>` or
+`cached_<mode>` classification, the calculation time, selected mode and distance.
+Fallback results remain
+`source: configured_fallback` and `classification: inferred`. Automatic mode
+uses driving at home and public transport away from home; walking, driving and
+cycling can also be selected explicitly.
 
 ## Installation during alpha
 

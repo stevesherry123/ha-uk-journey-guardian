@@ -41,6 +41,12 @@ class JourneyTiming:
     station_access_minutes: int
     source: str
     classification: str
+    station_access_mode: str = "unknown"
+    station_access_source: str = "configured_fallback"
+    station_access_classification: str = "inferred"
+    station_access_distance_meters: int | None = None
+    station_access_error: str | None = None
+    station_access_checked_at: datetime | None = None
 
     def as_dict(self) -> dict[str, Any]:
         """Return a serializable representation."""
@@ -48,6 +54,11 @@ class JourneyTiming:
         data["prepare_at"] = self.prepare_at.isoformat()
         data["leave_home_at"] = self.leave_home_at.isoformat()
         data["station_arrival_at"] = self.station_arrival_at.isoformat()
+        data["station_access_checked_at"] = (
+            self.station_access_checked_at.isoformat()
+            if self.station_access_checked_at is not None
+            else None
+        )
         return data
 
 

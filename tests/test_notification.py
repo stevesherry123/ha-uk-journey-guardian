@@ -227,6 +227,18 @@ def test_leave_notification_names_driving_allowance() -> None:
     assert "Allow 60 minutes" in message
 
 
+def test_walking_notification_includes_required_route_advisory() -> None:
+    """Walking estimates retain the provider's path-quality warning."""
+    message = _notification_message(
+        _snapshot(simulation=False),
+        "leave_now",
+        station_access_mode="walking",
+    )
+
+    assert message.startswith("Time to walk to Simulation Origin.")
+    assert "may not include clear pedestrian or cycle paths" in message
+
+
 async def test_bounded_wake_reminder_uses_current_journey() -> None:
     """Preparation reminders stop when the journey or phase changes."""
     coordinator = Mock()

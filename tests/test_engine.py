@@ -8,6 +8,10 @@ from unittest.mock import AsyncMock, Mock, call, patch
 import pytest
 
 from custom_components.journey_guardian.engine import JourneyGuardianEngine
+from custom_components.journey_guardian.google_routes import (
+    GoogleRoutesError,
+    StationAccessEstimate,
+)
 from custom_components.journey_guardian.models import (
     BudgetSnapshot,
     JourneyEvent,
@@ -67,6 +71,116 @@ def _provider_result(payload):
         source="provider",
         age_seconds=0,
     )
+
+
+async def test_automatic_access_uses_driving_at_home() -> None:
+    """Automatic mode uses a traffic-aware home-to-station estimate."""
+    hass = Mock()
+    hass.states.get.return_value = Mock(
+        state="home", attributes={"latitude": 53.2, "longitude": -2.9}
+    )
+    routes = Mock()
+    routes.configured = True
+    routes.async_route = AsyncMock(
+        return_value=StationAccessEstimate(
+            duration_minutes=24,
+            distance_meters=18000,
+            mode="driving",
+            observed_at=CHECKED_AT,
+        )
+    )
+    engine = JourneyGuardianEngine(
+        hass,
+        calendar_entity=CALENDAR_ENTITY,
+        budget=_budget(),
+        person_entity="person.example",
+        station_access_mode="auto",
+        google_routes_client=routes,
+    )
+    journey = _calendar_snapshot().next_journey
+    assert journey is not None
+
+    with patch(
+        "custom_components.journey_guardian.engine.dt_util.now",
+        return_value=CHECKED_AT,
+    ):
+        timing = await engine._async_calculate_timing(journey)
+
+    assert timing.station_access_minutes == 24
+    assert timing.station_access_mode == "driving"
+    assert timing.station_access_source == "google_routes"
+    assert timing.station_access_classification == "live_driving"
+    assert timing.station_access_distance_meters == 18000
+    assert timing.source == "google_routes"
+    assert timing.classification == "live_driving"
+    assert routes.async_route.await_args.kwargs["mode"] == "driving"
+
+
+async def test_automatic_access_uses_transit_away_from_home() -> None:
+    """Automatic mode avoids assuming a car is available on a return leg."""
+    hass = Mock()
+    hass.states.get.return_value = Mock(
+        state="not_home", attributes={"latitude": 51.5, "longitude": -0.1}
+    )
+    routes = Mock()
+    routes.configured = True
+    routes.async_route = AsyncMock(
+        return_value=StationAccessEstimate(
+            duration_minutes=18,
+            distance_meters=3500,
+            mode="transit",
+            observed_at=CHECKED_AT,
+        )
+    )
+    engine = JourneyGuardianEngine(
+        hass,
+        calendar_entity=CALENDAR_ENTITY,
+        budget=_budget(),
+        person_entity="person.example",
+        station_access_mode="auto",
+        google_routes_client=routes,
+    )
+    journey = _calendar_snapshot(origin_name="London Euston").next_journey
+    assert journey is not None
+
+    timing = await engine._async_calculate_timing(journey)
+
+    assert timing.station_access_mode == "transit"
+    assert timing.station_access_minutes == 18
+    assert routes.async_route.await_args.kwargs["mode"] == "transit"
+
+
+async def test_route_failure_retains_explicit_fallback(caplog) -> None:
+    """Provider failure stays safe, inferred, and visible without log spam."""
+    hass = Mock()
+    hass.states.get.return_value = Mock(
+        state="home", attributes={"latitude": 53.2, "longitude": -2.9}
+    )
+    routes = Mock()
+    routes.configured = True
+    routes.async_route = AsyncMock(
+        side_effect=GoogleRoutesError("provider_unavailable")
+    )
+    engine = JourneyGuardianEngine(
+        hass,
+        calendar_entity=CALENDAR_ENTITY,
+        budget=_budget(),
+        station_access_fallback_minutes=60,
+        person_entity="person.example",
+        google_routes_client=routes,
+    )
+    journey = _calendar_snapshot().next_journey
+    assert journey is not None
+
+    first = await engine._async_calculate_timing(journey)
+    second = await engine._async_calculate_timing(journey)
+
+    assert first == second
+    assert first.station_access_minutes == 60
+    assert first.station_access_source == "configured_fallback"
+    assert first.station_access_classification == "inferred"
+    assert first.station_access_error == "google_routes_provider_unavailable"
+    assert caplog.text.count("Station access routing failed") == 1
 
 
 def _board():

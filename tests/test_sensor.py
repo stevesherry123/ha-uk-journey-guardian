@@ -54,6 +54,12 @@ def test_timing_sensor_exposes_provenance() -> None:
         "early_warning_minutes": 10,
         "station_buffer_minutes": 15,
         "station_access_minutes": 60,
+        "station_access_mode": "unknown",
+        "station_access_source": "configured_fallback",
+        "station_access_classification": "inferred",
+        "station_access_distance_meters": None,
+        "station_access_error": None,
+        "station_access_checked_at": None,
     }
 
 

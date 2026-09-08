@@ -23,11 +23,14 @@ Each traveller selects two independent safety margins:
 - **station buffer** — time to arrive before the scheduled rail departure
 
 They can also edit an **early-warning margin** and a conservative
-**station-access fallback**. The fallback is used until live routing is enabled
-and is always labelled as inferred in Journey Guardian entities.
+**station-access fallback**. The fallback is used when Google Routes is not
+configured or cannot return a trustworthy route and is always labelled as
+inferred in Journey Guardian entities.
 
 They also select a default station-access mode: automatic, walking, driving, or
 cycling. These settings remain in Home Assistant and are not published.
+Automatic mode uses driving while the traveller is home and public transport
+while away. Live routing also requires a restricted Google Routes API key.
 
 ## Calendar source
 

@@ -167,7 +167,8 @@ accepted replacement decision. Route names and private entity IDs are omitted.
 
 ## Routing and notifications
 
-- Google Routes estimates for walking, cycling, and road station-access legs
+- [x] Google Routes estimates for walking, cycling, road, and public-transport
+  station-access legs with a bounded adaptive cache and conservative fallback
 - configurable notification, announcement, and wearable adapters
 - enhanced manual review using the same traveller and destination decision tree
 - optional UK local-transit comparison for suitable destination profiles

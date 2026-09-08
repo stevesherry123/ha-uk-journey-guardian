@@ -230,6 +230,14 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                             type=selector.TextSelectorType.PASSWORD
                         )
                     ),
+                    vol.Optional(
+                        CONF_GOOGLE_ROUTES_API_KEY,
+                        default=current.get(CONF_GOOGLE_ROUTES_API_KEY, ""),
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD
+                        )
+                    ),
                 }
             ),
         )

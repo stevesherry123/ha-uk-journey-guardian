@@ -20,8 +20,9 @@ from .const import (
     DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
     DEFAULT_STATION_BUFFER_MINUTES,
 )
+from .google_routes import GoogleRoutesClient, GoogleRoutesError
 from .journey import select_next_journey
-from .models import JourneySnapshot
+from .models import JourneyEvent, JourneySnapshot, JourneyTiming
 from .phase import calculate_operational_phase
 from .provider_broker import ProviderBrokerError
 from .rail import RailDataError, normalize_station_board
@@ -50,6 +51,9 @@ class JourneyGuardianEngine:
         simulation: JourneySimulation | None = None,
         transportapi_client: TransportAPIClient | None = None,
         check_history: CheckHistory | None = None,
+        person_entity: str | None = None,
+        station_access_mode: str = "auto",
+        google_routes_client: GoogleRoutesClient | None = None,
     ) -> None:
         """Initialize the engine."""
         self._hass = hass
@@ -62,8 +66,12 @@ class JourneyGuardianEngine:
         self._simulation = simulation
         self._transportapi_client = transportapi_client
         self._check_history = check_history
+        self._person_entity = person_entity
+        self._station_access_mode = station_access_mode
+        self._google_routes_client = google_routes_client
         self._station_resolutions: dict[str, StationResolution] = {}
         self._last_live_rail_error: str | None = None
+        self._route_warning_keys: set[str] = set()
 
     async def async_review(self) -> JourneySnapshot:
         """Review the next calendar journey without consuming rail API quota."""
@@ -92,12 +100,8 @@ class JourneyGuardianEngine:
             else:
                 status = "planned"
             timing = (
-                calculate_fallback_timing(
-                    next_journey,
-                    preparation_minutes=self._preparation_buffer_minutes,
-                    early_warning_minutes=self._early_warning_minutes,
-                    station_buffer_minutes=self._station_buffer_minutes,
-                    station_access_minutes=self._station_access_fallback_minutes,
+                await self._async_calculate_timing(
+                    next_journey, allow_provider=status != "active"
                 )
                 if next_journey is not None
                 else None
@@ -237,14 +241,10 @@ class JourneyGuardianEngine:
                 status = "delayed"
             else:
                 status = "planned"
-            timing = calculate_fallback_timing(
+            timing = await self._async_calculate_timing(
                 replace(resolved_journey, start=departure),
-                preparation_minutes=self._preparation_buffer_minutes,
-                early_warning_minutes=self._early_warning_minutes,
-                station_buffer_minutes=self._station_buffer_minutes,
-                station_access_minutes=self._station_access_fallback_minutes,
-                source="transportapi",
-                classification=(
+                base_source="transportapi",
+                base_classification=(
                     "predicted"
                     if observation.predicted_departure is not None
                     else "scheduled"
@@ -280,6 +280,96 @@ class JourneyGuardianEngine:
             "complete",
         )
         return result
+
+    async def _async_calculate_timing(
+        self,
+        journey: JourneyEvent,
+        *,
+        allow_provider: bool = True,
+        base_source: str = "configured_fallback",
+        base_classification: str = "inferred",
+    ) -> JourneyTiming:
+        """Use a live station-access route or the conservative fallback."""
+        person_state = (
+            self._hass.states.get(self._person_entity)
+            if self._person_entity
+            else None
+        )
+        mode = self._station_access_mode
+        if mode == "auto":
+            if person_state is None or person_state.state in {
+                "unknown",
+                "unavailable",
+            }:
+                mode = "unknown"
+            else:
+                mode = "driving" if person_state.state == "home" else "transit"
+        fallback = calculate_fallback_timing(
+            journey,
+            preparation_minutes=self._preparation_buffer_minutes,
+            early_warning_minutes=self._early_warning_minutes,
+            station_buffer_minutes=self._station_buffer_minutes,
+            station_access_minutes=self._station_access_fallback_minutes,
+            source=base_source,
+            classification=base_classification,
+            station_access_mode=mode,
+            station_access_source="configured_fallback",
+            station_access_classification="inferred",
+        )
+        client = self._google_routes_client
+        if not allow_provider or client is None or not client.configured:
+            return fallback
+        if person_state is None or mode == "unknown":
+            return fallback
+        latitude = person_state.attributes.get("latitude")
+        longitude = person_state.attributes.get("longitude")
+        if not isinstance(latitude, int | float) or not isinstance(
+            longitude, int | float
+        ):
+            return fallback
+        destination = _station_destination(journey)
+        departure_time = max(
+            fallback.leave_home_at,
+            dt_util.now() + timedelta(minutes=1),
+        )
+        try:
+            estimate = await client.async_route(
+                latitude=float(latitude),
+                longitude=float(longitude),
+                destination=destination,
+                mode=mode,
+                departure_time=departure_time,
+            )
+        except GoogleRoutesError as err:
+            category = str(err)
+            warning_key = f"{journey.start.isoformat()}|{category}"
+            if warning_key not in self._route_warning_keys:
+                _LOGGER.warning("Station access routing failed: %s", category)
+                self._route_warning_keys.add(warning_key)
+                if len(self._route_warning_keys) > 20:
+                    self._route_warning_keys.pop()
+            return replace(
+                fallback,
+                station_access_error=f"google_routes_{category}",
+            )
+        return calculate_fallback_timing(
+            journey,
+            preparation_minutes=self._preparation_buffer_minutes,
+            early_warning_minutes=self._early_warning_minutes,
+            station_buffer_minutes=self._station_buffer_minutes,
+            station_access_minutes=estimate.duration_minutes,
+            source="google_routes",
+            classification=(
+                f"cached_{mode}" if estimate.cache_hit else f"live_{mode}"
+            ),
+            station_access_mode=mode,
+            station_access_source="google_routes",
+            station_access_classification=(
+                f"cached_{mode}" if estimate.cache_hit else f"live_{mode}"
+            ),
+            station_access_distance_meters=estimate.distance_meters,
+            station_access_checked_at=estimate.observed_at,
+        )
 
     async def _async_record_live_check(
         self,
@@ -378,3 +468,10 @@ class JourneyGuardianEngine:
         calendar_data = response.get(self._calendar_entity, {})
         events = calendar_data.get("events", [])
         return list(events) if isinstance(events, list) else []
+
+
+def _station_destination(journey: JourneyEvent) -> str:
+    """Return the most specific calendar station address available."""
+    if journey.location.strip():
+        return journey.location.rsplit(";", 1)[-1].strip()
+    return f"{journey.origin_name} railway station, UK"

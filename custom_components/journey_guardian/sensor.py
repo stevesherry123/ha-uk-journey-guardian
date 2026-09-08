@@ -244,6 +244,20 @@ class JourneyTimingSensor(JourneyGuardianEntity, SensorEntity):
             "early_warning_minutes": timing.early_warning_minutes,
             "station_buffer_minutes": timing.station_buffer_minutes,
             "station_access_minutes": timing.station_access_minutes,
+            "station_access_mode": timing.station_access_mode,
+            "station_access_source": timing.station_access_source,
+            "station_access_classification": (
+                timing.station_access_classification
+            ),
+            "station_access_distance_meters": (
+                timing.station_access_distance_meters
+            ),
+            "station_access_error": timing.station_access_error,
+            "station_access_checked_at": (
+                timing.station_access_checked_at.isoformat()
+                if timing.station_access_checked_at
+                else None
+            ),
         }
 
 

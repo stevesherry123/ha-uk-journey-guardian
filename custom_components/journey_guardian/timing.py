@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from .models import JourneyEvent, JourneyTiming
 
@@ -16,6 +16,12 @@ def calculate_fallback_timing(
     station_access_minutes: int,
     source: str = "configured_fallback",
     classification: str = "inferred",
+    station_access_mode: str = "unknown",
+    station_access_source: str = "configured_fallback",
+    station_access_classification: str = "inferred",
+    station_access_distance_meters: int | None = None,
+    station_access_error: str | None = None,
+    station_access_checked_at: datetime | None = None,
 ) -> JourneyTiming:
     """Calculate conservative timing from configured fallback durations."""
     station_arrival = journey.start - timedelta(minutes=station_buffer_minutes)
@@ -33,4 +39,10 @@ def calculate_fallback_timing(
         station_access_minutes=station_access_minutes,
         source=source,
         classification=classification,
+        station_access_mode=station_access_mode,
+        station_access_source=station_access_source,
+        station_access_classification=station_access_classification,
+        station_access_distance_meters=station_access_distance_meters,
+        station_access_error=station_access_error,
+        station_access_checked_at=station_access_checked_at,
     )

@@ -261,14 +261,28 @@ def _notification_message(
         )
     station = dt_util.as_local(timing.station_arrival_at).strftime("%H:%M")
     origin = snapshot.next_journey.origin_name
-    if station_access_mode == "driving":
+    effective_mode = (
+        timing.station_access_mode
+        if station_access_mode == "auto"
+        else station_access_mode
+    )
+    if effective_mode == "driving":
         action = f"Time to drive to {origin}."
+    elif effective_mode == "walking":
+        action = f"Time to walk to {origin}."
+    elif effective_mode == "bicycling":
+        action = f"Time to cycle to {origin}."
+    elif effective_mode == "transit":
+        action = f"Time to take public transport to {origin}."
     else:
         action = f"Time to leave for {origin}."
-    return (
+    message = (
         f"{action} Allow {timing.station_access_minutes} minutes and aim to "
         f"arrive by {station} for the {departure} departure."
     )
+    if effective_mode in {"walking", "bicycling"}:
+        message += " Route guidance may not include clear pedestrian or cycle paths."
+    return message
 
 
 def _should_notify_rail(snapshot: JourneySnapshot) -> bool:

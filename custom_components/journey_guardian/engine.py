@@ -73,7 +73,9 @@ class JourneyGuardianEngine:
         self._last_live_rail_error: str | None = None
         self._route_warning_keys: set[str] = set()
 
-    async def async_review(self) -> JourneySnapshot:
+    async def async_review(
+        self, *, force_station_access: bool = False
+    ) -> JourneySnapshot:
         """Review the next calendar journey without consuming rail API quota."""
         checked_at = dt_util.now()
         if self._simulation is not None:
@@ -101,7 +103,9 @@ class JourneyGuardianEngine:
                 status = "planned"
             timing = (
                 await self._async_calculate_timing(
-                    next_journey, allow_provider=status != "active"
+                    next_journey,
+                    allow_provider=status != "active",
+                    force_refresh=force_station_access,
                 )
                 if next_journey is not None
                 else None
@@ -143,6 +147,14 @@ class JourneyGuardianEngine:
         return bool(
             self._transportapi_client is not None
             and self._transportapi_client.configured
+        )
+
+    @property
+    def station_access_configured(self) -> bool:
+        """Return whether live station-access routing is available."""
+        return bool(
+            self._google_routes_client is not None
+            and self._google_routes_client.configured
         )
 
     async def async_review_live_rail(
@@ -286,6 +298,7 @@ class JourneyGuardianEngine:
         journey: JourneyEvent,
         *,
         allow_provider: bool = True,
+        force_refresh: bool = False,
         base_source: str = "configured_fallback",
         base_classification: str = "inferred",
     ) -> JourneyTiming:
@@ -339,6 +352,7 @@ class JourneyGuardianEngine:
                 destination=destination,
                 mode=mode,
                 departure_time=departure_time,
+                force_refresh=force_refresh,
             )
         except GoogleRoutesError as err:
             category = str(err)

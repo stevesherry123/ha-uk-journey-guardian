@@ -1,6 +1,6 @@
 """Tests for Journey Guardian entity presentation."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -19,6 +19,7 @@ from custom_components.journey_guardian.sensor import (
     NextDepartureSensor,
     OperationalPhaseSensor,
     RailDataFreshnessSensor,
+    StationAccessHealthSensor,
 )
 
 
@@ -61,6 +62,39 @@ def test_timing_sensor_exposes_provenance() -> None:
         "station_access_error": None,
         "station_access_checked_at": None,
     }
+
+
+def test_station_access_health_exposes_live_result() -> None:
+    """Routing health makes a successful provider call obvious."""
+    checked_at = datetime(2026, 9, 8, 20, 1, tzinfo=UTC)
+    timing = JourneyTiming(
+        prepare_at=checked_at,
+        leave_home_at=checked_at,
+        station_arrival_at=checked_at,
+        preparation_minutes=30,
+        early_warning_minutes=10,
+        station_buffer_minutes=15,
+        station_access_minutes=25,
+        source="google_routes",
+        classification="live_driving",
+        station_access_mode="driving",
+        station_access_source="google_routes",
+        station_access_classification="live_driving",
+        station_access_distance_meters=22360,
+        station_access_checked_at=checked_at,
+    )
+    coordinator = Mock()
+    coordinator.data.timing = timing
+    coordinator.last_station_access_test_at = checked_at
+    coordinator.next_station_access_check_at = checked_at + timedelta(hours=1)
+    sensor = StationAccessHealthSensor(
+        coordinator, MockConfigEntry(domain=DOMAIN), "station_access_health"
+    )
+
+    assert sensor.native_value == "working"
+    assert sensor.extra_state_attributes["duration_minutes"] == 25
+    assert sensor.extra_state_attributes["distance_meters"] == 22360
+    assert sensor.extra_state_attributes["error"] is None
 
 
 def test_simulated_delay_is_visible_without_overwriting_schedule() -> None:

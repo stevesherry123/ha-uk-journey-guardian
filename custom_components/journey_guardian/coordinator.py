@@ -31,6 +31,8 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         self.engine = engine
         self.last_live_check_at: datetime | None = None
         self.next_live_check_at: datetime | None = None
+        self.last_station_access_test_at: datetime | None = None
+        self.next_station_access_check_at: datetime | None = None
         self.last_notification: str | None = None
         self.last_notification_at: datetime | None = None
         self._last_live_snapshot: JourneySnapshot | None = None
@@ -94,6 +96,13 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         self.last_live_check_at = snapshot.checked_at
         if snapshot.rail_observation is not None:
             self._last_live_snapshot = snapshot
+        self.async_set_updated_data(snapshot)
+        return snapshot
+
+    async def async_test_station_access(self) -> JourneySnapshot:
+        """Force one station-access request and publish the result."""
+        snapshot = await self.engine.async_review(force_station_access=True)
+        self.last_station_access_test_at = snapshot.checked_at
         self.async_set_updated_data(snapshot)
         return snapshot
 

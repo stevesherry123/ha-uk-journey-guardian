@@ -56,6 +56,7 @@ class GoogleRoutesClient:
         destination: str,
         mode: str,
         departure_time: datetime,
+        force_refresh: bool = False,
     ) -> StationAccessEstimate:
         """Return a normalized duration without exposing provider responses."""
         if not self.configured or mode not in MODE_MAP:
@@ -69,7 +70,7 @@ class GoogleRoutesClient:
             int(departure_time.timestamp() // 900),
         )
         cached = self._cache.get(cache_key)
-        if cached is not None and now <= cached[0]:
+        if not force_refresh and cached is not None and now <= cached[0]:
             return replace(cached[1], cache_hit=True)
 
         request: dict[str, Any] = {

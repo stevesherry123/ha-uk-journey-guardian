@@ -30,9 +30,9 @@ accepted replacement decision. Route names and private entity IDs are omitted.
   access duration, station buffer, and an early-warning margin
 - [ ] provide an optional persistent wake-up alarm that repeats until bounded
   timeout, explicit acknowledgement, or configured movement/activity evidence
-- [ ] support road-routing station access with freshness checks, per-origin
+- [x] support road-routing station access with freshness checks, per-origin
   conservative fallbacks, and one warning per journey when routing is unavailable
-- [ ] support public-transport and walking access to a station, including an
+- [x] support public-transport and walking access to a station, including an
   arrive-by request, conservative fallback, and one warning per journey
 - [x] schedule quota-aware rail checkpoints approximately 150, 90, 45, and 10
   minutes before departure without duplicate requests across route profiles

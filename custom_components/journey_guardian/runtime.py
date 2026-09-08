@@ -9,6 +9,7 @@ from .notification import JourneyNotificationScheduler
 from .provider_broker import ProviderRequestBroker
 from .rail_monitor import AutomaticRailMonitor
 from .simulation import JourneySimulation
+from .station_access_monitor import StationAccessMonitor
 
 
 @dataclass(slots=True)
@@ -22,3 +23,4 @@ class JourneyGuardianRuntimeData:
     provider_broker: ProviderRequestBroker
     automatic_rail_monitor: AutomaticRailMonitor
     check_history: CheckHistory
+    station_access_monitor: StationAccessMonitor

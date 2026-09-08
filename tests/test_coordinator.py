@@ -116,3 +116,25 @@ async def test_active_refresh_retains_last_observation_as_historical(hass) -> No
     assert snapshot.rail_observation.age_seconds == 600
     assert snapshot.rail_observation.retained is True
     assert snapshot.rail_observation.platform == "15"
+
+
+async def test_station_access_test_forces_provider_refresh(hass) -> None:
+    """The explicit route test bypasses a previously valid cache entry."""
+    snapshot = JourneySnapshot(
+        status="planned",
+        checked_at=CHECKED_AT,
+        next_journey=None,
+        budget=BUDGET,
+    )
+    engine = Mock()
+    engine.async_review = AsyncMock(return_value=snapshot)
+    coordinator = JourneyGuardianCoordinator(
+        hass, MockConfigEntry(domain=DOMAIN), engine
+    )
+
+    result = await coordinator.async_test_station_access()
+
+    assert result == snapshot
+    engine.async_review.assert_awaited_once_with(force_station_access=True)
+    assert coordinator.last_station_access_test_at == CHECKED_AT
+    assert coordinator.data == snapshot

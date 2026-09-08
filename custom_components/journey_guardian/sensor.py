@@ -30,6 +30,9 @@ async def async_setup_entry(
             JourneyStatusSensor(coordinator, entry, "status"),
             OperationalPhaseSensor(coordinator, entry, "operational_phase"),
             RailDataFreshnessSensor(coordinator, entry, "rail_data_freshness"),
+            StationAccessHealthSensor(
+                coordinator, entry, "station_access_health"
+            ),
             NextDepartureSensor(coordinator, entry, "next_departure"),
             JourneyTimingSensor(
                 coordinator,
@@ -95,6 +98,15 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
             "next_live_check_at": (
                 _datetime_attribute(
                     getattr(self.coordinator, "next_live_check_at", None)
+                )
+            ),
+            "next_station_access_check_at": (
+                _datetime_attribute(
+                    getattr(
+                        self.coordinator,
+                        "next_station_access_check_at",
+                        None,
+                    )
                 )
             ),
             "last_notification": (
@@ -188,6 +200,64 @@ class RailDataFreshnessSensor(JourneyGuardianEntity, SensorEntity):
                 observation.schedule_offset_minutes if observation else None
             ),
             "retained": observation.retained if observation else False,
+        }
+
+
+class StationAccessHealthSensor(JourneyGuardianEntity, SensorEntity):
+    """Current routing availability, provenance, and result."""
+
+    _attr_translation_key = "station_access_health"
+    _attr_icon = "mdi:routes-clock"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    @property
+    def native_value(self) -> str:
+        timing = self.coordinator.data.timing
+        if timing is None:
+            return "not_checked"
+        if timing.station_access_error:
+            return "error"
+        if timing.station_access_source != "google_routes":
+            return "fallback"
+        if timing.station_access_classification.startswith("cached_"):
+            return "cached"
+        return "working"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        timing = self.coordinator.data.timing
+        if timing is None:
+            return {
+                "mode": None,
+                "duration_minutes": None,
+                "distance_meters": None,
+                "source": None,
+                "classification": None,
+                "error": None,
+                "checked_at": None,
+                "last_forced_check_at": _datetime_attribute(
+                    self.coordinator.last_station_access_test_at
+                ),
+                "next_automatic_check_at": _datetime_attribute(
+                    self.coordinator.next_station_access_check_at
+                ),
+            }
+        return {
+            "mode": timing.station_access_mode,
+            "duration_minutes": timing.station_access_minutes,
+            "distance_meters": timing.station_access_distance_meters,
+            "source": timing.station_access_source,
+            "classification": timing.station_access_classification,
+            "error": timing.station_access_error,
+            "checked_at": _datetime_attribute(
+                timing.station_access_checked_at
+            ),
+            "last_forced_check_at": _datetime_attribute(
+                self.coordinator.last_station_access_test_at
+            ),
+            "next_automatic_check_at": _datetime_attribute(
+                self.coordinator.next_station_access_check_at
+            ),
         }
 
 

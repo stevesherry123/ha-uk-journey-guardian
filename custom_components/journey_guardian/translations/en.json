@@ -15,6 +15,7 @@
           "station_buffer_minutes": "Station arrival buffer",
           "station_access_fallback_minutes": "Conservative station access fallback",
           "station_access_mode": "Default way to reach the station",
+          "station_access_mode": "Default way to reach the station",
           "transportapi_app_id": "TransportAPI application ID",
           "transportapi_app_key": "TransportAPI application key",
           "google_routes_api_key": "Google Routes API key",
@@ -32,6 +33,7 @@
           "early_warning_minutes": "Additional conservative margin before preparation should begin.",
           "station_buffer_minutes": "Minutes to arrive at the station before the scheduled train departure.",
           "station_access_fallback_minutes": "Minutes allowed to reach the station until live routing is available. Timing is labelled inferred.",
+          "station_access_mode": "Automatic selects driving at home and public transport while away.",
           "station_access_mode": "Auto compares suitable modes; a fixed mode can be selected instead.",
           "transportapi_app_id": "Optional until TransportAPI rail monitoring is enabled.",
           "transportapi_app_key": "Optional until TransportAPI rail monitoring is enabled. Stored privately in the Home Assistant config entry.",
@@ -85,6 +87,7 @@
       "status": {"name": "Status"},
       "operational_phase": {"name": "Operational phase"},
       "rail_data_freshness": {"name": "Rail data freshness"},
+      "station_access_health": {"name": "Station access routing"},
       "next_departure": {"name": "Next departure"},
       "prepare_at": {"name": "Prepare at"},
       "leave_home_at": {"name": "Leave home at"},
@@ -98,7 +101,8 @@
     },
     "button": {
       "review_now": {"name": "Refresh calendar and timings"},
-      "review_rail_now": {"name": "Check live rail now"}
+      "review_rail_now": {"name": "Check live rail now"},
+      "test_station_access": {"name": "Test station route now"}
     }
   },
   "services": {

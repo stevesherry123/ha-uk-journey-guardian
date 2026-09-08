@@ -65,6 +65,12 @@ often only as the planned station departure approaches. Missing
 coordinates, credentials, routes, or provider availability retain the configured
 conservative fallback and its explicit `inferred` classification.
 
+The device page includes **Test station route now**, which bypasses the cache,
+and a **Station access routing** diagnostic showing working, cached, fallback,
+or error state. Planned journeys automatically force fresh station-access
+checks about 6 hours, 2 hours, 45 minutes, and 15 minutes before departure so
+traffic changes can move the actionable leave time without continuous polling.
+
 ## Calendar format
 
 The preferred and development-tested calendar source is a TripIt calendar feed,

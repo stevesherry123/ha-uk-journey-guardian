@@ -76,3 +76,31 @@ async def test_identical_route_is_cached_until_adaptive_expiry() -> None:
     assert first.cache_hit is False
     assert second.cache_hit is True
     assert session.post.call_count == 1
+
+
+async def test_forced_route_bypasses_valid_cache() -> None:
+    """The explicit test control always proves current provider access."""
+    response = AsyncMock()
+    response.status = 200
+    response.json.return_value = {"routes": [{"duration": "600s"}]}
+    response.__aenter__.return_value = response
+    session = Mock()
+    session.post.return_value = response
+    client = GoogleRoutesClient(session, "private-key")
+    kwargs = {
+        "latitude": 51.5,
+        "longitude": -0.1,
+        "destination": "London Euston",
+        "mode": "transit",
+        "departure_time": datetime(2026, 9, 8, 9, 0, tzinfo=UTC),
+    }
+
+    with patch(
+        "custom_components.journey_guardian.google_routes.dt_util.now",
+        return_value=NOW,
+    ):
+        await client.async_route(**kwargs)
+        forced = await client.async_route(**kwargs, force_refresh=True)
+
+    assert forced.cache_hit is False
+    assert session.post.call_count == 2

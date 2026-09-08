@@ -4,6 +4,21 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.21] - 2026-09-08
+
+### Added
+
+- A **Test station route now** button bypasses the route cache to verify the
+  configured Google Routes key and current journey immediately.
+- A diagnostic routing-health sensor exposes working, cached, fallback, and
+  error states with duration, distance, mode, timestamps, and sanitized errors.
+- Planned journeys force fresh station-access calculations about 6 hours,
+  2 hours, 45 minutes, and 15 minutes before departure.
+
+### Fixed
+
+- The station-access mode now has its missing options-flow translation.
+
 ## [0.1.20] - 2026-09-08
 
 ### Fixed

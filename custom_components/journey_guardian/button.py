@@ -20,6 +20,9 @@ async def async_setup_entry(
             LiveRailReviewButton(
                 entry.runtime_data.coordinator, entry, "review_rail_now"
             ),
+            StationAccessTestButton(
+                entry.runtime_data.coordinator, entry, "test_station_access"
+            ),
         ]
     )
 
@@ -42,3 +45,13 @@ class LiveRailReviewButton(JourneyGuardianEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         await self.coordinator.async_review_live_rail()
+
+
+class StationAccessTestButton(JourneyGuardianEntity, ButtonEntity):
+    """Force an immediate live route to the selected journey station."""
+
+    _attr_translation_key = "test_station_access"
+    _attr_icon = "mdi:routes-clock"
+
+    async def async_press(self) -> None:
+        await self.coordinator.async_test_station_access()

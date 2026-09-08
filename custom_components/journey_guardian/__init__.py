@@ -58,6 +58,7 @@ from .provider_broker import ProviderRequestBroker
 from .rail_monitor import AutomaticRailLedger, AutomaticRailMonitor
 from .runtime import JourneyGuardianRuntimeData
 from .simulation import JourneySimulation
+from .station_access_monitor import StationAccessMonitor
 from .transportapi import TransportAPIClient
 
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
@@ -152,6 +153,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             DEFAULT_AUTOMATIC_LIVE_RAIL_ENABLED,
         ),
     )
+    station_access_monitor = StationAccessMonitor(hass, coordinator)
     entry.runtime_data = JourneyGuardianRuntimeData(
         coordinator=coordinator,
         budget=budget,
@@ -160,6 +162,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         provider_broker=provider_broker,
         automatic_rail_monitor=automatic_rail_monitor,
         check_history=check_history,
+        station_access_monitor=station_access_monitor,
     )
     entry.async_on_unload(provider_broker.shutdown)
     await coordinator.async_config_entry_first_refresh()
@@ -167,6 +170,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(notification_scheduler.stop)
     automatic_rail_monitor.start()
     entry.async_on_unload(automatic_rail_monitor.stop)
+    station_access_monitor.start()
+    entry.async_on_unload(station_access_monitor.stop)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

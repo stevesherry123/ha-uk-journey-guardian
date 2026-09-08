@@ -4,6 +4,13 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.20] - 2026-09-08
+
+### Fixed
+
+- Test fixtures no longer resemble an installation-specific Home Assistant
+  person entity, allowing the repository privacy validation to complete.
+
 ## [0.1.19] - 2026-09-08
 
 ### Added

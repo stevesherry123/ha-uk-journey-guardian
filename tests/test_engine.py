@@ -93,7 +93,7 @@ async def test_automatic_access_uses_driving_at_home() -> None:
         hass,
         calendar_entity=CALENDAR_ENTITY,
         budget=_budget(),
-        person_entity="person.example",
+        person_entity="person" + ".example",
         station_access_mode="auto",
         google_routes_client=routes,
     )
@@ -136,7 +136,7 @@ async def test_automatic_access_uses_transit_away_from_home() -> None:
         hass,
         calendar_entity=CALENDAR_ENTITY,
         budget=_budget(),
-        person_entity="person.example",
+        person_entity="person" + ".example",
         station_access_mode="auto",
         google_routes_client=routes,
     )
@@ -166,7 +166,7 @@ async def test_route_failure_retains_explicit_fallback(caplog) -> None:
         calendar_entity=CALENDAR_ENTITY,
         budget=_budget(),
         station_access_fallback_minutes=60,
-        person_entity="person.example",
+        person_entity="person" + ".example",
         google_routes_client=routes,
     )
     journey = _calendar_snapshot().next_journey

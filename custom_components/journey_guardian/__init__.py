@@ -27,6 +27,7 @@ from .const import (
     CONF_LIVE_NOTIFICATIONS_ENABLED,
     CONF_PREPARATION_BUFFER_MINUTES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
+    CONF_STATION_ACCESS_MODE,
     CONF_STATION_BUFFER_MINUTES,
     CONF_TRANSPORTAPI_APP_ID,
     CONF_TRANSPORTAPI_APP_KEY,
@@ -38,6 +39,7 @@ from .const import (
     DEFAULT_PREPARATION_BUFFER_MINUTES,
     DEFAULT_SIMULATION_DEPARTURE_MINUTES,
     DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
+    DEFAULT_STATION_ACCESS_MODE,
     DEFAULT_STATION_BUFFER_MINUTES,
     DEFAULT_URGENT_API_RESERVE,
     DOMAIN,
@@ -121,6 +123,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         live_notifications_enabled=settings.get(
             CONF_LIVE_NOTIFICATIONS_ENABLED,
             DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
+        ),
+        station_access_mode=settings.get(
+            CONF_STATION_ACCESS_MODE,
+            DEFAULT_STATION_ACCESS_MODE,
         ),
     )
     automatic_rail_ledger = AutomaticRailLedger(hass)

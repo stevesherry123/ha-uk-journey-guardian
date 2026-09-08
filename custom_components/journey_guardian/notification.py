@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import hashlib
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.components import persistent_notification
@@ -29,6 +30,8 @@ NOTIFIABLE_PHASES = {
     "cancelled",
     "provider_unavailable",
 }
+WAKE_REMINDER_OFFSETS = (0, 5, 10)
+RAIL_CHECKPOINT_MINUTES = (150, 90, 45, 10)
 MAX_LEDGER_ENTRIES = 100
 
 
@@ -74,12 +77,14 @@ class JourneyNotificationScheduler:
         ledger: NotificationLedger,
         *,
         live_notifications_enabled: bool,
+        station_access_mode: str = "auto",
     ) -> None:
         """Initialize the scheduler."""
         self._hass = hass
         self._coordinator = coordinator
         self._ledger = ledger
         self._live_notifications_enabled = live_notifications_enabled
+        self._station_access_mode = station_access_mode
         self._boundary_cancellers: list[Callable[[], None]] = []
         self._remove_listener: Callable[[], None] | None = None
 
@@ -118,8 +123,27 @@ class JourneyNotificationScheduler:
                     self._hass, self._async_boundary_reached, point
                 )
             )
+        timing = snapshot.timing
+        journey = snapshot.next_journey
+        if timing is not None and journey is not None:
+            for reminder_number, offset_minutes in enumerate(
+                WAKE_REMINDER_OFFSETS[1:], start=2
+            ):
+                point = timing.prepare_at + timedelta(minutes=offset_minutes)
+                if now < point < timing.leave_home_at:
+                    self._boundary_cancellers.append(
+                        async_track_point_in_utc_time(
+                            self._hass,
+                            functools.partial(
+                                self._async_wake_reminder_reached,
+                                departure=journey.start,
+                                reminder_number=reminder_number,
+                            ),
+                            point,
+                        )
+                    )
         self._hass.async_create_task(
-            self._async_maybe_notify(snapshot),
+            self._async_evaluate_notifications(snapshot),
             f"{DOMAIN} evaluate operational notification",
         )
 
@@ -133,6 +157,34 @@ class JourneyNotificationScheduler:
         """Refresh the shared decision at an exact operational boundary."""
         await self._coordinator.async_request_refresh()
 
+    async def _async_wake_reminder_reached(
+        self,
+        _now: datetime,
+        *,
+        departure: datetime,
+        reminder_number: int,
+    ) -> None:
+        """Emit a bounded preparation reminder for the current journey."""
+        snapshot = self._coordinator.data
+        journey = snapshot.next_journey
+        if (
+            journey is None
+            or journey.start != departure
+            or snapshot.operational_phase != "prepare_now"
+        ):
+            return
+        await self._async_notify(snapshot, f"wake_{reminder_number}")
+
+    async def _async_evaluate_notifications(
+        self, snapshot: JourneySnapshot
+    ) -> None:
+        """Evaluate operational and live-rail notifications together."""
+        await self._async_maybe_notify(snapshot)
+        if (
+            snapshot.simulation_active or self._live_notifications_enabled
+        ) and _should_notify_rail(snapshot):
+            await self._async_notify(snapshot, _rail_notification_kind(snapshot))
+
     async def _async_maybe_notify(self, snapshot: JourneySnapshot) -> None:
         """Create one local notification for each actionable journey phase."""
         phase = snapshot.operational_phase
@@ -140,7 +192,14 @@ class JourneyNotificationScheduler:
             return
         if not snapshot.simulation_active and not self._live_notifications_enabled:
             return
-        fingerprint = _notification_fingerprint(snapshot, phase)
+        kind = "wake_1" if phase == "prepare_now" else phase
+        await self._async_notify(snapshot, kind)
+
+    async def _async_notify(self, snapshot: JourneySnapshot, kind: str) -> None:
+        """Create one restart-safe local notification of a specific kind."""
+        if snapshot.next_journey is None:
+            return
+        fingerprint = _notification_fingerprint(snapshot, kind)
         if not await self._ledger.async_claim(fingerprint):
             return
         title = (
@@ -150,7 +209,9 @@ class JourneyNotificationScheduler:
         )
         persistent_notification.async_create(
             self._hass,
-            _notification_message(snapshot, phase),
+            _notification_message(
+                snapshot, kind, station_access_mode=self._station_access_mode
+            ),
             title=title,
             notification_id=f"{DOMAIN}_{fingerprint}",
         )
@@ -165,27 +226,110 @@ def _actionable_departure(snapshot: JourneySnapshot) -> datetime:
     return snapshot.next_journey.start
 
 
-def _notification_fingerprint(snapshot: JourneySnapshot, phase: str) -> str:
+def _notification_fingerprint(snapshot: JourneySnapshot, kind: str) -> str:
     """Hash private journey timing into a stable, non-reversible ledger key."""
-    departure = _actionable_departure(snapshot)
+    if snapshot.next_journey is None:
+        raise ValueError("A notification requires a journey")
+    departure = snapshot.next_journey.start
     source = "simulation" if snapshot.simulation_active else "calendar"
-    raw_key = f"{source}|{departure.isoformat()}|{phase}"
+    raw_key = f"{source}|{departure.isoformat()}|{kind}"
     return hashlib.sha256(raw_key.encode()).hexdigest()[:20]
 
 
-def _notification_message(snapshot: JourneySnapshot, phase: str) -> str:
+def _notification_message(
+    snapshot: JourneySnapshot, kind: str, *, station_access_mode: str = "auto"
+) -> str:
     """Build a concise local-only operational message."""
     timing = snapshot.timing
     departure = dt_util.as_local(_actionable_departure(snapshot)).strftime("%H:%M")
-    if phase == "cancelled":
+    if kind.startswith("rail_"):
+        return _rail_notification_message(snapshot)
+    if kind == "cancelled":
         qualifier = " simulated" if snapshot.simulation_active else ""
         return f"The {departure}{qualifier} service is cancelled."
-    if phase == "provider_unavailable":
+    if kind == "provider_unavailable":
         return "Rail data is unavailable. Conservative calendar timing remains active."
     if timing is None:
         return "Journey timing requires attention."
-    if phase == "prepare_now":
+    if kind.startswith("wake_"):
         leave = dt_util.as_local(timing.leave_home_at).strftime("%H:%M")
-        return f"Prepare now. Leave at {leave} for the {departure} departure."
+        reminder_number = int(kind.rsplit("_", 1)[1])
+        return (
+            f"Wake-up reminder {reminder_number}/3. Start getting ready. "
+            f"Leave at {leave} for the {departure} departure."
+        )
     station = dt_util.as_local(timing.station_arrival_at).strftime("%H:%M")
-    return f"Leave now. Aim to arrive by {station} for the {departure} departure."
+    origin = snapshot.next_journey.origin_name
+    if station_access_mode == "driving":
+        action = f"Time to drive to {origin}."
+    else:
+        action = f"Time to leave for {origin}."
+    return (
+        f"{action} Allow {timing.station_access_minutes} minutes and aim to "
+        f"arrive by {station} for the {departure} departure."
+    )
+
+
+def _should_notify_rail(snapshot: JourneySnapshot) -> bool:
+    """Return whether a healthy live observation deserves a status alert."""
+    observation = snapshot.rail_observation
+    return bool(
+        snapshot.next_journey is not None
+        and observation is not None
+        and observation.provider_available
+        and observation.freshness == "current"
+        and not observation.cancelled
+    )
+
+
+def _rail_notification_kind(snapshot: JourneySnapshot) -> str:
+    """Build a checkpoint-and-state key that suppresses unchanged repeats."""
+    observation = snapshot.rail_observation
+    if observation is None:
+        raise ValueError("A rail notification requires an observation")
+    minutes_to_departure = max(
+        0,
+        round(
+            (
+                observation.scheduled_departure - observation.observed_at
+            ).total_seconds()
+            / 60
+        ),
+    )
+    checkpoint = min(
+        RAIL_CHECKPOINT_MINUTES,
+        key=lambda candidate: abs(candidate - minutes_to_departure),
+    )
+    predicted = (
+        observation.predicted_departure.isoformat()
+        if observation.predicted_departure is not None
+        else "scheduled"
+    )
+    state = hashlib.sha256(
+        (
+            f"{observation.service_identity}|{observation.delay_minutes}|"
+            f"{predicted}|{observation.platform}|{observation.leg_count}"
+        ).encode()
+    ).hexdigest()[:12]
+    return f"rail_{checkpoint}_{state}"
+
+
+def _rail_notification_message(snapshot: JourneySnapshot) -> str:
+    """Describe a normalized live service without provider-specific wording."""
+    observation = snapshot.rail_observation
+    journey = snapshot.next_journey
+    if observation is None or journey is None:
+        raise ValueError("A rail notification requires a journey and observation")
+    departure_value = observation.predicted_departure or observation.scheduled_departure
+    departure = dt_util.as_local(departure_value).strftime("%H:%M")
+    if observation.delay_minutes > 0:
+        status = f"is delayed by {observation.delay_minutes} minutes"
+    else:
+        status = "is on time"
+    message = f"The {departure} service {status}."
+    if observation.platform:
+        message += f" Platform {observation.platform}."
+    message += f" Confirmed to call at {journey.destination_confirmation}."
+    if observation.leg_count > 1:
+        message += f" This journey has {observation.leg_count} rail legs."
+    return message

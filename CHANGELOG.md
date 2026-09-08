@@ -4,6 +4,29 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.17] - 2026-09-08
+
+### Added
+
+- Automatic live-rail checkpoints now create passenger-facing on-time or delayed
+  notifications with the current platform and confirmed calling point.
+- Preparation now produces a bounded three-message wake-up sequence, followed by
+  a station-access notification that names driving when it is the configured mode.
+- Live status notifications are emitted once per checkpoint and again only when
+  the predicted time, delay, platform, service, or leg count materially changes.
+
+### Changed
+
+- Operational notification fingerprints now remain stable when live rail data
+  adjusts the actionable departure, preventing duplicate leave-now alerts.
+- Existing installations can edit the station-access mode through the options
+  flow as well as the fallback duration.
+
+### Fixed
+
+- Future automatic rail timers now run as native asynchronous Home Assistant jobs,
+  preventing the intermittent unawaited-checkpoint coroutine seen in live logs.
+
 ## [0.1.16] - 2026-09-07
 
 ### Fixed

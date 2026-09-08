@@ -34,6 +34,8 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - preparation, leave-home, and station-arrival timestamp entities
 - an operational-phase entity with exact, cancellable boundary scheduling
 - restart-safe local notification deduplication
+- bounded preparation reminders and mode-aware station-access alerts
+- checkpoint rail-status notifications with delay, platform and calling-point data
 - a shared quota-enforcing provider request broker with cache and in-flight
   deduplication
 - explicit rail-data freshness and bounded stale-data handling
@@ -222,7 +224,7 @@ Please report security concerns according to [SECURITY.md](SECURITY.md).
 1. destination profiles and user-facing station resolution
 2. validate automatic TransportAPI checkpoints against representative journeys
 3. unified manual-review decision tree
-4. richer actionable departure and disruption notifications
+4. richer station-wide disruption notifications
 5. lightweight interchange monitoring
 6. Google walking/driving estimates and UK local-transit comparison
 7. notification adapters and wearable entry points

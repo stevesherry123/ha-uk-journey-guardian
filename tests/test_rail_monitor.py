@@ -128,7 +128,7 @@ async def test_future_timer_schedules_checkpoint_task(hass) -> None:
     ):
         monitor.start()
         callback = track.call_args_list[0].args[1]
-        callback(NOW + timedelta(minutes=50))
+        await callback(NOW + timedelta(minutes=50))
         await hass.async_block_till_done()
 
     coordinator.async_review_live_rail.assert_awaited_once()

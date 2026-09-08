@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import hashlib
 import logging
 from collections.abc import Callable
@@ -118,10 +119,10 @@ class AutomaticRailMonitor:
                 self._checkpoint_cancellers.append(
                     async_track_point_in_utc_time(
                         self._hass,
-                        lambda reached_at,
-                        departure=journey.start,
-                        lead=lead_minutes: self._checkpoint_reached(
-                            reached_at, departure, lead
+                        functools.partial(
+                            self._async_checkpoint_reached,
+                            departure=journey.start,
+                            lead_minutes=lead_minutes,
                         ),
                         point,
                     )
@@ -138,18 +139,14 @@ class AutomaticRailMonitor:
             cancel()
         self._checkpoint_cancellers.clear()
 
-    @callback
-    def _checkpoint_reached(
+    async def _async_checkpoint_reached(
         self,
         _reached_at: datetime,
         departure: datetime,
         lead_minutes: int,
     ) -> None:
-        """Schedule one reached checkpoint in Home Assistant's task loop."""
-        self._hass.async_create_task(
-            self._async_run_checkpoint(departure, lead_minutes),
-            f"{DOMAIN} automatic rail checkpoint",
-        )
+        """Run a reached checkpoint directly in Home Assistant's async job."""
+        await self._async_run_checkpoint(departure, lead_minutes)
 
     async def _async_run_checkpoint(
         self, departure: datetime, lead_minutes: int

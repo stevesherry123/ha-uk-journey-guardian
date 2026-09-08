@@ -191,6 +191,20 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                         ),
                     ): vol.All(vol.Coerce(int), vol.Range(min=1, max=240)),
                     vol.Required(
+                        CONF_STATION_ACCESS_MODE,
+                        default=current.get(
+                            CONF_STATION_ACCESS_MODE,
+                            DEFAULT_STATION_ACCESS_MODE,
+                        ),
+                    ): vol.In(
+                        {
+                            "auto": "Automatic",
+                            "walking": "Walking",
+                            "driving": "Driving",
+                            "bicycling": "Cycling",
+                        }
+                    ),
+                    vol.Required(
                         CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
                         default=current.get(
                             CONF_AUTOMATIC_LIVE_RAIL_ENABLED,

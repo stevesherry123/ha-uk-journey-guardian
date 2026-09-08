@@ -140,6 +140,7 @@ async def test_options_flow_updates_timing_and_reloads(hass) -> None:
         CONF_EARLY_WARNING_MINUTES: 12,
         CONF_STATION_BUFFER_MINUTES: 20,
         CONF_STATION_ACCESS_FALLBACK_MINUTES: 75,
+        CONF_STATION_ACCESS_MODE: "driving",
         CONF_AUTOMATIC_LIVE_RAIL_ENABLED: True,
         CONF_LIVE_NOTIFICATIONS_ENABLED: False,
         CONF_TRANSPORTAPI_APP_ID: "updated-app-id",

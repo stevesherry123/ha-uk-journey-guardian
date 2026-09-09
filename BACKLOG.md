@@ -185,6 +185,10 @@ accepted replacement decision. Route names and private entity IDs are omitted.
 - configurable notification, announcement, and wearable adapters
 - enhanced manual review using the same traveller and destination decision tree
 - optional UK local-transit comparison for suitable destination profiles
+- investigate an optional Seatfrog integration for UK rail journeys, covering
+  operator and service eligibility, journey matching, available APIs or deep
+  links, commercial requirements, and where to surface relevant upgrade offers;
+  journeys without an available upgrade must continue unaffected
 
 ## International air-travel module
 

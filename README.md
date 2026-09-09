@@ -156,6 +156,10 @@ International air travel is recorded as a future optional module in the
 airport profiles, and may consume a separately configured flight-tracking
 integration, without changing the existing UK rail path.
 
+The backlog also records a separate evidence-led post-journey Delay Repay
+assistant. Any future claim submission will require explicit per-claim user
+approval.
+
 ### Notification delivery roadmap
 
 The current integration creates local persistent notifications only. The next

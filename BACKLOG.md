@@ -223,6 +223,33 @@ path until it has independent acceptance coverage.
   engine works; reuse dedicated aviation cards for map/aircraft visualisation
   rather than reimplementing them
 
+## Post-journey delay-repay assistance
+
+This is a future rail follow-up module. It must be evidence-led, preserve
+privacy, and never submit a financial claim without explicit user approval.
+
+- retain a privacy-safe post-journey outcome record containing the booked leg,
+  provider-confirmed actual arrival, delay minutes, evidence freshness, and any
+  uncertainty or matching failure
+- distinguish service delay from a missed connection, cancellation, shortened
+  journey, voluntary re-routing, and calendar/ticket mismatch; never infer a
+  claim from an incomplete result
+- maintain a reviewed, date-versioned catalogue of rail-operator Delay Repay
+  policies, thresholds, eligibility conditions, exclusions, and claim windows
+- compare the confirmed delay against the applicable operator policy and produce
+  a clear advisory: likely eligible, likely ineligible, or insufficient evidence
+- present a post-journey review containing the evidence, policy version, claim
+  deadline, and required ticket/payment details without storing sensitive ticket
+  data in diagnostics or the notification ledger
+- provide a user-controlled reminder before a claim deadline and an exportable
+  claim checklist or evidence summary
+- investigate operator-supported claim APIs or secure user-authorised web flows;
+  only add claim submission after explicit per-claim confirmation, robust
+  authentication handling, an auditable result, and failure recovery
+- create fixtures for threshold delays, late-night arrivals, cancellations,
+  disrupted connections, operator changes, and policy changes; validate against
+  real journeys before offering eligibility advice
+
 ## Distribution
 
 - publish alpha releases for installation as a HACS custom repository

@@ -4,6 +4,14 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.33] - 2026-09-09
+
+### Added
+
+- A future evidence-led Delay Repay assistance workstream, including policy
+  verification, post-journey outcome evidence, eligibility advice, deadline
+  reminders, and explicit approval requirements for any claim submission.
+
 ## [0.1.32] - 2026-09-09
 
 ### Added

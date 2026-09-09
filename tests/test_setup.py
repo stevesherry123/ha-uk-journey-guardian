@@ -78,6 +78,10 @@ async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
             "custom_components.journey_guardian.TransportAPIClient",
             return_value=transportapi_client,
         ) as client_class,
+        patch(
+            "custom_components.journey_guardian.async_call_later",
+            return_value=Mock(),
+        ) as startup_retry,
         patch.object(
             hass.config_entries,
             "async_forward_entry_setups",
@@ -101,6 +105,29 @@ async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
     automatic_rail_ledger.async_load.assert_awaited_once_with()
     automatic_rail_monitor.start.assert_called_once_with()
     station_access_monitor.start.assert_called_once_with()
+    startup_retry.assert_called_once()
+
+
+async def test_startup_retry_refreshes_only_calendar_unavailable_state(hass) -> None:
+    """A short post-startup retry recovers a calendar service race."""
+    from custom_components.journey_guardian import (
+        _async_retry_calendar_after_startup,
+    )
+
+    coordinator = Mock()
+    coordinator.data = Mock(error="calendar_unavailable")
+    coordinator.async_request_refresh = AsyncMock()
+
+    await _async_retry_calendar_after_startup(coordinator)(datetime.now(UTC))
+
+    coordinator.async_request_refresh.assert_awaited_once_with()
+
+    coordinator.data = Mock(error=None)
+    coordinator.async_request_refresh.reset_mock()
+
+    await _async_retry_calendar_after_startup(coordinator)(datetime.now(UTC))
+
+    coordinator.async_request_refresh.assert_not_awaited()
 
 
 async def test_review_action_registered_without_entry(hass) -> None:

@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.event import async_call_later
 from homeassistant.util import dt as dt_util
 
 from .budget import TransportAPIBudget
@@ -166,6 +167,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     entry.async_on_unload(provider_broker.shutdown)
     await coordinator.async_config_entry_first_refresh()
+    entry.async_on_unload(
+        async_call_later(
+            hass,
+            120,
+            _async_retry_calendar_after_startup(coordinator),
+        )
+    )
     notification_scheduler.start()
     entry.async_on_unload(notification_scheduler.stop)
     automatic_rail_monitor.start()
@@ -174,6 +182,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(station_access_monitor.stop)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+def _async_retry_calendar_after_startup(
+    coordinator: JourneyGuardianCoordinator,
+):
+    """Retry a calendar review after Home Assistant services settle."""
+
+    async def _async_retry(_now) -> None:
+        snapshot = coordinator.data
+        if snapshot is not None and snapshot.error == "calendar_unavailable":
+            await coordinator.async_request_refresh()
+
+    return _async_retry
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

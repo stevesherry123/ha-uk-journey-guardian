@@ -4,6 +4,14 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.24] - 2026-09-09
+
+### Fixed
+
+- If the initial review races Home Assistant's calendar startup, Journey
+  Guardian now automatically retries after two minutes. No manual refresh or
+  separate Home Assistant automation is required.
+
 ## [0.1.23] - 2026-09-09
 
 ### Changed

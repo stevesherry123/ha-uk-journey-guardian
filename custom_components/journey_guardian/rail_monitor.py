@@ -25,6 +25,7 @@ from .coordinator import JourneyGuardianCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 CHECKPOINT_MINUTES = (150, 90, 45, 10)
+DELAY_FOLLOWUP_MINUTES = (5, 15, 30)
 CATCHUP_WINDOW = timedelta(minutes=12)
 MAX_LEDGER_ENTRIES = 100
 
@@ -135,6 +136,22 @@ class AutomaticRailMonitor:
                     self._async_run_checkpoint(journey.start, lead_minutes),
                     f"{DOMAIN} catch up automatic rail checkpoint",
                 )
+        if snapshot.status == "delayed" and snapshot.rail_observation is not None:
+            for elapsed_minutes in DELAY_FOLLOWUP_MINUTES:
+                point = journey.start + timedelta(minutes=elapsed_minutes)
+                if point > now:
+                    future_points.append(point)
+                    self._checkpoint_cancellers.append(
+                        async_track_point_in_utc_time(
+                            self._hass,
+                            functools.partial(
+                                self._async_checkpoint_reached,
+                                departure=journey.start,
+                                lead_minutes=-elapsed_minutes,
+                            ),
+                            point,
+                        )
+                    )
         if future_points:
             self._coordinator.next_live_check_at = min(future_points)
 

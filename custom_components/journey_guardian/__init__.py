@@ -128,6 +128,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         google_routes_client=google_routes_client,
     )
     coordinator = JourneyGuardianCoordinator(hass, entry, engine)
+    await coordinator.live_evidence.async_load()
     notification_ledger = NotificationLedger(hass)
     await notification_ledger.async_load()
     notification_scheduler = JourneyNotificationScheduler(

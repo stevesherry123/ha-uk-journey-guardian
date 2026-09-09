@@ -35,6 +35,7 @@ async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
     budget.async_reserve_call = AsyncMock()
     coordinator = Mock()
     coordinator.async_config_entry_first_refresh = AsyncMock()
+    coordinator.live_evidence.async_load = AsyncMock()
     ledger = Mock()
     ledger.async_load = AsyncMock()
     scheduler = Mock()

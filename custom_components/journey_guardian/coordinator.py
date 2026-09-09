@@ -13,6 +13,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import DEFAULT_UPDATE_INTERVAL, NAME
 from .engine import JourneyGuardianEngine
+from .live_evidence import LiveEvidenceStore
 from .models import JourneySnapshot
 from .phase import calculate_operational_phase
 
@@ -37,6 +38,7 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         self.last_notification: str | None = None
         self.last_notification_at: datetime | None = None
         self._last_live_snapshot: JourneySnapshot | None = None
+        self.live_evidence = LiveEvidenceStore(hass)
         super().__init__(
             hass,
             logger=_LOGGER,
@@ -50,6 +52,10 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         """Return the latest normalized journey state."""
         snapshot = await self.engine.async_review()
         previous = self._last_live_snapshot
+        if previous is None:
+            observation = self.live_evidence.restore(snapshot)
+            if observation is not None:
+                previous = replace(snapshot, rail_observation=observation)
         if _can_retain_live_evidence(snapshot, previous):
             snapshot = _retain_live_evidence(snapshot, previous)
         return snapshot
@@ -80,6 +86,7 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
             and not snapshot.rail_observation.retained
         ):
             self._last_live_snapshot = snapshot
+            await self.live_evidence.async_save(snapshot)
         self.async_set_updated_data(snapshot)
         return snapshot
 

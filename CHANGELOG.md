@@ -4,6 +4,13 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.25] - 2026-09-09
+
+### Added
+
+- The latest verified rail observation is retained across a Home Assistant restart when it matches the same calendar journey.
+- Delayed services receive automatic follow-up checks after scheduled departure.
+
 ## [0.1.24] - 2026-09-09
 
 ### Fixed

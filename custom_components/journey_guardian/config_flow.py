@@ -23,6 +23,7 @@ from .const import (
     CONF_PREPARATION_BUFFER_MINUTES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
     CONF_STATION_ACCESS_MODE,
+    CONF_STATION_ACCESS_PROFILES,
     CONF_STATION_BUFFER_MINUTES,
     CONF_TRANSPORTAPI_APP_ID,
     CONF_TRANSPORTAPI_APP_KEY,
@@ -38,6 +39,10 @@ from .const import (
     DEFAULT_STATION_BUFFER_MINUTES,
     DEFAULT_URGENT_API_RESERVE,
     DOMAIN,
+)
+from .station_access_profiles import (
+    StationAccessProfileError,
+    parse_station_access_profiles,
 )
 
 
@@ -60,9 +65,15 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial setup step."""
         errors: dict[str, str] = {}
         if user_input is not None:
+            try:
+                parse_station_access_profiles(
+                    user_input.get(CONF_STATION_ACCESS_PROFILES)
+                )
+            except StationAccessProfileError as err:
+                errors[CONF_STATION_ACCESS_PROFILES] = str(err)
             if user_input[CONF_URGENT_API_RESERVE] >= user_input[CONF_DAILY_API_LIMIT]:
                 errors[CONF_URGENT_API_RESERVE] = "reserve_must_be_lower"
-            else:
+            if not errors:
                 await self.async_set_unique_id(DOMAIN)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
@@ -112,7 +123,13 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         "walking": "Walking",
                         "driving": "Driving",
                         "bicycling": "Cycling",
+                        "transit": "Public transport",
                     }
+                ),
+                vol.Optional(
+                    CONF_STATION_ACCESS_PROFILES
+                ): selector.TextSelector(
+                    selector.TextSelectorConfig(multiline=True)
                 ),
                 vol.Optional(CONF_TRANSPORTAPI_APP_ID): selector.TextSelector(),
                 vol.Optional(CONF_TRANSPORTAPI_APP_KEY): selector.TextSelector(
@@ -155,7 +172,16 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
     ) -> dict[str, Any]:
         """Manage timing options."""
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            try:
+                parse_station_access_profiles(
+                    user_input.get(CONF_STATION_ACCESS_PROFILES)
+                )
+            except StationAccessProfileError as err:
+                errors = {CONF_STATION_ACCESS_PROFILES: str(err)}
+            else:
+                return self.async_create_entry(title="", data=user_input)
+        else:
+            errors = {}
 
         current = {**self.config_entry.data, **self.config_entry.options}
         return self.async_show_form(
@@ -202,7 +228,14 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                             "walking": "Walking",
                             "driving": "Driving",
                             "bicycling": "Cycling",
+                            "transit": "Public transport",
                         }
+                    ),
+                    vol.Optional(
+                        CONF_STATION_ACCESS_PROFILES,
+                        default=current.get(CONF_STATION_ACCESS_PROFILES, ""),
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(multiline=True)
                     ),
                     vol.Required(
                         CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
@@ -240,4 +273,5 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                     ),
                 }
             ),
+            errors=errors,
         )

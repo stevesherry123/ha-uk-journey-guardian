@@ -15,7 +15,7 @@
           "station_buffer_minutes": "Station arrival buffer",
           "station_access_fallback_minutes": "Conservative station access fallback",
           "station_access_mode": "Default way to reach the station",
-          "station_access_mode": "Default way to reach the station",
+          "station_access_profiles": "Station access profiles",
           "transportapi_app_id": "TransportAPI application ID",
           "transportapi_app_key": "TransportAPI application key",
           "google_routes_api_key": "Google Routes API key",
@@ -33,8 +33,8 @@
           "early_warning_minutes": "Additional conservative margin before preparation should begin.",
           "station_buffer_minutes": "Minutes to arrive at the station before the scheduled train departure.",
           "station_access_fallback_minutes": "Minutes allowed to reach the station until live routing is available. Timing is labelled inferred.",
-          "station_access_mode": "Automatic selects driving at home and public transport while away.",
-          "station_access_mode": "Auto compares suitable modes; a fixed mode can be selected instead.",
+          "station_access_mode": "Default for stations without a profile. Automatic selects driving at home and public transport while away.",
+          "station_access_profiles": "Optional: one CRS station code and travel mode per line, for example CTR=driving or EUS=transit. These override the default. Unknown stations use the default.",
           "transportapi_app_id": "Optional until TransportAPI rail monitoring is enabled.",
           "transportapi_app_key": "Optional until TransportAPI rail monitoring is enabled. Stored privately in the Home Assistant config entry.",
           "google_routes_api_key": "Optional until Google routing is enabled. Use a dedicated restricted server-side Routes API key.",
@@ -46,7 +46,9 @@
       }
     },
     "error": {
-      "reserve_must_be_lower": "The urgent reserve must be lower than the daily limit."
+      "reserve_must_be_lower": "The urgent reserve must be lower than the daily limit.",
+      "invalid_station_access_profiles": "Use one unique CRS=mode entry per line, such as CRE=driving.",
+      "duplicate_station_access_profile": "Each station can appear only once."
     },
     "abort": {
       "already_configured": "UK Journey Guardian is already configured."
@@ -62,6 +64,8 @@
           "early_warning_minutes": "Early warning margin",
           "station_buffer_minutes": "Station arrival buffer",
           "station_access_fallback_minutes": "Conservative station access fallback",
+          "station_access_mode": "Default way to reach the station",
+          "station_access_profiles": "Station access profiles",
           "automatic_live_rail_enabled": "Enable automatic live rail checkpoints",
           "live_notifications_enabled": "Enable live journey notifications",
           "transportapi_app_id": "TransportAPI application ID",
@@ -73,6 +77,8 @@
           "early_warning_minutes": "Additional conservative margin before preparation should begin.",
           "station_buffer_minutes": "Minutes to arrive at the station before the scheduled train departure.",
           "station_access_fallback_minutes": "Minutes allowed to reach the station until live routing is available. Timing is labelled inferred.",
+          "station_access_mode": "Choose the default for stations without a profile. Use profiles for regular exceptions such as CRE=driving.",
+          "station_access_profiles": "One CRS station code and travel mode per line, for example CTR=driving or EUS=transit. Unknown stations use the default.",
           "automatic_live_rail_enabled": "Runs restart-safe, quota-controlled checks about 150, 90, 45, and 10 minutes before departure.",
           "live_notifications_enabled": "Off keeps real calendar journeys in shadow mode while allowing simulation notifications.",
           "transportapi_app_id": "Required for manual or automatic live-rail checks.",

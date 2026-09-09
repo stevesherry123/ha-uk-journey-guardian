@@ -30,6 +30,7 @@ from .const import (
     CONF_PREPARATION_BUFFER_MINUTES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
     CONF_STATION_ACCESS_MODE,
+    CONF_STATION_ACCESS_PROFILES,
     CONF_STATION_BUFFER_MINUTES,
     CONF_TRANSPORTAPI_APP_ID,
     CONF_TRANSPORTAPI_APP_KEY,
@@ -125,6 +126,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         station_access_mode=settings.get(
             CONF_STATION_ACCESS_MODE, DEFAULT_STATION_ACCESS_MODE
         ),
+        station_access_profiles=settings.get(CONF_STATION_ACCESS_PROFILES),
         google_routes_client=google_routes_client,
     )
     coordinator = JourneyGuardianCoordinator(hass, entry, engine)

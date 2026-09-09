@@ -28,6 +28,7 @@ from .provider_broker import ProviderBrokerError
 from .rail import RailDataError, normalize_station_board
 from .simulation import JourneySimulation
 from .station import StationResolution, StationResolutionError, resolve_station
+from .station_access_profiles import mode_for_journey, parse_station_access_profiles
 from .timing import calculate_fallback_timing
 from .transportapi import TransportAPIClient
 
@@ -53,6 +54,7 @@ class JourneyGuardianEngine:
         check_history: CheckHistory | None = None,
         person_entity: str | None = None,
         station_access_mode: str = "auto",
+        station_access_profiles: object = None,
         google_routes_client: GoogleRoutesClient | None = None,
     ) -> None:
         """Initialize the engine."""
@@ -68,6 +70,9 @@ class JourneyGuardianEngine:
         self._check_history = check_history
         self._person_entity = person_entity
         self._station_access_mode = station_access_mode
+        self._station_access_profiles = parse_station_access_profiles(
+            station_access_profiles
+        )
         self._google_routes_client = google_routes_client
         self._station_resolutions: dict[str, StationResolution] = {}
         self._last_live_rail_error: str | None = None
@@ -308,7 +313,9 @@ class JourneyGuardianEngine:
             if self._person_entity
             else None
         )
-        mode = self._station_access_mode
+        mode = mode_for_journey(journey, self._station_access_profiles)
+        if mode is None:
+            mode = self._station_access_mode
         if mode == "auto":
             if person_state is None or person_state.state in {
                 "unknown",

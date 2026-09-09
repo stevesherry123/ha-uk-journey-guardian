@@ -4,6 +4,15 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.28] - 2026-09-09
+
+### Added
+
+- Station access profiles now allow a specific travel mode per CRS station,
+  such as `CTR=driving`, `CRE=driving`, and `EUS=transit`.
+- Stations without a profile retain the configured default mode and conservative
+  fallback; unknown stations are never guessed as driving.
+
 ## [0.1.27] - 2026-09-09
 
 ### Added

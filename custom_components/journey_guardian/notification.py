@@ -261,11 +261,9 @@ def _notification_message(
         )
     station = dt_util.as_local(timing.station_arrival_at).strftime("%H:%M")
     origin = snapshot.next_journey.origin_name
-    effective_mode = (
-        timing.station_access_mode
-        if station_access_mode == "auto"
-        else station_access_mode
-    )
+    effective_mode = timing.station_access_mode
+    if effective_mode == "unknown" and station_access_mode != "auto":
+        effective_mode = station_access_mode
     if effective_mode == "driving":
         action = f"Time to drive to {origin}."
     elif effective_mode == "walking":

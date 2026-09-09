@@ -75,6 +75,24 @@ or error state. Planned journeys automatically force fresh station-access
 checks about 6 hours, 2 hours, 45 minutes, and 15 minutes before departure so
 traffic changes can move the actionable leave time without continuous polling.
 
+### Station access profiles
+
+For regular exceptions, integration options accept one station CRS code and mode
+per line. A matching profile takes priority over the default mode; stations
+without a profile keep the default policy. For example:
+
+```text
+CTR=driving
+CRE=driving
+EUS=transit
+```
+
+Valid modes are `driving`, `walking`, `bicycling`, and `transit`. If a calendar
+station cannot be identified from a configured CRS, an explicit calendar code,
+or a deterministic known station name, the profile is not guessed: Journey
+Guardian uses the default mode and its conservative fallback if live routing is
+unavailable.
+
 ## Calendar format
 
 The preferred and development-tested calendar source is a TripIt calendar feed,

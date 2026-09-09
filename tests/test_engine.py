@@ -150,6 +150,40 @@ async def test_automatic_access_uses_transit_away_from_home() -> None:
     assert routes.async_route.await_args.kwargs["mode"] == "transit"
 
 
+async def test_station_profile_overrides_the_global_access_mode() -> None:
+    """A known CRS profile takes precedence over automatic mode selection."""
+    hass = Mock()
+    hass.states.get.return_value = Mock(
+        state="not_home", attributes={"latitude": 51.5, "longitude": -0.1}
+    )
+    routes = Mock()
+    routes.configured = True
+    routes.async_route = AsyncMock(
+        return_value=StationAccessEstimate(
+            duration_minutes=59,
+            distance_meters=50000,
+            mode="driving",
+            observed_at=CHECKED_AT,
+        )
+    )
+    engine = JourneyGuardianEngine(
+        hass,
+        calendar_entity=CALENDAR_ENTITY,
+        budget=_budget(),
+        person_entity="person.example",
+        station_access_mode="transit",
+        station_access_profiles="CRE=driving",
+        google_routes_client=routes,
+    )
+    journey = _calendar_snapshot(origin_name="Crewe").next_journey
+    assert journey is not None
+
+    timing = await engine._async_calculate_timing(journey)
+
+    assert timing.station_access_mode == "driving"
+    assert routes.async_route.await_args.kwargs["mode"] == "driving"
+
+
 async def test_route_failure_retains_explicit_fallback(caplog) -> None:
     """Provider failure stays safe, inferred, and visible without log spam."""
     hass = Mock()

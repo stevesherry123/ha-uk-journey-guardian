@@ -17,9 +17,11 @@ _CRS_PATTERNS = (
 # Guardian. This avoids spending provider quota on stable station metadata.
 _KNOWN_STATIONS = {
     "chester": ("CTR", "Chester"),
+    "crewe": ("CRE", "Crewe"),
     "liverpool lime street": ("LIV", "Liverpool Lime Street"),
     "london euston": ("EUS", "London Euston"),
     "euston": ("EUS", "London Euston"),
+    "euston station": ("EUS", "London Euston"),
 }
 
 

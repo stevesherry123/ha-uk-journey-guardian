@@ -143,9 +143,13 @@ Accepted development work follows the repository's
 completed change is published to `main`, tagged, released, and verified before it
 is presented as ready for a Home Assistant upgrade.
 
-Development-only replay, connection-risk, and diagnostic-review tools are
+Development-only replay, connection-risk, diagnostic-review, and notification
+preview tools are
 documented in [Shadow-test review tools](docs/SHADOW_TEST_REVIEW.md). They have
 no Home Assistant runtime wiring and do not change live travel decisions.
+
+The current comparison with the documented legacy acceptance inventory is in
+[Feature comparison](docs/FEATURE_COMPARISON.md).
 
 ### Notification delivery roadmap
 

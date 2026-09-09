@@ -4,6 +4,14 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.31] - 2026-09-09
+
+### Added
+
+- An inactive, read-only notification timeline preview and a documented feature
+  comparison against the legacy acceptance inventory. Neither is registered in
+  Home Assistant or able to deliver a notification.
+
 ## [0.1.30] - 2026-09-09
 
 ### Added

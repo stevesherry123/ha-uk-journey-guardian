@@ -4,6 +4,14 @@ These tools are intentionally not wired into the Home Assistant integration.
 They let us review a real journey after the fact without changing its live
 decisions.
 
+## Notification timeline preview
+
+`notification_preview.build_notification_preview(snapshot)` returns the nominal
+journey-detected, wake-up, and leave-now sequence as read-only data. It does not
+register a timer, call a notify service, create a persistent notification, or
+change a coordinator state. A future UI can safely use it to show a traveller
+what would happen before notification delivery is enabled.
+
 ## Rail replay
 
 `scripts/replay_rail_match.py` accepts a locally saved TransportAPI station-board

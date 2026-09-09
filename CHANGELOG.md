@@ -4,6 +4,13 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.29] - 2026-09-09
+
+### Added
+
+- Development-only rail replay, connection-risk, and diagnostics explanation
+  tools for reviewing shadow-test evidence without altering live decisions.
+
 ## [0.1.28] - 2026-09-09
 
 ### Added

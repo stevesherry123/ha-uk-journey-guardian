@@ -4,6 +4,14 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.30] - 2026-09-09
+
+### Added
+
+- An inactive notification-event catalogue for future mobile delivery, test
+  notifications, per-event preferences, and connection-risk alerts. It has no
+  Home Assistant runtime wiring and does not alter current notification output.
+
 ## [0.1.29] - 2026-09-09
 
 ### Added

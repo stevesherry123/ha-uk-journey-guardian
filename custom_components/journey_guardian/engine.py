@@ -254,13 +254,11 @@ class JourneyGuardianEngine:
             else:
                 status = "planned"
             timing = await self._async_calculate_timing(
-                replace(resolved_journey, start=departure),
+                # Live rail data is advisory: a small timetable delay must not
+                # silently relax the traveller's established leave plan.
+                resolved_journey,
                 base_source="transportapi",
-                base_classification=(
-                    "predicted"
-                    if observation.predicted_departure is not None
-                    else "scheduled"
-                ),
+                base_classification="calendar_anchored",
             )
         actionable_departure = (
             observation.predicted_departure

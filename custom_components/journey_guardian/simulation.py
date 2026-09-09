@@ -134,16 +134,7 @@ class JourneySimulation:
             else:
                 status = "planned"
             timing = calculate_fallback_timing(
-                JourneyEvent(
-                    start=effective_departure,
-                    end=journey.end,
-                    summary=journey.summary,
-                    location=journey.location,
-                    origin_code=journey.origin_code,
-                    origin_name=journey.origin_name,
-                    destination_confirmation=journey.destination_confirmation,
-                    decision_path=journey.decision_path,
-                ),
+                journey,
                 preparation_minutes=(2 if request.accelerated else preparation_minutes),
                 early_warning_minutes=(
                     0 if request.accelerated else early_warning_minutes
@@ -156,7 +147,7 @@ class JourneySimulation:
                 ),
                 source="simulation",
                 classification=(
-                    "simulated_predicted"
+                    "simulated_calendar_anchored"
                     if predicted_departure is not None
                     else "simulated_scheduled"
                 ),

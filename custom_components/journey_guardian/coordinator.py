@@ -126,14 +126,8 @@ def _retain_live_evidence(
             observation.predicted_departure or observation.scheduled_departure
         )
         timing = snapshot.timing
-        if timing is not None:
-            offset = actionable_departure - journey.start
-            timing = replace(
-                timing,
-                prepare_at=timing.prepare_at + offset,
-                leave_home_at=timing.leave_home_at + offset,
-                station_arrival_at=timing.station_arrival_at + offset,
-            )
+        # Retained provider evidence remains visible and notification-worthy,
+        # but never alters the calendar-anchored personal departure plan.
         if actionable_departure <= snapshot.checked_at:
             status = "active"
         elif observation.delay_minutes > 0:

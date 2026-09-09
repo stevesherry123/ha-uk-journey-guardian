@@ -407,7 +407,10 @@ async def test_manual_live_review_resolves_and_normalizes_provider_data() -> Non
     assert result.rail_observation.delay_minutes == 8
     assert result.timing is not None
     assert result.timing.source == "transportapi"
-    assert result.timing.classification == "predicted"
+    assert result.timing.classification == "calendar_anchored"
+    assert result.timing.station_arrival_at == datetime(
+        2026, 9, 3, 9, 55, tzinfo=UTC
+    )
     assert result.budget.calls_used == 2
 
 

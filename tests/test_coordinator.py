@@ -200,8 +200,8 @@ async def test_planned_refresh_retains_live_observation(hass) -> None:
     assert route_snapshot.rail_observation.freshness == "retained"
 
 
-async def test_retained_delay_remains_actionable(hass) -> None:
-    """A route refresh preserves a delayed train's adjusted departure times."""
+async def test_retained_delay_keeps_calendar_anchored_timing(hass) -> None:
+    """A route refresh preserves a delay without relaxing the leave plan."""
     departure = CHECKED_AT + timedelta(hours=2)
     predicted = departure + timedelta(minutes=20)
     journey = JourneyEvent(
@@ -266,9 +266,7 @@ async def test_retained_delay_remains_actionable(hass) -> None:
 
     assert snapshot.status == "delayed"
     assert snapshot.timing is not None
-    assert snapshot.timing.leave_home_at == timing.leave_home_at + timedelta(
-        minutes=20
-    )
+    assert snapshot.timing.leave_home_at == timing.leave_home_at
     assert snapshot.rail_observation is not None
     assert snapshot.rail_observation.freshness == "retained"
 

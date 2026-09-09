@@ -55,9 +55,9 @@ def test_delayed_scenario_preserves_scheduled_and_predicted_times() -> None:
         minutes=110
     )
     assert snapshot.timing is not None
-    assert snapshot.timing.station_arrival_at == NOW + timedelta(minutes=95)
+    assert snapshot.timing.station_arrival_at == NOW + timedelta(minutes=75)
     assert snapshot.timing.source == "simulation"
-    assert snapshot.timing.classification == "simulated_predicted"
+    assert snapshot.timing.classification == "simulated_calendar_anchored"
 
 
 def test_cancelled_scenario_suppresses_actionable_timing() -> None:

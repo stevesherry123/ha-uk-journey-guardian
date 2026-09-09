@@ -4,6 +4,14 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.23] - 2026-09-09
+
+### Changed
+
+- Live timetable changes now remain notification and diagnostic information.
+  They no longer move preparation, leave-home, or station-arrival timing away
+  from the calendar plan.
+
 ## [0.1.22] - 2026-09-09
 
 ### Fixed

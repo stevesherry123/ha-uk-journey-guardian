@@ -57,6 +57,10 @@ the integration options, Journey Guardian makes one live check approximately 150
 in persistent private storage before network access, and every request remains
 behind the durable budget. Rail simulations remain provider-free.
 
+The last successful rail observation remains visible between checkpoints. It is
+labelled `retained` before departure and `historical` after departure; only a
+genuinely new `current` observation can produce a new live-rail notification.
+
 When a Google Routes key is configured, calendar reviews calculate the
 station-access leg using the traveller's current Home Assistant coordinates.
 Automatic mode uses traffic-aware driving while the traveller is home and public

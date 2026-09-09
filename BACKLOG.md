@@ -18,6 +18,19 @@ inside each user's Home Assistant installation.
 - [ ] disable the legacy packages and complete an observation period
 - [ ] remove the legacy packages only after the observation period succeeds
 
+## Real-travel readiness sequence
+
+- [x] retain successful pre-departure rail evidence between calendar and route
+  refreshes without duplicating notifications
+- [ ] persist the latest actionable journey and rail observation across a Home
+  Assistant restart, with schema versioning and bounded expiry
+- [ ] follow delayed services after scheduled departure at bounded intervals
+  until departure, cancellation, or the calendar journey ends
+- [ ] expose sustained calendar, routing, and rail-provider failures through
+  Home Assistant Repairs rather than relying only on log warnings
+- [ ] validate direct outbound and return journeys during one real travel day
+  before adding interchange monitoring or additional notification adapters
+
 ## Legacy capability parity inventory
 
 The legacy packages remain the acceptance specification until every applicable

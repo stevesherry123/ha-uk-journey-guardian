@@ -4,6 +4,20 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.22] - 2026-09-09
+
+### Fixed
+
+- Successful live-rail observations now remain visible between automatic
+  checkpoints instead of being cleared by the next calendar poll or forced
+  station-route check.
+- Retained delayed and cancelled observations continue to control status,
+  actionable departure timing, and operational phase until fresh provider
+  evidence replaces them or the selected journey changes.
+- Retained evidence is labelled `retained` before departure and `historical`
+  after departure, preventing it from being mistaken for a fresh provider call
+  or generating duplicate rail notifications.
+
 ## [0.1.21] - 2026-09-08
 
 ### Added

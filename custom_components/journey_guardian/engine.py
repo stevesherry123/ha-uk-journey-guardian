@@ -228,6 +228,7 @@ class JourneyGuardianEngine:
                 station,
                 destination,
                 stage,
+                getattr(err, "schedule_offset_minutes", None),
             )
             return degraded
 
@@ -288,6 +289,7 @@ class JourneyGuardianEngine:
             station,
             destination,
             "complete",
+            None,
         )
         return result
 
@@ -392,6 +394,7 @@ class JourneyGuardianEngine:
         station,
         destination,
         stage,
+        schedule_offset_minutes,
     ) -> None:
         """Persist a privacy-safe live-check audit record."""
         if self._check_history is None:
@@ -418,6 +421,7 @@ class JourneyGuardianEngine:
                 "stage": stage,
                 "outcome": outcome,
                 "error_category": error_category,
+                "schedule_offset_minutes": schedule_offset_minutes,
                 "match_quality": observation.match_quality if observation else None,
                 "calls_used": snapshot.budget.calls_used,
                 "status": snapshot.status,

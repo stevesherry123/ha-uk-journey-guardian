@@ -4,6 +4,14 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.27] - 2026-09-09
+
+### Added
+
+- Live-rail diagnostics now retain the privacy-safe minute offset when a
+  provider timetable does not match the calendar departure. This makes future
+  matching failures actionable without retaining calendar text or raw API data.
+
 ## [0.1.26] - 2026-09-09
 
 ### Fixed

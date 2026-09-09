@@ -17,10 +17,13 @@ MAX_SCHEDULE_OFFSET = timedelta(minutes=5)
 class RailDataError(ValueError):
     """Provider data cannot safely produce a rail observation."""
 
-    def __init__(self, category: str) -> None:
+    def __init__(
+        self, category: str, *, schedule_offset_minutes: int | None = None
+    ) -> None:
         """Expose only a stable, privacy-safe error category."""
         super().__init__(category)
         self.category = category
+        self.schedule_offset_minutes = schedule_offset_minutes
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,9 +57,12 @@ def normalize_station_board(
     )
     selected = match_journey(candidates, journey)
     schedule_offset = selected.scheduled_departure - journey.start
-    if abs(schedule_offset) > MAX_SCHEDULE_OFFSET:
-        raise RailDataError("rail_schedule_mismatch")
     schedule_offset_minutes = round(schedule_offset.total_seconds() / 60)
+    if abs(schedule_offset) > MAX_SCHEDULE_OFFSET:
+        raise RailDataError(
+            "rail_schedule_mismatch",
+            schedule_offset_minutes=schedule_offset_minutes,
+        )
     delay_minutes = 0
     if selected.predicted_departure is not None:
         delay_minutes = max(

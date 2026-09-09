@@ -165,7 +165,7 @@ def test_near_schedule_match_is_explicitly_classified() -> None:
 
 def test_later_unique_service_cannot_delay_calendar_advice() -> None:
     """A plausible but materially later service is not trusted as the journey."""
-    with pytest.raises(RailDataError, match="rail_schedule_mismatch"):
+    with pytest.raises(RailDataError, match="rail_schedule_mismatch") as err:
         _normalize(
             _board(
                 _service(
@@ -174,6 +174,8 @@ def test_later_unique_service_cannot_delay_calendar_advice() -> None:
                 )
             )
         )
+
+    assert err.value.schedule_offset_minutes == 11
 
 
 def test_exact_calling_service_beats_later_wrong_destination() -> None:

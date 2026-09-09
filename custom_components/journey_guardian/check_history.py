@@ -37,7 +37,7 @@ class CheckHistory:
         allowed = {
             "checked_at", "trigger", "journey_fingerprint", "origin_code",
             "destination_code", "operation", "stage", "outcome", "error_category",
-            "match_quality", "calls_used", "status",
+            "schedule_offset_minutes", "match_quality", "calls_used", "status",
         }
         self._records.append({key: record.get(key) for key in allowed})
         self._records = self._records[-MAX_RECORDS:]

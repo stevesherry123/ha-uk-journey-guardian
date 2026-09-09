@@ -186,6 +186,43 @@ accepted replacement decision. Route names and private entity IDs are omitted.
 - enhanced manual review using the same traveller and destination decision tree
 - optional UK local-transit comparison for suitable destination profiles
 
+## International air-travel module
+
+This is a future, disabled-by-default extension of Journey Guardian, not a
+separate replacement integration. It must not affect the existing rail decision
+path until it has independent acceptance coverage.
+
+- add provider-neutral flight-leg and itinerary models, with IATA airport codes,
+  airline/flight number, scheduled and estimated departure/arrival, terminal,
+  gate, and explicit source freshness
+- preserve IANA time-zone information for every flight and ground-transfer time;
+  cover outbound and return journeys across the UK and North American time zones,
+  including daylight-saving transitions
+- add airport profiles for access mode, airport-arrival target, check-in,
+  security, bag-drop, immigration, and connection buffers, all with conservative
+  fallbacks and explicit provenance
+- calculate a calendar-led `home → airport → flight → destination` plan without
+  changing rail-only journey timing
+- introduce an optional flight-status provider adapter behind the existing
+  request-budget, caching, freshness, redaction, and failure-handling contracts
+- evaluate FlightRadar24 as an optional Home Assistant entity/event adapter:
+  consume a deliberately selected tracked flight or airport board rather than
+  duplicate its polling or hard-code a target
+- support flight-specific evidence and notifications: check-in, leave for the
+  airport, terminal/gate change, delay, cancellation, boarding, arrival, and
+  connection risk
+- expose a read-only flight itinerary and notification preview before enabling
+  any live mobile delivery
+- define airport and flight-provider test fixtures, including date-qualified
+  flight-number matching, codeshares, aircraft substitution, overnight flights,
+  cancelled flights, and ambiguous same-number services
+- validate direct international journeys and a connection in shadow mode before
+  enabling live flight notifications; retain existing alarms and manual checks
+  throughout the observation period
+- consider a separate Journey Guardian flight dashboard only after the decision
+  engine works; reuse dedicated aviation cards for map/aircraft visualisation
+  rather than reimplementing them
+
 ## Distribution
 
 - publish alpha releases for installation as a HACS custom repository

@@ -151,6 +151,11 @@ no Home Assistant runtime wiring and do not change live travel decisions.
 The current comparison with the documented legacy acceptance inventory is in
 [Feature comparison](docs/FEATURE_COMPARISON.md).
 
+International air travel is recorded as a future optional module in the
+[development backlog](BACKLOG.md). It will use provider-neutral flight legs and
+airport profiles, and may consume a separately configured flight-tracking
+integration, without changing the existing UK rail path.
+
 ### Notification delivery roadmap
 
 The current integration creates local persistent notifications only. The next

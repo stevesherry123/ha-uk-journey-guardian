@@ -4,6 +4,15 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.32] - 2026-09-09
+
+### Added
+
+- A future international air-travel workstream, covering flight itineraries,
+  timezone safety, airport profiles, provider and FlightRadar24 adapters,
+  passenger notifications, and shadow-mode acceptance gates. This is planning
+  documentation only and has no Home Assistant runtime effect.
+
 ## [0.1.31] - 2026-09-09
 
 ### Added

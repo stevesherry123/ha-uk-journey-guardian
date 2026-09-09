@@ -109,7 +109,7 @@ class AutomaticRailMonitor:
         if (
             journey is None
             or snapshot.simulation_active
-            or snapshot.status in {"active", "cancelled"}
+            or snapshot.status == "cancelled"
             or not self._coordinator.engine.live_rail_configured
         ):
             return
@@ -136,7 +136,13 @@ class AutomaticRailMonitor:
                     self._async_run_checkpoint(journey.start, lead_minutes),
                     f"{DOMAIN} catch up automatic rail checkpoint",
                 )
-        if snapshot.status == "delayed" and snapshot.rail_observation is not None:
+        should_follow_up = (
+            snapshot.status == "delayed" and snapshot.rail_observation is not None
+        ) or (
+            snapshot.status == "active"
+            and snapshot.last_live_rail_error == "transportapi_rail_schedule_mismatch"
+        )
+        if should_follow_up:
             for elapsed_minutes in DELAY_FOLLOWUP_MINUTES:
                 point = journey.start + timedelta(minutes=elapsed_minutes)
                 if point > now:
@@ -151,6 +157,13 @@ class AutomaticRailMonitor:
                             ),
                             point,
                         )
+                    )
+                elif now - point <= CATCHUP_WINDOW:
+                    self._hass.async_create_task(
+                        self._async_run_checkpoint(
+                            journey.start, -elapsed_minutes
+                        ),
+                        f"{DOMAIN} catch up post-departure rail checkpoint",
                     )
         if future_points:
             self._coordinator.next_live_check_at = min(future_points)

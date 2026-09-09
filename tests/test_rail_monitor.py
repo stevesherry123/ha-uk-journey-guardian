@@ -1,5 +1,6 @@
 """Tests for restart-safe automatic rail checkpoints."""
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -150,4 +151,32 @@ def test_monitor_exposes_next_scheduled_live_check(hass) -> None:
         monitor.start()
 
     assert coordinator.next_live_check_at == departure - timedelta(minutes=150)
+    monitor.stop()
+
+
+async def test_monitor_retries_after_departure_when_matching_failed(hass) -> None:
+    """A verified timetable mismatch receives bounded post-departure retries."""
+    departure = NOW - timedelta(minutes=6)
+    coordinator = _coordinator(departure)
+    coordinator.data = replace(
+        coordinator.data,
+        status="active",
+        last_live_rail_error="transportapi_rail_schedule_mismatch",
+    )
+    ledger = Mock()
+    ledger.async_claim = AsyncMock(return_value=True)
+    monitor = AutomaticRailMonitor(hass, coordinator, ledger, enabled=True)
+
+    with patch(
+        "custom_components.journey_guardian.rail_monitor.dt_util.now",
+        return_value=NOW,
+    ):
+        monitor.start()
+        await hass.async_block_till_done()
+
+    coordinator.async_review_live_rail.assert_awaited_once_with(
+        decision_path="transportapi_automatic",
+        urgent=True,
+    )
+    assert coordinator.next_live_check_at == departure + timedelta(minutes=15)
     monitor.stop()

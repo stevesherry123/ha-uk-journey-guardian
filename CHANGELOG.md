@@ -4,6 +4,14 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.26] - 2026-09-09
+
+### Fixed
+
+- When a live rail check cannot match a scheduled service, Journey Guardian now
+  makes bounded post-departure retries. This gives providers time to publish
+  the service's real-time record instead of stopping checks at departure.
+
 ## [0.1.25] - 2026-09-09
 
 ### Added

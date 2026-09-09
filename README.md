@@ -300,6 +300,45 @@ Please report security concerns according to [SECURITY.md](SECURITY.md).
 
 The maintained development list is in [BACKLOG.md](BACKLOG.md).
 
+## Release strategy and path to v1.0
+
+Journey Guardian currently uses an alpha `0.1.x` series. Every accepted change
+is versioned and published so HACS can expose the update; therefore patch
+numbers include safe documentation, test, and inactive-scaffold changes as well
+as runtime fixes.
+
+The intended progression is:
+
+| Version | Purpose |
+| --- | --- |
+| `0.1.x` | Alpha hardening, shadow-test tools, documentation, and safe scaffolds. |
+| `0.2.0` | Rail-core beta after direct real journeys, restart recovery, routing profiles, and diagnostics are accepted. |
+| `0.3.0` | Split-journey beta after interchange and waypoint matching pass representative real tests. |
+| `0.4.0` | Notification beta with explicit mobile target selection, test-send, preferences, deduplication, and end-to-end acceptance. |
+| `0.5.x+` | Optional expansion modules, including international air travel. These do not block a stable UK rail core. |
+| `0.9.0` | Release candidate: feature freeze except for acceptance fixes. |
+| `1.0.0` | Stable UK rail Journey Guardian. |
+
+### v1.0 acceptance gate
+
+Version 1.0 is a reliability milestone, not a promise that every future travel
+module exists. It requires all of the following:
+
+- repeated real-world acceptance of direct and split rail journeys
+- robust provider matching for ordinary services and waypoint/calling-point
+  services
+- proven restart/reload recovery, provider quotas, and bounded failure fallbacks
+- validated station-access profiles and conservative fallback timing
+- at least one user-selected mobile notification path accepted end-to-end
+- no duplicate or missed critical alerts across restarts or timetable updates
+- complete privacy, diagnostics, configuration-migration, and HACS validation
+- a defined observation period with legacy automations retained, followed by a
+  safe, evidence-led retirement decision
+
+International flight support and Delay Repay assistance are planned `1.x`
+modules. They will be developed behind separate opt-in and acceptance gates;
+they must not delay or weaken the stable rail core.
+
 ## Development
 
 ```bash

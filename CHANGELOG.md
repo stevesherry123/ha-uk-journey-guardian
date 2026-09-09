@@ -4,6 +4,14 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.34] - 2026-09-09
+
+### Added
+
+- A public release strategy and evidence-based v1.0 acceptance gate in the main
+  README, including the boundaries for post-v1 international and Delay Repay
+  modules.
+
 ## [0.1.33] - 2026-09-09
 
 ### Added

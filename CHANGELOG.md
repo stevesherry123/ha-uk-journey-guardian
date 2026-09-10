@@ -4,6 +4,8 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.35] - 2026-09-10
+
 ### Fixed
 
 - Close the live-rail monitoring blind spot around departure by checking again

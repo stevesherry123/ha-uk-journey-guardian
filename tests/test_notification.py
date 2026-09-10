@@ -171,20 +171,18 @@ async def test_live_notification_uses_configured_announcement_engine() -> None:
         announcement_script_entity="script.announce_steve_iphone",
     )
 
+    snapshot = _snapshot(simulation=False)
     with patch(
         "custom_components.journey_guardian.notification."
         "persistent_notification.async_create"
     ) as create_notification:
-        await scheduler._async_maybe_notify(_snapshot(simulation=False))
+        await scheduler._async_maybe_notify(snapshot)
 
     assert hass.services.async_call.await_args_list == [
         (
             ("input_text", "set_value", {
                 "entity_id": "input_text.announce_text",
-                "value": (
-                    "Time to leave for Simulation Origin. Allow 60 minutes and "
-                    "aim to arrive by 10:00 for the 10:15 departure."
-                ),
+                "value": _notification_message(snapshot, "leave_now"),
             }),
             {"blocking": True},
         ),

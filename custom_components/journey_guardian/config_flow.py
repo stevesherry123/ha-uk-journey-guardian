@@ -265,13 +265,21 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                     ): selector.BooleanSelector(),
                     vol.Optional(
                         CONF_ANNOUNCEMENT_TEXT_ENTITY,
-                        default=current.get(CONF_ANNOUNCEMENT_TEXT_ENTITY, ""),
+                        **(
+                            {"default": current[CONF_ANNOUNCEMENT_TEXT_ENTITY]}
+                            if current.get(CONF_ANNOUNCEMENT_TEXT_ENTITY)
+                            else {}
+                        ),
                     ): selector.EntitySelector(
                         selector.EntitySelectorConfig(domain="input_text")
                     ),
                     vol.Optional(
                         CONF_ANNOUNCEMENT_SCRIPT_ENTITY,
-                        default=current.get(CONF_ANNOUNCEMENT_SCRIPT_ENTITY, ""),
+                        **(
+                            {"default": current[CONF_ANNOUNCEMENT_SCRIPT_ENTITY]}
+                            if current.get(CONF_ANNOUNCEMENT_SCRIPT_ENTITY)
+                            else {}
+                        ),
                     ): selector.EntitySelector(
                         selector.EntitySelectorConfig(domain="script")
                     ),

@@ -170,7 +170,7 @@ async def test_station_profile_overrides_the_global_access_mode() -> None:
         hass,
         calendar_entity=CALENDAR_ENTITY,
         budget=_budget(),
-        person_entity="person.example",
+        person_entity="example_person_entity",
         station_access_mode="transit",
         station_access_profiles="CRE=driving",
         google_routes_client=routes,

@@ -116,6 +116,7 @@ class AutomaticRailMonitor:
 
         now = dt_util.now()
         future_points: list[datetime] = []
+        catchup_points: list[tuple[datetime, int]] = []
         for lead_minutes in CHECKPOINT_MINUTES:
             point = journey.start - timedelta(minutes=lead_minutes)
             if point > now:
@@ -132,10 +133,7 @@ class AutomaticRailMonitor:
                     )
                 )
             elif now - point <= CATCHUP_WINDOW:
-                self._hass.async_create_task(
-                    self._async_run_checkpoint(journey.start, lead_minutes),
-                    f"{DOMAIN} catch up automatic rail checkpoint",
-                )
+                catchup_points.append((point, lead_minutes))
         # A service which is still reported on time at the final pre-departure
         # check can acquire a delay afterwards. Always keep a bounded set of
         # post-departure checks so that this last-minute change is observed.
@@ -155,10 +153,16 @@ class AutomaticRailMonitor:
                     )
                 )
             elif now - point <= CATCHUP_WINDOW:
-                self._hass.async_create_task(
-                    self._async_run_checkpoint(journey.start, -elapsed_minutes),
-                    f"{DOMAIN} catch up post-departure rail checkpoint",
-                )
+                catchup_points.append((point, -elapsed_minutes))
+        # Catch-up windows overlap around departure. Run only the most recent
+        # due checkpoint so a coordinator refresh cannot spend quota twice for
+        # effectively the same live observation.
+        if catchup_points:
+            _point, lead_minutes = max(catchup_points, key=lambda item: item[0])
+            self._hass.async_create_task(
+                self._async_run_checkpoint(journey.start, lead_minutes),
+                f"{DOMAIN} catch up rail checkpoint",
+            )
         if future_points:
             self._coordinator.next_live_check_at = min(future_points)
 

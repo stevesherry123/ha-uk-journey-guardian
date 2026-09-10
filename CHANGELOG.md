@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0-beta.2
+
+- Prevent overlapping pre- and post-departure catch-up windows from making
+  duplicate live-rail requests.
+
 All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]

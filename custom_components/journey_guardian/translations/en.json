@@ -22,7 +22,9 @@
           "daily_api_limit": "Daily TransportAPI call limit",
           "urgent_api_reserve": "Calls reserved for urgent checks",
           "automatic_live_rail_enabled": "Enable automatic live rail checkpoints",
-          "live_notifications_enabled": "Enable live journey notifications"
+          "live_notifications_enabled": "Enable live journey notifications",
+          "announcement_text_entity": "Announcement text helper",
+          "announcement_script_entity": "Announcement script"
         },
         "data_description": {
           "calendar_entity": "Calendar containing timed rail journey events.",
@@ -41,7 +43,9 @@
           "daily_api_limit": "Maximum TransportAPI calls permitted each local day.",
           "urgent_api_reserve": "Routine checks stop before consuming this final reserve.",
           "automatic_live_rail_enabled": "Off by default. When enabled, Journey Guardian makes one quota-controlled live rail check at each planned checkpoint.",
-          "live_notifications_enabled": "Off by default during shadow testing. Simulations can still create test notifications."
+          "live_notifications_enabled": "Off by default during shadow testing. Simulations can still create test notifications.",
+          "announcement_text_entity": "Input text helper that receives the rendered announcement before the script runs.",
+          "announcement_script_entity": "Script called after the announcement text helper has been updated."
         }
       }
     },
@@ -68,6 +72,8 @@
           "station_access_profiles": "Station access profiles",
           "automatic_live_rail_enabled": "Enable automatic live rail checkpoints",
           "live_notifications_enabled": "Enable live journey notifications",
+          "announcement_text_entity": "Announcement text helper",
+          "announcement_script_entity": "Announcement script",
           "transportapi_app_id": "TransportAPI application ID",
           "transportapi_app_key": "TransportAPI application key",
           "google_routes_api_key": "Google Routes API key"
@@ -81,6 +87,8 @@
           "station_access_profiles": "One CRS station code and travel mode per line, for example CTR=driving or EUS=transit. Unknown stations use the default.",
           "automatic_live_rail_enabled": "Runs restart-safe, quota-controlled checks about 150, 90, 45, 10, and 2 minutes before departure, with bounded post-departure follow-ups.",
           "live_notifications_enabled": "Off keeps real calendar journeys in shadow mode while allowing simulation notifications.",
+          "announcement_text_entity": "Select the input text helper used by your announcement engine.",
+          "announcement_script_entity": "Select the script that delivers the announcement after the helper is updated.",
           "transportapi_app_id": "Required for manual or automatic live-rail checks.",
           "transportapi_app_key": "Required for manual or automatic live-rail checks. Stored privately in the Home Assistant config entry.",
           "google_routes_api_key": "Optional Google Routes key for live station-access timing. Stored privately in the Home Assistant config entry."

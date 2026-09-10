@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import hashlib
+import logging
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from typing import Any
@@ -23,6 +24,8 @@ from .const import (
 from .coordinator import JourneyGuardianCoordinator
 from .models import JourneySnapshot
 from .phase import future_phase_boundaries
+
+_LOGGER = logging.getLogger(__name__)
 
 NOTIFIABLE_PHASES = {
     "prepare_now",
@@ -78,6 +81,8 @@ class JourneyNotificationScheduler:
         *,
         live_notifications_enabled: bool,
         station_access_mode: str = "auto",
+        announcement_text_entity: str = "",
+        announcement_script_entity: str = "",
     ) -> None:
         """Initialize the scheduler."""
         self._hass = hass
@@ -85,6 +90,9 @@ class JourneyNotificationScheduler:
         self._ledger = ledger
         self._live_notifications_enabled = live_notifications_enabled
         self._station_access_mode = station_access_mode
+        self._announcement_text_entity = announcement_text_entity.strip()
+        self._announcement_script_entity = announcement_script_entity.strip()
+        self._delivery_lock = asyncio.Lock()
         self._boundary_cancellers: list[Callable[[], None]] = []
         self._remove_listener: Callable[[], None] | None = None
 
@@ -207,15 +215,60 @@ class JourneyNotificationScheduler:
             if snapshot.simulation_active
             else "UK Journey Guardian"
         )
-        persistent_notification.async_create(
-            self._hass,
-            _notification_message(
-                snapshot, kind, station_access_mode=self._station_access_mode
-            ),
+        message = _notification_message(
+            snapshot, kind, station_access_mode=self._station_access_mode
+        )
+        await self._async_deliver(
+            message,
             title=title,
             notification_id=f"{DOMAIN}_{fingerprint}",
+            simulation=snapshot.simulation_active,
         )
         self._coordinator.record_notification(kind, dt_util.now())
+
+    async def _async_deliver(
+        self,
+        message: str,
+        *,
+        title: str,
+        notification_id: str,
+        simulation: bool,
+    ) -> None:
+        """Deliver live messages through the configured announcement engine."""
+        configured = bool(
+            self._announcement_text_entity.startswith("input_text.")
+            and self._announcement_script_entity.startswith("script.")
+        )
+        if not simulation and configured:
+            try:
+                async with self._delivery_lock:
+                    await self._hass.services.async_call(
+                        "input_text",
+                        "set_value",
+                        {
+                            "entity_id": self._announcement_text_entity,
+                            "value": message,
+                        },
+                        blocking=True,
+                    )
+                    await self._hass.services.async_call(
+                        "script",
+                        self._announcement_script_entity.removeprefix("script."),
+                        {},
+                        blocking=True,
+                    )
+                return
+            except Exception as err:  # HA service failures vary by platform.
+                _LOGGER.warning(
+                    "Announcement delivery failed with %s; using local fallback",
+                    type(err).__name__,
+                )
+        persistent_notification.async_create(
+            self._hass,
+            message,
+            title=title,
+            notification_id=notification_id,
+        )
 
 
 def _actionable_departure(snapshot: JourneySnapshot) -> datetime:

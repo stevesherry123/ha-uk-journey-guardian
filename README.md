@@ -162,12 +162,12 @@ approval.
 
 ### Notification delivery roadmap
 
-The current integration creates local persistent notifications only. The next
-notification slice will add an explicit delivery target (for example, a selected
-Home Assistant mobile-app notify service), a safe **send test notification**
-control, and per-event preferences. Its planned event vocabulary is already
-scaffolded in `notification_plan.py`, but it is not yet wired into Home
-Assistant and cannot send any new notification in this release.
+The current integration creates local persistent notifications and can hand live
+messages to an existing Home Assistant announcement engine. Configure an
+`input_text` helper and a script; Journey Guardian writes the rendered message
+to the helper, then calls the script so household-specific delivery remains
+outside the integration. Simulations remain local, and a failed announcement
+falls back to a persistent notification.
 
 The proposed defaults prioritise action: wake-up reminders, leave-now, material
 rail changes, cancellations, connection risk, and provider failures. Repeated

@@ -31,8 +31,8 @@ cannot deliver notifications.
 The next live-notification delivery change should be reviewed separately and
 must include all of the following:
 
-1. an explicit selection of a Home Assistant notify service rather than a
-   hard-coded mobile target;
+1. an explicit selection of a Home Assistant announcement text helper and
+   delivery script rather than a hard-coded mobile target;
 2. a test-send control that cannot send a journey detail;
 3. per-event preferences based on the event catalogue;
 4. channel-specific deduplication, cooldowns, and superseding behaviour;

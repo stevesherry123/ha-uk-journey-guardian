@@ -4,6 +4,15 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0-beta.1] - 2026-09-10
+
+### Added
+
+- Add a configurable announcement-engine adapter which writes each live journey
+  message to a selected `input_text` helper and then calls a selected script.
+  Simulation messages remain local, and failed announcement delivery falls back
+  to a Home Assistant persistent notification.
+
 ## [0.1.35] - 2026-09-10
 
 ### Fixed

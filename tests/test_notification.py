@@ -155,6 +155,68 @@ async def test_live_notification_can_be_enabled_explicitly() -> None:
     assert coordinator.record_notification.call_args.args[0] == "leave_now"
 
 
+async def test_live_notification_uses_configured_announcement_engine() -> None:
+    """Live delivery writes the message before invoking the selected script."""
+    hass = Mock()
+    hass.services.async_call = AsyncMock()
+    coordinator = Mock()
+    ledger = Mock()
+    ledger.async_claim = AsyncMock(return_value=True)
+    scheduler = JourneyNotificationScheduler(
+        hass,
+        coordinator,
+        ledger,
+        live_notifications_enabled=True,
+        announcement_text_entity="input_text.announce_text",
+        announcement_script_entity="script.announce_steve_iphone",
+    )
+
+    with patch(
+        "custom_components.journey_guardian.notification."
+        "persistent_notification.async_create"
+    ) as create_notification:
+        await scheduler._async_maybe_notify(_snapshot(simulation=False))
+
+    assert hass.services.async_call.await_args_list == [
+        (
+            ("input_text", "set_value", {
+                "entity_id": "input_text.announce_text",
+                "value": (
+                    "Time to leave for Simulation Origin. Allow 60 minutes and "
+                    "aim to arrive by 10:00 for the 10:15 departure."
+                ),
+            }),
+            {"blocking": True},
+        ),
+        (("script", "announce_steve_iphone", {}), {"blocking": True}),
+    ]
+    create_notification.assert_not_called()
+
+
+async def test_failed_announcement_uses_persistent_fallback() -> None:
+    """A broken announcement engine cannot discard an actionable alert."""
+    hass = Mock()
+    hass.services.async_call = AsyncMock(side_effect=RuntimeError)
+    ledger = Mock()
+    ledger.async_claim = AsyncMock(return_value=True)
+    scheduler = JourneyNotificationScheduler(
+        hass,
+        Mock(),
+        ledger,
+        live_notifications_enabled=True,
+        announcement_text_entity="input_text.announce_text",
+        announcement_script_entity="script.announce_steve_iphone",
+    )
+
+    with patch(
+        "custom_components.journey_guardian.notification."
+        "persistent_notification.async_create"
+    ) as create_notification:
+        await scheduler._async_maybe_notify(_snapshot(simulation=False))
+
+    create_notification.assert_called_once()
+
+
 async def test_live_observation_reports_on_time_platform_and_calling_point() -> None:
     """A live checkpoint becomes a useful passenger-facing status alert."""
     ledger = Mock()

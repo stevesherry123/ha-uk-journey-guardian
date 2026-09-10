@@ -11,6 +11,8 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_ANNOUNCEMENT_SCRIPT_ENTITY,
+    CONF_ANNOUNCEMENT_TEXT_ENTITY,
     CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
     CONF_CALENDAR_ENTITY,
     CONF_DAILY_API_LIMIT,
@@ -157,6 +159,16 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_LIVE_NOTIFICATIONS_ENABLED,
                     default=DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
                 ): selector.BooleanSelector(),
+                vol.Optional(
+                    CONF_ANNOUNCEMENT_TEXT_ENTITY
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="input_text")
+                ),
+                vol.Optional(
+                    CONF_ANNOUNCEMENT_SCRIPT_ENTITY
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="script")
+                ),
             }
         )
         return self.async_show_form(
@@ -251,6 +263,18 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                             DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
                         ),
                     ): selector.BooleanSelector(),
+                    vol.Optional(
+                        CONF_ANNOUNCEMENT_TEXT_ENTITY,
+                        default=current.get(CONF_ANNOUNCEMENT_TEXT_ENTITY, ""),
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="input_text")
+                    ),
+                    vol.Optional(
+                        CONF_ANNOUNCEMENT_SCRIPT_ENTITY,
+                        default=current.get(CONF_ANNOUNCEMENT_SCRIPT_ENTITY, ""),
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="script")
+                    ),
                     vol.Optional(
                         CONF_TRANSPORTAPI_APP_ID,
                         default=current.get(CONF_TRANSPORTAPI_APP_ID, ""),

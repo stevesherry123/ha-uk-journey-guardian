@@ -22,6 +22,8 @@ CONF_DAILY_API_LIMIT = "daily_api_limit"
 CONF_URGENT_API_RESERVE = "urgent_api_reserve"
 CONF_LIVE_NOTIFICATIONS_ENABLED = "live_notifications_enabled"
 CONF_AUTOMATIC_LIVE_RAIL_ENABLED = "automatic_live_rail_enabled"
+CONF_ANNOUNCEMENT_TEXT_ENTITY = "announcement_text_entity"
+CONF_ANNOUNCEMENT_SCRIPT_ENTITY = "announcement_script_entity"
 
 DEFAULT_HOME_ZONE = "zone.home"
 DEFAULT_PREPARATION_BUFFER_MINUTES = 30

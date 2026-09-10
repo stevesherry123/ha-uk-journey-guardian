@@ -20,6 +20,8 @@ from .const import (
     ATTR_DEPARTURE_IN_MINUTES,
     ATTR_DURATION_MINUTES,
     ATTR_SCENARIO,
+    CONF_ANNOUNCEMENT_SCRIPT_ENTITY,
+    CONF_ANNOUNCEMENT_TEXT_ENTITY,
     CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
     CONF_CALENDAR_ENTITY,
     CONF_DAILY_API_LIMIT,
@@ -144,6 +146,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         station_access_mode=settings.get(
             CONF_STATION_ACCESS_MODE,
             DEFAULT_STATION_ACCESS_MODE,
+        ),
+        announcement_text_entity=settings.get(CONF_ANNOUNCEMENT_TEXT_ENTITY, ""),
+        announcement_script_entity=settings.get(
+            CONF_ANNOUNCEMENT_SCRIPT_ENTITY, ""
         ),
     )
     automatic_rail_ledger = AutomaticRailLedger(hass)

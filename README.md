@@ -242,12 +242,13 @@ daily limit or consumes the urgent reserve. The next ordinary calendar refresh
 can replace the manual rail observation.
 
 **Automatic live rail checkpoints** are opt-in under the integration's
-**Configure** menu. They run approximately 150, 90, 45, and 10 minutes before a
-departure. The first three are routine; the final check may use the protected
-urgent reserve. A restart-safe hashed ledger prevents duplicate checks, and a
-12-minute catch-up window tolerates modest calendar synchronization or startup
-latency. Enabling or reloading inside that window can therefore perform the one
-recently due check.
+**Configure** menu. They run approximately 150, 90, 45, 10, and 2 minutes before a
+departure, then 5, 15, and 30 minutes afterwards while the journey remains
+current. The first three are routine; near- and post-departure checks may use the
+protected urgent reserve. A restart-safe hashed ledger prevents duplicate checks,
+and a 12-minute catch-up window tolerates modest calendar synchronization or
+startup latency. Enabling or reloading inside that window can therefore perform
+the one recently due check.
 
 The TransportAPI budget entity counts requests reserved by Journey Guardian. It
 cannot observe requests made with the same provider account by legacy packages,

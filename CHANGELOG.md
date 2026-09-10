@@ -4,6 +4,12 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Close the live-rail monitoring blind spot around departure by checking again
+  two minutes before departure and at bounded post-departure checkpoints even
+  when the last provider response still described the service as on time.
+
 ## [0.1.34] - 2026-09-09
 
 ### Added

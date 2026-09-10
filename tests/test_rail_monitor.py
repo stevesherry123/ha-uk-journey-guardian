@@ -61,8 +61,8 @@ async def test_monitor_catches_up_once_at_routine_checkpoint(hass) -> None:
 
 
 async def test_final_checkpoint_can_use_urgent_reserve(hass) -> None:
-    """Only the final ten-minute checkpoint is classified as urgent."""
-    coordinator = _coordinator(NOW + timedelta(minutes=10))
+    """The final two-minute checkpoint is classified as urgent."""
+    coordinator = _coordinator(NOW + timedelta(minutes=2))
     ledger = Mock()
     ledger.async_claim = AsyncMock(return_value=True)
     monitor = AutomaticRailMonitor(hass, coordinator, ledger, enabled=True)
@@ -163,6 +163,30 @@ async def test_monitor_retries_after_departure_when_matching_failed(hass) -> Non
         status="active",
         last_live_rail_error="transportapi_rail_schedule_mismatch",
     )
+    ledger = Mock()
+    ledger.async_claim = AsyncMock(return_value=True)
+    monitor = AutomaticRailMonitor(hass, coordinator, ledger, enabled=True)
+
+    with patch(
+        "custom_components.journey_guardian.rail_monitor.dt_util.now",
+        return_value=NOW,
+    ):
+        monitor.start()
+        await hass.async_block_till_done()
+
+    coordinator.async_review_live_rail.assert_awaited_once_with(
+        decision_path="transportapi_automatic",
+        urgent=True,
+    )
+    assert coordinator.next_live_check_at == departure + timedelta(minutes=15)
+    monitor.stop()
+
+
+async def test_monitor_rechecks_after_departure_when_service_was_on_time(hass) -> None:
+    """A planned service is rechecked after departure for last-minute delays."""
+    departure = NOW - timedelta(minutes=6)
+    coordinator = _coordinator(departure)
+    coordinator.data = replace(coordinator.data, status="active")
     ledger = Mock()
     ledger.async_claim = AsyncMock(return_value=True)
     monitor = AutomaticRailMonitor(hass, coordinator, ledger, enabled=True)

@@ -24,8 +24,8 @@ from .coordinator import JourneyGuardianCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-CHECKPOINT_MINUTES = (150, 90, 45, 10)
-DELAY_FOLLOWUP_MINUTES = (5, 15, 30)
+CHECKPOINT_MINUTES = (150, 90, 45, 10, 2)
+POST_DEPARTURE_CHECKPOINT_MINUTES = (5, 15, 30)
 CATCHUP_WINDOW = timedelta(minutes=12)
 MAX_LEDGER_ENTRIES = 100
 
@@ -136,35 +136,29 @@ class AutomaticRailMonitor:
                     self._async_run_checkpoint(journey.start, lead_minutes),
                     f"{DOMAIN} catch up automatic rail checkpoint",
                 )
-        should_follow_up = (
-            snapshot.status == "delayed" and snapshot.rail_observation is not None
-        ) or (
-            snapshot.status == "active"
-            and snapshot.last_live_rail_error == "transportapi_rail_schedule_mismatch"
-        )
-        if should_follow_up:
-            for elapsed_minutes in DELAY_FOLLOWUP_MINUTES:
-                point = journey.start + timedelta(minutes=elapsed_minutes)
-                if point > now:
-                    future_points.append(point)
-                    self._checkpoint_cancellers.append(
-                        async_track_point_in_utc_time(
-                            self._hass,
-                            functools.partial(
-                                self._async_checkpoint_reached,
-                                departure=journey.start,
-                                lead_minutes=-elapsed_minutes,
-                            ),
-                            point,
-                        )
-                    )
-                elif now - point <= CATCHUP_WINDOW:
-                    self._hass.async_create_task(
-                        self._async_run_checkpoint(
-                            journey.start, -elapsed_minutes
+        # A service which is still reported on time at the final pre-departure
+        # check can acquire a delay afterwards. Always keep a bounded set of
+        # post-departure checks so that this last-minute change is observed.
+        for elapsed_minutes in POST_DEPARTURE_CHECKPOINT_MINUTES:
+            point = journey.start + timedelta(minutes=elapsed_minutes)
+            if point > now:
+                future_points.append(point)
+                self._checkpoint_cancellers.append(
+                    async_track_point_in_utc_time(
+                        self._hass,
+                        functools.partial(
+                            self._async_checkpoint_reached,
+                            departure=journey.start,
+                            lead_minutes=-elapsed_minutes,
                         ),
-                        f"{DOMAIN} catch up post-departure rail checkpoint",
+                        point,
                     )
+                )
+            elif now - point <= CATCHUP_WINDOW:
+                self._hass.async_create_task(
+                    self._async_run_checkpoint(journey.start, -elapsed_minutes),
+                    f"{DOMAIN} catch up post-departure rail checkpoint",
+                )
         if future_points:
             self._coordinator.next_live_check_at = min(future_points)
 

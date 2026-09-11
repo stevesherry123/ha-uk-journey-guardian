@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0-beta.4
+
+### Added
+
+- Optional Railinfo live-rail provider. It requires no credentials and uses its
+  separate fair-use allowance rather than consuming TransportAPI credits.
+- A provider selector in the integration options, with Railinfo station search,
+  live-board normalization, response caching, request de-duplication and
+  rate-limit handling.
+
 ## 0.2.0-beta.3
 
 ### Added

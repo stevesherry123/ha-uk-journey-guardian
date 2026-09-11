@@ -37,6 +37,7 @@ class ProviderRequest:
     provider: str
     operation: str
     parameters: Mapping[str, Any]
+    quota_controlled: bool = True
 
     def fingerprint(self) -> str:
         """Return a stable hash without retaining request parameters."""
@@ -54,6 +55,7 @@ class ProviderRequest:
                     "provider": self.provider,
                     "operation": self.operation,
                     "parameters": dict(self.parameters),
+                    "quota_controlled": self.quota_controlled,
                 },
                 allow_nan=False,
                 separators=(",", ":"),
@@ -114,6 +116,7 @@ class _CacheEntry:
 @dataclass(slots=True)
 class _PendingRequest:
     urgent: bool
+    quota_controlled: bool
     task: asyncio.Task[ProviderResult] | None = None
     reserved_as_urgent: bool = False
 
@@ -177,7 +180,9 @@ class ProviderRequestBroker:
 
             pending = self._inflight.get(fingerprint)
             if pending is None:
-                pending = _PendingRequest(urgent=urgent)
+                pending = _PendingRequest(
+                    urgent=urgent, quota_controlled=request.quota_controlled
+                )
                 task = self._hass.async_create_task(
                     self._async_acquire(fingerprint, fetcher, pending),
                     "journey_guardian provider request",
@@ -245,18 +250,19 @@ class ProviderRequestBroker:
         """Perform one shared provider attempt for all concurrent waiters."""
         await asyncio.sleep(0)
         pending.reserved_as_urgent = pending.urgent
-        reserved = await self._budget.async_reserve_call(
-            urgent=pending.reserved_as_urgent
-        )
-        if not reserved:
-            return self._stale_or_raise(
-                fingerprint, ERROR_QUOTA_EXHAUSTED, dt_util.utcnow()
+        if pending.quota_controlled:
+            reserved = await self._budget.async_reserve_call(
+                urgent=pending.reserved_as_urgent
             )
+            if not reserved:
+                return self._stale_or_raise(
+                    fingerprint, ERROR_QUOTA_EXHAUSTED, dt_util.utcnow()
+                )
 
         try:
             raw_payload = await fetcher()
         except ProviderBrokerError as err:
-            if err.category == ERROR_QUOTA_EXHAUSTED:
+            if err.category == ERROR_QUOTA_EXHAUSTED and pending.quota_controlled:
                 await self._budget.async_mark_exhausted()
             return self._stale_or_raise(
                 fingerprint, err.category, dt_util.utcnow()

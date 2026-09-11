@@ -28,6 +28,7 @@ from .const import (
     CONF_EARLY_WARNING_MINUTES,
     CONF_GOOGLE_ROUTES_API_KEY,
     CONF_LIVE_NOTIFICATIONS_ENABLED,
+    CONF_LIVE_RAIL_PROVIDER,
     CONF_PERSON_ENTITY,
     CONF_PREPARATION_BUFFER_MINUTES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
@@ -41,6 +42,7 @@ from .const import (
     DEFAULT_DAILY_API_LIMIT,
     DEFAULT_EARLY_WARNING_MINUTES,
     DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
+    DEFAULT_LIVE_RAIL_PROVIDER,
     DEFAULT_PREPARATION_BUFFER_MINUTES,
     DEFAULT_SIMULATION_DEPARTURE_MINUTES,
     DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
@@ -61,6 +63,7 @@ from .google_routes import GoogleRoutesClient
 from .notification import JourneyNotificationScheduler, NotificationLedger
 from .provider_broker import ProviderRequestBroker
 from .rail_monitor import AutomaticRailLedger, AutomaticRailMonitor
+from .railinfo import RailinfoClient
 from .runtime import JourneyGuardianRuntimeData
 from .simulation import JourneySimulation
 from .station_access_monitor import StationAccessMonitor
@@ -100,6 +103,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         app_id=settings.get(CONF_TRANSPORTAPI_APP_ID, ""),
         app_key=settings.get(CONF_TRANSPORTAPI_APP_KEY, ""),
     )
+    railinfo_client = RailinfoClient(session, provider_broker)
     google_routes_client = GoogleRoutesClient(
         session,
         settings.get(CONF_GOOGLE_ROUTES_API_KEY, ""),
@@ -124,6 +128,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
         simulation=simulation,
         transportapi_client=transportapi_client,
+        railinfo_client=railinfo_client,
+        live_rail_provider=settings.get(
+            CONF_LIVE_RAIL_PROVIDER, DEFAULT_LIVE_RAIL_PROVIDER
+        ),
         check_history=check_history,
         person_entity=entry.data.get(CONF_PERSON_ENTITY, ""),
         station_access_mode=settings.get(

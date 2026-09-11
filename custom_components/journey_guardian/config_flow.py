@@ -21,6 +21,7 @@ from .const import (
     CONF_GOOGLE_ROUTES_API_KEY,
     CONF_HOME_ZONE,
     CONF_LIVE_NOTIFICATIONS_ENABLED,
+    CONF_LIVE_RAIL_PROVIDER,
     CONF_PERSON_ENTITY,
     CONF_PREPARATION_BUFFER_MINUTES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
@@ -35,6 +36,7 @@ from .const import (
     DEFAULT_EARLY_WARNING_MINUTES,
     DEFAULT_HOME_ZONE,
     DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
+    DEFAULT_LIVE_RAIL_PROVIDER,
     DEFAULT_PREPARATION_BUFFER_MINUTES,
     DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
     DEFAULT_STATION_ACCESS_MODE,
@@ -139,6 +141,13 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         type=selector.TextSelectorType.PASSWORD
                     )
                 ),
+                vol.Required(
+                    CONF_LIVE_RAIL_PROVIDER,
+                    default=DEFAULT_LIVE_RAIL_PROVIDER,
+                ): vol.In({
+                    "transportapi": "TransportAPI (uses configured daily limit)",
+                    "railinfo": "Railinfo (no key; separate fair-use limit)",
+                }),
                 vol.Optional(CONF_GOOGLE_ROUTES_API_KEY): selector.TextSelector(
                     selector.TextSelectorConfig(
                         type=selector.TextSelectorType.PASSWORD
@@ -295,6 +304,16 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                             type=selector.TextSelectorType.PASSWORD
                         )
                     ),
+                    vol.Required(
+                        CONF_LIVE_RAIL_PROVIDER,
+                        default=current.get(
+                            CONF_LIVE_RAIL_PROVIDER,
+                            DEFAULT_LIVE_RAIL_PROVIDER,
+                        ),
+                    ): vol.In({
+                        "transportapi": "TransportAPI (uses configured daily limit)",
+                        "railinfo": "Railinfo (no key; separate fair-use limit)",
+                    }),
                     vol.Optional(
                         CONF_GOOGLE_ROUTES_API_KEY,
                         default=current.get(CONF_GOOGLE_ROUTES_API_KEY, ""),

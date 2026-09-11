@@ -21,7 +21,7 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - split journeys are represented as separate calendar events and monitored by leg
 - departure location and time select the live service; destination confirms it
 - credentials and journey details are redacted from diagnostics
-- provider calls are guarded by explicit quotas and failure fallbacks
+- provider calls are bounded, cached and protected by failure fallbacks
 
 ## Alpha capabilities
 
@@ -41,7 +41,7 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - explicit rail-data freshness and bounded stale-data handling
 - offline station-code resolution and defensive rail-board normalization
 - deterministic service matching with stable privacy-safe service identities
-- manual and opt-in automatic live-rail checks through the shared quota broker
+- manual and opt-in automatic live-rail checks via TransportAPI or Railinfo
 - editable conservative station-access and early-warning timing
 - a persistent shared TransportAPI budget with an urgent-call reserve
 - status, next-departure, decision-path, API-budget, and data-health entities
@@ -51,7 +51,9 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - an explicit **Simulation active** diagnostic entity
 - automated validation and unit tests
 
-Automatic TransportAPI monitoring is off by default. When explicitly enabled in
+A live rail provider is selected in the integration options. TransportAPI uses
+the configured daily credit budget; Railinfo uses its separate published
+fair-use allowance. Automatic monitoring is off by default. When enabled,
 the integration options, Journey Guardian makes one live check approximately 150,
 90, 45, and 10 minutes before the selected departure. Each checkpoint is claimed
 in persistent private storage before network access, and every request remains
@@ -233,7 +235,8 @@ installations.
 returns the normalized engine snapshot when a response is requested.
 
 `journey_guardian.review_rail_now`—also available as **Check live rail now** on
-the device—first refreshes the calendar and then explicitly checks TransportAPI.
+the device—first refreshes the calendar and then explicitly checks the selected
+live rail provider.
 The first unresolved origin and destination may use three routine calls: two
 exact station lookups and one live departure-board request filtered to services
 that call at the intended destination. Station resolutions are reused in memory,
@@ -255,6 +258,9 @@ cannot observe requests made with the same provider account by legacy packages,
 other integrations, scripts, or external applications. If TransportAPI reports
 that the account allocation is exhausted, Journey Guardian immediately closes
 its local budget for the rest of that provider day and records a stable error.
+Railinfo calls are deliberately excluded from this entity: they remain bounded
+by the same checkpoint schedule, 30-second cache, de-duplication and HTTP 429
+back-off, but do not consume TransportAPI credits.
 
 `journey_guardian.simulate_journey` activates a synthetic scenario using generic
 locations and an offset from the current time. While it is active, reviews bypass

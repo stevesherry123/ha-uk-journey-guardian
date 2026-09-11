@@ -48,6 +48,12 @@ All-day trip-summary events are ignored.
 
 ## UK rail information
 
+Choose one live rail provider in the integration options. Railinfo is keyless
+and is the simplest option for personal use; it uses a separate fair-use limit
+and does not decrement the TransportAPI budget entity.
+
+- [Railinfo developer information](https://railinfo.uk/developers)
+
 Create a TransportAPI developer account and obtain the `app_id` and `app_key`
 for an application. The free plan currently advertises 30 calls per day, so the
 integration enforces a daily budget and preserves an urgent reserve.

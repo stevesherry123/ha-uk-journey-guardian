@@ -122,6 +122,29 @@ async def test_urgent_request_can_use_reserved_allowance(hass) -> None:
     budget.async_reserve_call.assert_awaited_once_with(urgent=True)
 
 
+async def test_separate_provider_does_not_reserve_transportapi_credit(hass) -> None:
+    """Railinfo-style public requests retain cache safety without credit use."""
+    budget = _budget(False)
+    broker = ProviderRequestBroker(hass, budget)
+    public_request = ProviderRequest(
+        provider="railinfo",
+        operation="departures",
+        parameters={"station_code": "EUS"},
+        quota_controlled=False,
+    )
+
+    with patch(
+        "custom_components.journey_guardian.provider_broker.dt_util.utcnow",
+        return_value=NOW,
+    ):
+        result = await broker.async_request(
+            public_request, AsyncMock(return_value=PAYLOAD)
+        )
+
+    assert result.healthy
+    budget.async_reserve_call.assert_not_awaited()
+
+
 async def test_urgent_waiter_retries_routine_quota_denial(hass) -> None:
     """A joined urgent check can still use reserve after routine denial."""
     calls: list[bool] = []

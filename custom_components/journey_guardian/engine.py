@@ -26,6 +26,7 @@ from .models import JourneyEvent, JourneySnapshot, JourneyTiming
 from .phase import calculate_operational_phase
 from .provider_broker import ProviderBrokerError
 from .rail import RailDataError, normalize_station_board
+from .railinfo import RailinfoClient
 from .simulation import JourneySimulation
 from .station import StationResolution, StationResolutionError, resolve_station
 from .station_access_profiles import mode_for_journey, parse_station_access_profiles
@@ -51,6 +52,8 @@ class JourneyGuardianEngine:
         ),
         simulation: JourneySimulation | None = None,
         transportapi_client: TransportAPIClient | None = None,
+        railinfo_client: RailinfoClient | None = None,
+        live_rail_provider: str = "transportapi",
         check_history: CheckHistory | None = None,
         person_entity: str | None = None,
         station_access_mode: str = "auto",
@@ -67,6 +70,8 @@ class JourneyGuardianEngine:
         self._station_access_fallback_minutes = station_access_fallback_minutes
         self._simulation = simulation
         self._transportapi_client = transportapi_client
+        self._railinfo_client = railinfo_client
+        self._live_rail_provider = live_rail_provider
         self._check_history = check_history
         self._person_entity = person_entity
         self._station_access_mode = station_access_mode
@@ -149,10 +154,7 @@ class JourneyGuardianEngine:
     @property
     def live_rail_configured(self) -> bool:
         """Return whether quota-controlled live rail acquisition is available."""
-        return bool(
-            self._transportapi_client is not None
-            and self._transportapi_client.configured
-        )
+        return self._live_rail_client() is not None
 
     @property
     def station_access_configured(self) -> bool:
@@ -175,9 +177,12 @@ class JourneyGuardianEngine:
         journey = snapshot.next_journey
         if journey is None:
             raise ValueError("rail_journey_unavailable")
-        client = self._transportapi_client
-        if client is None or not client.configured:
-            raise ValueError("transportapi_credentials_missing")
+        client = self._live_rail_client()
+        provider = self._live_rail_provider
+        if client is None:
+            raise ValueError(f"{provider}_credentials_missing")
+        if provider != "transportapi" and decision_path.startswith("transportapi_"):
+            decision_path = decision_path.replace("transportapi", provider, 1)
 
         station = None
         destination = None
@@ -188,6 +193,7 @@ class JourneyGuardianEngine:
                 code=journey.origin_code,
                 location=journey.location,
                 urgent=urgent,
+                client=client,
             )
             stage = "resolve_destination"
             destination = await self._async_resolve_station(
@@ -195,6 +201,7 @@ class JourneyGuardianEngine:
                 code="CALENDAR",
                 location="",
                 urgent=urgent,
+                client=client,
             )
             stage = "station_timetable"
             board = await client.async_station_board(
@@ -209,6 +216,7 @@ class JourneyGuardianEngine:
                 journey=journey,
                 observed_at=board.observed_at,
                 expected_station_code=station.code,
+                source=provider,
             )
             observation = replace(
                 observation,
@@ -218,7 +226,7 @@ class JourneyGuardianEngine:
             )
         except (ProviderBrokerError, RailDataError, StationResolutionError) as err:
             category = getattr(err, "category", "provider_unavailable")
-            self._last_live_rail_error = f"transportapi_{category}"
+            self._last_live_rail_error = f"{provider}_{category}"
             _LOGGER.warning("Manual rail review failed: %s", category)
             degraded = replace(
                 snapshot,
@@ -263,7 +271,7 @@ class JourneyGuardianEngine:
                 # Live rail data is advisory: a small timetable delay must not
                 # silently relax the traveller's established leave plan.
                 resolved_journey,
-                base_source="transportapi",
+                base_source=provider,
                 base_classification="calendar_anchored",
             )
         actionable_departure = (
@@ -436,7 +444,13 @@ class JourneyGuardianEngine:
         )
 
     async def _async_resolve_station(
-        self, *, name: str, code: str, location: str, urgent: bool = False
+        self,
+        *,
+        name: str,
+        code: str,
+        location: str,
+        urgent: bool = False,
+        client: TransportAPIClient | RailinfoClient | None = None,
     ) -> StationResolution:
         """Resolve explicitly or with one cached manual Places lookup."""
         cache_key = hashlib.sha256(
@@ -459,11 +473,9 @@ class JourneyGuardianEngine:
         except StationResolutionError as err:
             if err.category != "station_code_unresolved":
                 raise
-            if self._transportapi_client is None:
+            if client is None:
                 raise
-            places = await self._transportapi_client.async_places(
-                name, urgent=urgent
-            )
+            places = await client.async_places(name, urgent=urgent)
             station = resolve_station(
                 origin_name=name,
                 origin_code=code,
@@ -474,6 +486,15 @@ class JourneyGuardianEngine:
             self._station_resolutions.pop(next(iter(self._station_resolutions)))
         self._station_resolutions[cache_key] = station
         return station
+
+    def _live_rail_client(self) -> TransportAPIClient | RailinfoClient | None:
+        """Return the selected live provider only when it is usable."""
+        client = (
+            self._railinfo_client
+            if self._live_rail_provider == "railinfo"
+            else self._transportapi_client
+        )
+        return client if client is not None and client.configured else None
 
     async def _async_calendar_events(self, start: Any) -> list[dict[str, Any]]:
         end = start + timedelta(hours=DEFAULT_LOOKAHEAD_HOURS)

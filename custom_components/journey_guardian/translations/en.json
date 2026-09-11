@@ -18,6 +18,7 @@
           "station_access_profiles": "Station access profiles",
           "transportapi_app_id": "TransportAPI application ID",
           "transportapi_app_key": "TransportAPI application key",
+          "live_rail_provider": "Live rail provider",
           "google_routes_api_key": "Google Routes API key",
           "daily_api_limit": "Daily TransportAPI call limit",
           "urgent_api_reserve": "Calls reserved for urgent checks",
@@ -39,6 +40,7 @@
           "station_access_profiles": "Optional: one CRS station code and travel mode per line, for example CTR=driving or EUS=transit. These override the default. Unknown stations use the default.",
           "transportapi_app_id": "Optional until TransportAPI rail monitoring is enabled.",
           "transportapi_app_key": "Optional until TransportAPI rail monitoring is enabled. Stored privately in the Home Assistant config entry.",
+          "live_rail_provider": "TransportAPI uses the configured daily credit limit. Railinfo is keyless and uses its separate fair-use allowance, with the same bounded checkpoint schedule.",
           "google_routes_api_key": "Optional until Google routing is enabled. Use a dedicated restricted server-side Routes API key.",
           "daily_api_limit": "Maximum TransportAPI calls permitted each local day.",
           "urgent_api_reserve": "Routine checks stop before consuming this final reserve.",
@@ -62,7 +64,7 @@
     "step": {
       "init": {
         "title": "Journey settings",
-        "description": "Edit conservative timing, notifications, and optional TransportAPI credentials.",
+        "description": "Edit conservative timing, notifications, and the live rail provider.",
         "data": {
           "preparation_buffer_minutes": "Preparation buffer",
           "early_warning_minutes": "Early warning margin",
@@ -76,6 +78,7 @@
           "announcement_script_entity": "Announcement script",
           "transportapi_app_id": "TransportAPI application ID",
           "transportapi_app_key": "TransportAPI application key",
+          "live_rail_provider": "Live rail provider",
           "google_routes_api_key": "Google Routes API key"
         },
         "data_description": {
@@ -91,6 +94,7 @@
           "announcement_script_entity": "Select the script that delivers the announcement after the helper is updated.",
           "transportapi_app_id": "Required for manual or automatic live-rail checks.",
           "transportapi_app_key": "Required for manual or automatic live-rail checks. Stored privately in the Home Assistant config entry.",
+          "live_rail_provider": "Railinfo needs no credentials and does not consume the TransportAPI budget. Its use remains bounded by Journey Guardian's checkpoint schedule and provider rate-limit back-off.",
           "google_routes_api_key": "Optional Google Routes key for live station-access timing. Stored privately in the Home Assistant config entry."
         }
       }
@@ -126,7 +130,7 @@
     },
     "review_rail_now": {
       "name": "Check live rail now",
-      "description": "Explicitly check TransportAPI for the current calendar journey. This can consume provider allowance."
+      "description": "Explicitly check the selected live rail provider for the current calendar journey. TransportAPI can consume its configured allowance; Railinfo uses its separate fair-use allowance."
     },
     "simulate_journey": {
       "name": "Simulate journey",

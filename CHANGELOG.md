@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0-beta.3
+
+### Added
+
+- A provider-free nightly Journey Guardian review at 23:30 local time. It
+  summarises the day's saved live-rail evidence, highlights delayed or
+  unresolved journeys, and never makes an additional TransportAPI request.
+
+### Changed
+
+- Use a dense final-minute checkpoint cadence and one post-departure
+  confirmation instead of routine 5-, 15-, and 30-minute post-departure polls.
+
 ## 0.2.0-beta.2
 
 - Prevent overlapping pre- and post-departure catch-up windows from making

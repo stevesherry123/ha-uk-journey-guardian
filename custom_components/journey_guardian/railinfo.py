@@ -56,18 +56,23 @@ class RailinfoClient:
         calling_at: str,
         urgent: bool = False,
     ) -> ProviderResult:
-        """Fetch a bounded live departure board for one origin station."""
-        del departure, calling_at  # Matching remains local and calendar-anchored.
+        """Fetch the live direct journey leg, including an intermediate stop."""
         code = station_code.strip().upper()
-        parameters = {"station_code": code, "limit": 50}
+        destination = calling_at.strip().upper()
+        parameters = {
+            "from": code,
+            "to": destination,
+            "date": departure.date().isoformat(),
+            "time": departure.strftime("%H%M"),
+        }
         return await self._broker.async_request(
             ProviderRequest(
                 provider="railinfo",
-                operation="departures",
+                operation="journeys",
                 parameters=parameters,
                 quota_controlled=False,
             ),
-            lambda: self._async_board_json(code, {"limit": 50}),
+            lambda: self._async_journey_json(code, destination, parameters),
             urgent=urgent,
         )
 
@@ -85,41 +90,51 @@ class RailinfoClient:
             ]
         }
 
-    async def _async_board_json(
-        self, station_code: str, parameters: Mapping[str, Any]
+    async def _async_journey_json(
+        self,
+        station_code: str,
+        destination_code: str,
+        parameters: Mapping[str, Any],
     ) -> Mapping[str, Any]:
-        payload = await self._async_json(
-            f"/boards/{station_code}/departures", parameters
-        )
+        """Map route-aware journey results into the shared rail matcher shape."""
+        payload = await self._async_json("/journeys", parameters)
         if not isinstance(payload, Mapping):
-            raise TypeError("Railinfo board response must be an object")
-        records = payload.get("departures")
-        if not isinstance(records, list):
-            raise TypeError("Railinfo departures must be a list")
+            raise TypeError("Railinfo journey response must be an object")
+        journeys = payload.get("journeys")
+        if not isinstance(journeys, list):
+            raise TypeError("Railinfo journeys must be a list")
+        records: list[Mapping[str, Any]] = []
+        for journey in journeys:
+            if not isinstance(journey, Mapping) or journey.get("changes") != 0:
+                continue
+            legs = journey.get("legs")
+            if not isinstance(legs, list) or len(legs) != 1:
+                continue
+            leg = legs[0]
+            if not isinstance(leg, Mapping):
+                continue
+            if (
+                str(leg.get("from_crs", "")).upper() != station_code
+                or str(leg.get("to_crs", "")).upper() != destination_code
+            ):
+                continue
+            records.append(leg)
         return {
-            "station_code": payload.get("crs"),
+            "station_code": station_code,
             "date": payload.get("date"),
             "departures": {
                 "all": [
                     {
                         "mode": "train",
-                        "aimed_departure_time": _clock(record.get("public_dep")),
-                        "expected_departure_time": record.get("etd") or "",
-                        "destination_name": record.get("destination"),
-                        "operator_name": record.get("operator"),
-                        "train_uid": (
-                            record.get("live_train_id")
-                            or record.get("signalling_id")
-                        ),
+                        "aimed_departure_time": _clock(record.get("dep")),
+                        "expected_departure_time": "",
+                        "destination_name": record.get("to_name"),
+                        "operator_name": record.get("atoc_code"),
+                        "train_uid": record.get("headcode"),
                         "status": record.get("status") or "",
-                        "platform": (
-                            record.get("live_platform")
-                            or record.get("sched_platform")
-                            or ""
-                        ),
+                        "platform": record.get("dep_platform") or "",
                     }
                     for record in records
-                    if isinstance(record, Mapping)
                 ]
             },
         }

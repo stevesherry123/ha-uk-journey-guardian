@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0-beta.5
+
+### Fixed
+
+- Match Railinfo journey legs by their requested origin and intermediate
+  destination, so a through train is correctly identified even when it
+  terminates beyond the traveller's alighting station.
+
 ## 0.2.0-beta.4
 
 ### Added

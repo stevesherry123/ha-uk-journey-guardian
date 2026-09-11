@@ -24,8 +24,8 @@ from .coordinator import JourneyGuardianCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-CHECKPOINT_MINUTES = (150, 90, 45, 10, 2)
-POST_DEPARTURE_CHECKPOINT_MINUTES = (5, 15, 30)
+CHECKPOINT_MINUTES = (180, 120, 75, 45, 30, 15, 10, 7, 5, 3, 1)
+POST_DEPARTURE_CHECKPOINT_MINUTES = (1,)
 CATCHUP_WINDOW = timedelta(minutes=12)
 MAX_LEDGER_ENTRIES = 100
 

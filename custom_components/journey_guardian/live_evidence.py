@@ -76,7 +76,7 @@ class LiveEvidenceStore:
                 match_quality=str(raw.get("match_quality", "not_applicable")),
                 schedule_offset_minutes=int(raw.get("schedule_offset_minutes", 0)),
             )
-        except KeyError, TypeError, ValueError:
+        except (KeyError, TypeError, ValueError):
             return None
 
 

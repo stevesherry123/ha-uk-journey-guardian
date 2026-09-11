@@ -55,6 +55,7 @@ from .const import (
     SIMULATION_SCENARIOS,
 )
 from .coordinator import JourneyGuardianCoordinator
+from .end_of_day import EndOfDayReview
 from .engine import JourneyGuardianEngine
 from .google_routes import GoogleRoutesClient
 from .notification import JourneyNotificationScheduler, NotificationLedger
@@ -164,6 +165,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
     )
     station_access_monitor = StationAccessMonitor(hass, coordinator)
+    end_of_day_review = EndOfDayReview(hass, check_history)
     entry.runtime_data = JourneyGuardianRuntimeData(
         coordinator=coordinator,
         budget=budget,
@@ -173,6 +175,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         automatic_rail_monitor=automatic_rail_monitor,
         check_history=check_history,
         station_access_monitor=station_access_monitor,
+        end_of_day_review=end_of_day_review,
     )
     entry.async_on_unload(provider_broker.shutdown)
     await coordinator.async_config_entry_first_refresh()
@@ -189,6 +192,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(automatic_rail_monitor.stop)
     station_access_monitor.start()
     entry.async_on_unload(station_access_monitor.stop)
+    end_of_day_review.start()
+    entry.async_on_unload(end_of_day_review.stop)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

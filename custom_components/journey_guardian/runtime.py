@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from .budget import TransportAPIBudget
 from .check_history import CheckHistory
 from .coordinator import JourneyGuardianCoordinator
+from .end_of_day import EndOfDayReview
 from .notification import JourneyNotificationScheduler
 from .provider_broker import ProviderRequestBroker
 from .rail_monitor import AutomaticRailMonitor
@@ -24,3 +25,4 @@ class JourneyGuardianRuntimeData:
     automatic_rail_monitor: AutomaticRailMonitor
     check_history: CheckHistory
     station_access_monitor: StationAccessMonitor
+    end_of_day_review: EndOfDayReview

@@ -187,6 +187,10 @@ start getting ready = leave time - preparation buffer - early-warning margin
 ```
 
 The safety margins and conservative station-access duration are user choices.
+When live routing is available, a separate minimum station-access allowance can
+retain fixed overhead such as parking and walking into the station. Journey
+Guardian uses the greater of the live route duration and that configured
+minimum.
 Provider results include `source: google_routes`, a `live_<mode>` or
 `cached_<mode>` classification, the calculation time, selected mode and distance.
 Fallback results remain

@@ -35,3 +35,29 @@ def test_conservative_fallback_timing_matches_decision_formula() -> None:
     assert timing.source == "configured_fallback"
     assert timing.classification == "inferred"
     assert timing.as_dict()["leave_home_at"] == "2026-08-29T15:15:00+00:00"
+
+
+def test_morning_journey_preferences_produce_required_deadlines() -> None:
+    """Coffee, station access, and preparation margins compose predictably."""
+    journey = JourneyEvent(
+        start=datetime(2026, 9, 24, 6, 24, tzinfo=UTC),
+        end=None,
+        summary="Rail - Chester to London Euston",
+        location="Chester",
+        origin_code="CTR",
+        origin_name="Chester",
+        destination_confirmation="London Euston",
+        decision_path="calendar_route",
+    )
+
+    timing = calculate_fallback_timing(
+        journey,
+        preparation_minutes=30,
+        early_warning_minutes=15,
+        station_buffer_minutes=24,
+        station_access_minutes=30,
+    )
+
+    assert timing.prepare_at == datetime(2026, 9, 24, 4, 45, tzinfo=UTC)
+    assert timing.leave_home_at == datetime(2026, 9, 24, 5, 30, tzinfo=UTC)
+    assert timing.station_arrival_at == datetime(2026, 9, 24, 6, 0, tzinfo=UTC)

@@ -22,6 +22,7 @@ def calculate_fallback_timing(
     station_access_distance_meters: int | None = None,
     station_access_error: str | None = None,
     station_access_checked_at: datetime | None = None,
+    station_access_provider_minutes: int | None = None,
 ) -> JourneyTiming:
     """Calculate conservative timing from configured fallback durations."""
     station_arrival = journey.start - timedelta(minutes=station_buffer_minutes)
@@ -45,4 +46,5 @@ def calculate_fallback_timing(
         station_access_distance_meters=station_access_distance_meters,
         station_access_error=station_access_error,
         station_access_checked_at=station_access_checked_at,
+        station_access_provider_minutes=station_access_provider_minutes,
     )

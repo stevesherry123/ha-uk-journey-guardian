@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Add a configurable minimum station-access allowance so short live-routing
+  estimates cannot remove fixed overhead such as parking and walking into the
+  station. Routing diagnostics expose both provider and applied durations.
+
 ## 0.2.0-beta.5
 
 ### Fixed

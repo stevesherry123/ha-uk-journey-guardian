@@ -230,6 +230,7 @@ class StationAccessHealthSensor(JourneyGuardianEntity, SensorEntity):
             return {
                 "mode": None,
                 "duration_minutes": None,
+                "provider_duration_minutes": None,
                 "distance_meters": None,
                 "source": None,
                 "classification": None,
@@ -245,6 +246,7 @@ class StationAccessHealthSensor(JourneyGuardianEntity, SensorEntity):
         return {
             "mode": timing.station_access_mode,
             "duration_minutes": timing.station_access_minutes,
+            "provider_duration_minutes": timing.station_access_provider_minutes,
             "distance_meters": timing.station_access_distance_meters,
             "source": timing.station_access_source,
             "classification": timing.station_access_classification,

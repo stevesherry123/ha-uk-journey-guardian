@@ -18,6 +18,7 @@ from .const import (
     DEFAULT_LOOKAHEAD_HOURS,
     DEFAULT_PREPARATION_BUFFER_MINUTES,
     DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
+    DEFAULT_STATION_ACCESS_MINIMUM_MINUTES,
     DEFAULT_STATION_BUFFER_MINUTES,
 )
 from .google_routes import GoogleRoutesClient, GoogleRoutesError
@@ -50,6 +51,9 @@ class JourneyGuardianEngine:
         station_access_fallback_minutes: int = (
             DEFAULT_STATION_ACCESS_FALLBACK_MINUTES
         ),
+        station_access_minimum_minutes: int = (
+            DEFAULT_STATION_ACCESS_MINIMUM_MINUTES
+        ),
         simulation: JourneySimulation | None = None,
         transportapi_client: TransportAPIClient | None = None,
         railinfo_client: RailinfoClient | None = None,
@@ -68,6 +72,7 @@ class JourneyGuardianEngine:
         self._early_warning_minutes = early_warning_minutes
         self._station_buffer_minutes = station_buffer_minutes
         self._station_access_fallback_minutes = station_access_fallback_minutes
+        self._station_access_minimum_minutes = station_access_minimum_minutes
         self._simulation = simulation
         self._transportapi_client = transportapi_client
         self._railinfo_client = railinfo_client
@@ -381,23 +386,29 @@ class JourneyGuardianEngine:
                 fallback,
                 station_access_error=f"google_routes_{category}",
             )
+        provider_minutes = estimate.duration_minutes
+        applied_minutes = max(
+            provider_minutes, self._station_access_minimum_minutes
+        )
+        classification = (
+            f"cached_{mode}" if estimate.cache_hit else f"live_{mode}"
+        )
+        if applied_minutes > provider_minutes:
+            classification = f"{classification}_minimum"
         return calculate_fallback_timing(
             journey,
             preparation_minutes=self._preparation_buffer_minutes,
             early_warning_minutes=self._early_warning_minutes,
             station_buffer_minutes=self._station_buffer_minutes,
-            station_access_minutes=estimate.duration_minutes,
+            station_access_minutes=applied_minutes,
             source="google_routes",
-            classification=(
-                f"cached_{mode}" if estimate.cache_hit else f"live_{mode}"
-            ),
+            classification=classification,
             station_access_mode=mode,
             station_access_source="google_routes",
-            station_access_classification=(
-                f"cached_{mode}" if estimate.cache_hit else f"live_{mode}"
-            ),
+            station_access_classification=classification,
             station_access_distance_meters=estimate.distance_meters,
             station_access_checked_at=estimate.observed_at,
+            station_access_provider_minutes=provider_minutes,
         )
 
     async def _async_record_live_check(

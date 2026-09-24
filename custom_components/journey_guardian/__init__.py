@@ -32,6 +32,7 @@ from .const import (
     CONF_PERSON_ENTITY,
     CONF_PREPARATION_BUFFER_MINUTES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
+    CONF_STATION_ACCESS_MINIMUM_MINUTES,
     CONF_STATION_ACCESS_MODE,
     CONF_STATION_ACCESS_PROFILES,
     CONF_STATION_BUFFER_MINUTES,
@@ -46,6 +47,7 @@ from .const import (
     DEFAULT_PREPARATION_BUFFER_MINUTES,
     DEFAULT_SIMULATION_DEPARTURE_MINUTES,
     DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
+    DEFAULT_STATION_ACCESS_MINIMUM_MINUTES,
     DEFAULT_STATION_ACCESS_MODE,
     DEFAULT_STATION_BUFFER_MINUTES,
     DEFAULT_URGENT_API_RESERVE,
@@ -125,6 +127,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         station_access_fallback_minutes=settings.get(
             CONF_STATION_ACCESS_FALLBACK_MINUTES,
             DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
+        ),
+        station_access_minimum_minutes=settings.get(
+            CONF_STATION_ACCESS_MINIMUM_MINUTES,
+            DEFAULT_STATION_ACCESS_MINIMUM_MINUTES,
         ),
         simulation=simulation,
         transportapi_client=transportapi_client,

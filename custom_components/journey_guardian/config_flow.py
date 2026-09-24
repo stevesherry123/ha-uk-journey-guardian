@@ -25,6 +25,7 @@ from .const import (
     CONF_PERSON_ENTITY,
     CONF_PREPARATION_BUFFER_MINUTES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
+    CONF_STATION_ACCESS_MINIMUM_MINUTES,
     CONF_STATION_ACCESS_MODE,
     CONF_STATION_ACCESS_PROFILES,
     CONF_STATION_BUFFER_MINUTES,
@@ -39,6 +40,7 @@ from .const import (
     DEFAULT_LIVE_RAIL_PROVIDER,
     DEFAULT_PREPARATION_BUFFER_MINUTES,
     DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
+    DEFAULT_STATION_ACCESS_MINIMUM_MINUTES,
     DEFAULT_STATION_ACCESS_MODE,
     DEFAULT_STATION_BUFFER_MINUTES,
     DEFAULT_URGENT_API_RESERVE,
@@ -118,6 +120,10 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_STATION_ACCESS_FALLBACK_MINUTES,
                     default=DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
                 ): vol.All(vol.Coerce(int), vol.Range(min=1, max=240)),
+                vol.Required(
+                    CONF_STATION_ACCESS_MINIMUM_MINUTES,
+                    default=DEFAULT_STATION_ACCESS_MINIMUM_MINUTES,
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=240)),
                 vol.Required(
                     CONF_STATION_ACCESS_MODE,
                     default=DEFAULT_STATION_ACCESS_MODE,
@@ -237,6 +243,13 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                             DEFAULT_STATION_ACCESS_FALLBACK_MINUTES,
                         ),
                     ): vol.All(vol.Coerce(int), vol.Range(min=1, max=240)),
+                    vol.Required(
+                        CONF_STATION_ACCESS_MINIMUM_MINUTES,
+                        default=current.get(
+                            CONF_STATION_ACCESS_MINIMUM_MINUTES,
+                            DEFAULT_STATION_ACCESS_MINIMUM_MINUTES,
+                        ),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=0, max=240)),
                     vol.Required(
                         CONF_STATION_ACCESS_MODE,
                         default=current.get(

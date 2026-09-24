@@ -47,6 +47,7 @@ class JourneyTiming:
     station_access_distance_meters: int | None = None
     station_access_error: str | None = None
     station_access_checked_at: datetime | None = None
+    station_access_provider_minutes: int | None = None
 
     def as_dict(self) -> dict[str, Any]:
         """Return a serializable representation."""

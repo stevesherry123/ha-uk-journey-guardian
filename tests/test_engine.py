@@ -116,6 +116,77 @@ async def test_automatic_access_uses_driving_at_home() -> None:
     assert routes.async_route.await_args.kwargs["mode"] == "driving"
 
 
+async def test_live_access_respects_configured_minimum() -> None:
+    """A short road estimate cannot remove fixed station-access overhead."""
+    hass = Mock()
+    hass.states.get.return_value = Mock(
+        state="home", attributes={"latitude": 53.2, "longitude": -2.9}
+    )
+    routes = Mock()
+    routes.configured = True
+    routes.async_route = AsyncMock(
+        return_value=StationAccessEstimate(
+            duration_minutes=5,
+            distance_meters=2500,
+            mode="driving",
+            observed_at=CHECKED_AT,
+        )
+    )
+    engine = JourneyGuardianEngine(
+        hass,
+        calendar_entity=CALENDAR_ENTITY,
+        budget=_budget(),
+        station_access_minimum_minutes=30,
+        person_entity="person.example",
+        station_access_mode="driving",
+        google_routes_client=routes,
+    )
+    journey = _calendar_snapshot().next_journey
+    assert journey is not None
+
+    timing = await engine._async_calculate_timing(journey)
+
+    assert timing.station_access_minutes == 30
+    assert timing.station_access_provider_minutes == 5
+    assert timing.station_access_classification == "live_driving_minimum"
+    assert timing.leave_home_at == journey.start - timedelta(minutes=45)
+
+
+async def test_live_access_above_minimum_remains_unchanged() -> None:
+    """Traffic-aware duration wins when it exceeds the configured minimum."""
+    hass = Mock()
+    hass.states.get.return_value = Mock(
+        state="home", attributes={"latitude": 53.2, "longitude": -2.9}
+    )
+    routes = Mock()
+    routes.configured = True
+    routes.async_route = AsyncMock(
+        return_value=StationAccessEstimate(
+            duration_minutes=42,
+            distance_meters=2500,
+            mode="driving",
+            observed_at=CHECKED_AT,
+        )
+    )
+    engine = JourneyGuardianEngine(
+        hass,
+        calendar_entity=CALENDAR_ENTITY,
+        budget=_budget(),
+        station_access_minimum_minutes=30,
+        person_entity="person.example",
+        station_access_mode="driving",
+        google_routes_client=routes,
+    )
+    journey = _calendar_snapshot().next_journey
+    assert journey is not None
+
+    timing = await engine._async_calculate_timing(journey)
+
+    assert timing.station_access_minutes == 42
+    assert timing.station_access_provider_minutes == 42
+    assert timing.station_access_classification == "live_driving"
+
+
 async def test_automatic_access_uses_transit_away_from_home() -> None:
     """Automatic mode avoids assuming a car is available on a return leg."""
     hass = Mock()

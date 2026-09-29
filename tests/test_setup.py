@@ -45,6 +45,8 @@ async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
     arrival_collector = Mock()
     arrival_collector.async_load = AsyncMock()
     station_access_monitor = Mock()
+    end_of_day_review = Mock()
+    end_of_day_review.async_load = AsyncMock()
     transportapi_client = Mock()
 
     with (
@@ -82,6 +84,10 @@ async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
             return_value=station_access_monitor,
         ),
         patch(
+            "custom_components.journey_guardian.EndOfDayReview",
+            return_value=end_of_day_review,
+        ),
+        patch(
             "custom_components.journey_guardian.TransportAPIClient",
             return_value=transportapi_client,
         ) as client_class,
@@ -114,6 +120,8 @@ async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
     arrival_collector.async_load.assert_awaited_once_with()
     arrival_collector.start.assert_called_once_with()
     station_access_monitor.start.assert_called_once_with()
+    end_of_day_review.async_load.assert_awaited_once_with()
+    end_of_day_review.start.assert_called_once_with()
     startup_retry.assert_called_once()
 
 

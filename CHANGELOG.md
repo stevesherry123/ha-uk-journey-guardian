@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0-beta.9
+
+- Corrected setup-test lifecycle coverage for the nightly review scheduler.
+
 ## 0.2.0-beta.8
 
 - Corrected automatic rail checkpoints to use the intended 150-minute early check and 15-minute post-departure retry.

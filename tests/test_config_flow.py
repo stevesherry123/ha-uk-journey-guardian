@@ -16,6 +16,7 @@ from custom_components.journey_guardian.const import (
     CONF_GOOGLE_ROUTES_API_KEY,
     CONF_HOME_ZONE,
     CONF_LIVE_NOTIFICATIONS_ENABLED,
+    CONF_LIVE_RAIL_PROVIDER,
     CONF_PERSON_ENTITY,
     CONF_PREPARATION_BUFFER_MINUTES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
@@ -48,6 +49,7 @@ USER_INPUT = {
     CONF_URGENT_API_RESERVE: 3,
     CONF_AUTOMATIC_LIVE_RAIL_ENABLED: False,
     CONF_LIVE_NOTIFICATIONS_ENABLED: False,
+    CONF_LIVE_RAIL_PROVIDER: "transportapi",
 }
 
 
@@ -150,6 +152,7 @@ async def test_options_flow_updates_timing_and_reloads(hass) -> None:
         CONF_STATION_ACCESS_PROFILES: "",
         CONF_AUTOMATIC_LIVE_RAIL_ENABLED: True,
         CONF_LIVE_NOTIFICATIONS_ENABLED: False,
+        CONF_LIVE_RAIL_PROVIDER: "transportapi",
         CONF_DELAY_REPAY_THRESHOLD_MINUTES: 30,
         CONF_TRANSPORTAPI_APP_ID: "updated-app-id",
         CONF_TRANSPORTAPI_APP_KEY: "updated-app-key",

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0-beta.8
+
+- Corrected automatic rail checkpoints to use the intended 150-minute early check and 15-minute post-departure retry.
+- Added config-flow coverage for the selected live rail provider.
+
 ## 0.2.0-beta.7
 
 ### Added

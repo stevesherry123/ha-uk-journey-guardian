@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.2.0-beta.7
+
+### Added
+
+- Add a restart-safe Railinfo arrival collector which checks the destination
+  movement board after each observed journey, matches the original service,
+  and stores scheduled arrival, actual arrival and destination delay evidence.
+- Add a configurable Delay Repay alert threshold with a conservative
+  15-minute default.
+
+### Changed
+
+- Make the nightly travel-day review evidence-led: a successful departure
+  lookup no longer proves an on-time arrival, missing arrival evidence is
+  reported as unresolved, normal evidenced journeys stay silent, and the last
+  privacy-safe per-leg review is included in integration diagnostics.
+- Retain up to 250 sanitized live checks so dense morning and evening travel
+  remains available when the nightly review runs.
+- Run the travel-day review at 04:00 for the previous date so late services can
+  complete before possible compensation is assessed.
+
 ## 0.2.0-beta.6
 
 ### Added
@@ -45,8 +66,6 @@
   duplicate live-rail requests.
 
 All notable changes to Journey Guardian will be documented in this file.
-
-## [Unreleased]
 
 ## [0.2.0-beta.1] - 2026-09-10
 

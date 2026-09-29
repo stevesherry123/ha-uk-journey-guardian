@@ -101,6 +101,20 @@ async def test_station_search_is_made_compatible_with_shared_resolution() -> Non
     assert request.quota_controlled is False
 
 
+async def test_live_board_exposes_reported_arrivals_without_credit_usage() -> None:
+    """Destination movement checks use Railinfo's non-credit live board."""
+    client, session, broker = _client({"crs": "EUS", "movements": []})
+
+    result = await client.async_live_board("eus", window_hours=12)
+
+    assert result.payload == {"crs": "EUS", "movements": []}
+    request = broker.async_request.await_args.args[0]
+    assert request.operation == "live_board"
+    assert request.quota_controlled is False
+    assert session.get.await_args.args[0] == f"{BASE_URL}/boards/EUS"
+    assert session.get.await_args.kwargs["params"] == {"window_hours": 12}
+
+
 async def test_through_service_to_chester_is_not_confused_with_terminator() -> None:
     """Crewe→Chester keeps the Wrexham-through service's scheduled time."""
     client, _session, _broker = _client(

@@ -228,6 +228,7 @@ class JourneyGuardianEngine:
                 freshness=board.freshness,
                 age_seconds=board.age_seconds,
                 provider_available=board.healthy,
+                destination_code=destination.code,
             )
         except (ProviderBrokerError, RailDataError, StationResolutionError) as err:
             category = getattr(err, "category", "provider_unavailable")
@@ -435,6 +436,7 @@ class JourneyGuardianEngine:
         await self._check_history.async_record(
             {
                 "checked_at": snapshot.checked_at.isoformat(),
+                "journey_date": journey.start.date().isoformat() if journey else None,
                 "trigger": trigger,
                 "journey_fingerprint": fingerprint,
                 "origin_code": (
@@ -451,6 +453,17 @@ class JourneyGuardianEngine:
                 "match_quality": observation.match_quality if observation else None,
                 "calls_used": snapshot.budget.calls_used,
                 "status": snapshot.status,
+                "cancelled": observation.cancelled if observation else None,
+                "evidence_source": observation.source if observation else None,
+                "evidence_observed_at": (
+                    observation.observed_at.isoformat() if observation else None
+                ),
+                "evidence_freshness": (
+                    observation.freshness if observation else None
+                ),
+                "service_identity": (
+                    observation.service_identity if observation else None
+                ),
             }
         )
 

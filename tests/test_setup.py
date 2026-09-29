@@ -42,6 +42,8 @@ async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
     automatic_rail_ledger = Mock()
     automatic_rail_ledger.async_load = AsyncMock()
     automatic_rail_monitor = Mock()
+    arrival_collector = Mock()
+    arrival_collector.async_load = AsyncMock()
     station_access_monitor = Mock()
     transportapi_client = Mock()
 
@@ -70,6 +72,10 @@ async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
         patch(
             "custom_components.journey_guardian.AutomaticRailMonitor",
             return_value=automatic_rail_monitor,
+        ),
+        patch(
+            "custom_components.journey_guardian.ArrivalCollector",
+            return_value=arrival_collector,
         ),
         patch(
             "custom_components.journey_guardian.StationAccessMonitor",
@@ -105,6 +111,8 @@ async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
     scheduler.start.assert_called_once_with()
     automatic_rail_ledger.async_load.assert_awaited_once_with()
     automatic_rail_monitor.start.assert_called_once_with()
+    arrival_collector.async_load.assert_awaited_once_with()
+    arrival_collector.start.assert_called_once_with()
     station_access_monitor.start.assert_called_once_with()
     startup_retry.assert_called_once()
 

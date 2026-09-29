@@ -16,6 +16,7 @@ from .const import (
     CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
     CONF_CALENDAR_ENTITY,
     CONF_DAILY_API_LIMIT,
+    CONF_DELAY_REPAY_THRESHOLD_MINUTES,
     CONF_DESTINATION_ZONES,
     CONF_EARLY_WARNING_MINUTES,
     CONF_GOOGLE_ROUTES_API_KEY,
@@ -34,6 +35,7 @@ from .const import (
     CONF_URGENT_API_RESERVE,
     DEFAULT_AUTOMATIC_LIVE_RAIL_ENABLED,
     DEFAULT_DAILY_API_LIMIT,
+    DEFAULT_DELAY_REPAY_THRESHOLD_MINUTES,
     DEFAULT_EARLY_WARNING_MINUTES,
     DEFAULT_HOME_ZONE,
     DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
@@ -163,6 +165,10 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_DAILY_API_LIMIT, default=DEFAULT_DAILY_API_LIMIT
                 ): vol.All(vol.Coerce(int), vol.Range(min=1, max=100)),
                 vol.Required(
+                    CONF_DELAY_REPAY_THRESHOLD_MINUTES,
+                    default=DEFAULT_DELAY_REPAY_THRESHOLD_MINUTES,
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=120)),
+                vol.Required(
                     CONF_URGENT_API_RESERVE,
                     default=DEFAULT_URGENT_API_RESERVE,
                 ): vol.All(vol.Coerce(int), vol.Range(min=0, max=20)),
@@ -285,6 +291,13 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                             DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
                         ),
                     ): selector.BooleanSelector(),
+                    vol.Required(
+                        CONF_DELAY_REPAY_THRESHOLD_MINUTES,
+                        default=current.get(
+                            CONF_DELAY_REPAY_THRESHOLD_MINUTES,
+                            DEFAULT_DELAY_REPAY_THRESHOLD_MINUTES,
+                        ),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=120)),
                     vol.Optional(
                         CONF_ANNOUNCEMENT_TEXT_ENTITY,
                         **(

@@ -12,6 +12,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later
 from homeassistant.util import dt as dt_util
 
+from .arrival_collector import ArrivalCollector
 from .budget import TransportAPIBudget
 from .check_history import CheckHistory
 from .const import (
@@ -25,6 +26,7 @@ from .const import (
     CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
     CONF_CALENDAR_ENTITY,
     CONF_DAILY_API_LIMIT,
+    CONF_DELAY_REPAY_THRESHOLD_MINUTES,
     CONF_EARLY_WARNING_MINUTES,
     CONF_GOOGLE_ROUTES_API_KEY,
     CONF_LIVE_NOTIFICATIONS_ENABLED,
@@ -41,6 +43,7 @@ from .const import (
     CONF_URGENT_API_RESERVE,
     DEFAULT_AUTOMATIC_LIVE_RAIL_ENABLED,
     DEFAULT_DAILY_API_LIMIT,
+    DEFAULT_DELAY_REPAY_THRESHOLD_MINUTES,
     DEFAULT_EARLY_WARNING_MINUTES,
     DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
     DEFAULT_LIVE_RAIL_PROVIDER,
@@ -178,8 +181,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             DEFAULT_AUTOMATIC_LIVE_RAIL_ENABLED,
         ),
     )
+    arrival_collector = ArrivalCollector(
+        hass, coordinator, railinfo_client, check_history
+    )
+    await arrival_collector.async_load()
     station_access_monitor = StationAccessMonitor(hass, coordinator)
-    end_of_day_review = EndOfDayReview(hass, check_history)
+    end_of_day_review = EndOfDayReview(
+        hass,
+        check_history,
+        delay_repay_threshold_minutes=settings.get(
+            CONF_DELAY_REPAY_THRESHOLD_MINUTES,
+            DEFAULT_DELAY_REPAY_THRESHOLD_MINUTES,
+        ),
+    )
+    await end_of_day_review.async_load()
     entry.runtime_data = JourneyGuardianRuntimeData(
         coordinator=coordinator,
         budget=budget,
@@ -187,6 +202,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         notification_scheduler=notification_scheduler,
         provider_broker=provider_broker,
         automatic_rail_monitor=automatic_rail_monitor,
+        arrival_collector=arrival_collector,
         check_history=check_history,
         station_access_monitor=station_access_monitor,
         end_of_day_review=end_of_day_review,
@@ -204,6 +220,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(notification_scheduler.stop)
     automatic_rail_monitor.start()
     entry.async_on_unload(automatic_rail_monitor.stop)
+    arrival_collector.start()
+    entry.async_on_unload(arrival_collector.stop)
     station_access_monitor.start()
     entry.async_on_unload(station_access_monitor.stop)
     end_of_day_review.start()

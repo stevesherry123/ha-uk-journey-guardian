@@ -76,6 +76,22 @@ class RailinfoClient:
             urgent=urgent,
         )
 
+    async def async_live_board(
+        self, station_code: str, *, window_hours: int = 12
+    ) -> ProviderResult:
+        """Fetch reported movements used to confirm destination arrivals."""
+        code = station_code.strip().upper()
+        parameters = {"window_hours": max(1, min(window_hours, 12))}
+        return await self._broker.async_request(
+            ProviderRequest(
+                provider="railinfo",
+                operation="live_board",
+                parameters={"station_code": code, **parameters},
+                quota_controlled=False,
+            ),
+            lambda: self._async_live_board_json(code, parameters),
+        )
+
     async def _async_places_json(
         self, parameters: Mapping[str, Any]
     ) -> Mapping[str, Any]:
@@ -138,6 +154,14 @@ class RailinfoClient:
                 ]
             },
         }
+
+    async def _async_live_board_json(
+        self, station_code: str, parameters: Mapping[str, Any]
+    ) -> Mapping[str, Any]:
+        payload = await self._async_json(f"/boards/{station_code}", parameters)
+        if not isinstance(payload, Mapping):
+            raise TypeError("Railinfo live board response must be an object")
+        return payload
 
     async def _async_json(
         self, path: str, parameters: Mapping[str, Any]

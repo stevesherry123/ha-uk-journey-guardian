@@ -19,6 +19,9 @@ async def test_history_is_bounded_and_sanitized(hass) -> None:
                 "checked_at": str(index),
                 "outcome": "success",
                 "schedule_offset_minutes": 11,
+                "actual_arrival": "2026-09-28T21:28:00+01:00",
+                "arrival_delay_minutes": 18,
+                "completion_status": "completed",
                 "secret": "must-not-survive",
             }
         )
@@ -27,6 +30,8 @@ async def test_history_is_bounded_and_sanitized(hass) -> None:
     assert len(records) == MAX_RECORDS
     assert records[0]["checked_at"] == "2"
     assert records[0]["schedule_offset_minutes"] == 11
+    assert records[0]["arrival_delay_minutes"] == 18
+    assert records[0]["completion_status"] == "completed"
     assert all("secret" not in record for record in records)
 
 

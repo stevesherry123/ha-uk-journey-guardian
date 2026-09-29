@@ -77,6 +77,7 @@ async def async_get_config_entry_diagnostics(
                     "schedule_offset_minutes": (
                         snapshot.rail_observation.schedule_offset_minutes
                     ),
+                    "destination_code": snapshot.rail_observation.destination_code,
                 }
                 if snapshot.rail_observation
                 else None
@@ -93,4 +94,6 @@ async def async_get_config_entry_diagnostics(
         },
         "budget": snapshot.budget.as_dict(),
         "recent_live_checks": runtime.check_history.records(),
+        "last_travel_day_review": runtime.end_of_day_review.diagnostics(),
+        "arrival_collector": runtime.arrival_collector.diagnostics(),
     }

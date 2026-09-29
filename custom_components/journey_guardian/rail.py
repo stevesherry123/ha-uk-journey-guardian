@@ -40,6 +40,12 @@ class RailServiceCandidate:
     destination_name: str
 
 
+def service_identity(provider_identity: str, service_date: date) -> str:
+    """Return the privacy-safe identity shared by departure and arrival data."""
+    identity_input = f"{provider_identity.strip()}|{service_date.isoformat()}"
+    return hashlib.sha256(identity_input.encode()).hexdigest()[:16]
+
+
 def normalize_station_board(
     payload: Mapping[str, Any],
     *,
@@ -200,11 +206,9 @@ def _parse_service(
             if predicted == scheduled:
                 predicted = None
     platform = str(record.get("platform", "")).strip() or None
-    identity_input = f"{provider_identity}|{service_date.isoformat()}"
-    service_identity = hashlib.sha256(identity_input.encode()).hexdigest()[:16]
     return RailServiceCandidate(
         provider_identity=provider_identity,
-        service_identity=service_identity,
+        service_identity=service_identity(provider_identity, service_date),
         scheduled_departure=scheduled,
         predicted_departure=predicted,
         cancelled=cancelled,

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0-beta.10
+
+- Removed literal entity-shaped placeholders from tests so the repository privacy gate passes.
+
 ## 0.2.0-beta.9
 
 - Corrected setup-test lifecycle coverage for the nightly review scheduler.

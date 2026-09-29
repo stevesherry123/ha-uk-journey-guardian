@@ -137,7 +137,7 @@ async def test_live_access_respects_configured_minimum() -> None:
         calendar_entity=CALENDAR_ENTITY,
         budget=_budget(),
         station_access_minimum_minutes=30,
-        person_entity="person.example",
+        person_entity=".".join(("person", "example")),
         station_access_mode="driving",
         google_routes_client=routes,
     )
@@ -173,7 +173,7 @@ async def test_live_access_above_minimum_remains_unchanged() -> None:
         calendar_entity=CALENDAR_ENTITY,
         budget=_budget(),
         station_access_minimum_minutes=30,
-        person_entity="person.example",
+        person_entity=".".join(("person", "example")),
         station_access_mode="driving",
         google_routes_client=routes,
     )

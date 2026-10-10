@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0-beta.13
+
+### Changed
+
+- Require the HACS repository description and topic checks to pass without
+  validation exceptions, readying the repository for a future default-catalogue
+  submission.
+
 ## 0.2.0-beta.12
 
 ### Fixed

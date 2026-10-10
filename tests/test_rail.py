@@ -183,39 +183,39 @@ def test_exact_calling_service_beats_later_wrong_destination() -> None:
     journey = JourneyEvent(
         start=datetime(2026, 9, 3, 19, 2, tzinfo=UTC),
         end=None,
-        summary="Avanti West Coast - London Euston to Chester",
-        location="London Euston",
-        origin_code="EUS",
-        origin_name="London Euston",
-        destination_confirmation="Chester",
+        summary="Example Rail - Example Central to Ash",
+        location="Example Central",
+        origin_code="EXC",
+        origin_name="Example Central",
+        destination_confirmation="Ash",
         decision_path="calendar_route",
     )
     observation = normalize_station_board(
         {
             "date": "2026-09-03",
-            "station_code": "crs:EUS",
+            "station_code": "crs:EXC",
             "departures": {
                 "all": [
                     _service(
-                        train_uid="holyhead-service",
-                        operator_name="Avanti West Coast",
+                        train_uid="through-service",
+                        operator_name="Example Rail",
                         aimed_departure_time="19:02",
                         expected_departure_time="19:02",
-                        destination_name="Holyhead",
+                        destination_name="Coast End",
                     ),
                     _service(
-                        train_uid="manchester-service",
-                        operator_name="Avanti West Coast",
+                        train_uid="wrong-service",
+                        operator_name="Example Rail",
                         aimed_departure_time="19:13",
                         expected_departure_time="19:13",
-                        destination_name="Manchester Piccadilly",
+                        destination_name="Marsh Central",
                     ),
                 ]
             },
         },
         journey=journey,
         observed_at=OBSERVED,
-        expected_station_code="EUS",
+        expected_station_code="EXC",
     )
 
     assert observation.scheduled_departure == journey.start

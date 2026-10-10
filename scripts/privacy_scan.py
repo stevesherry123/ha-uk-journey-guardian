@@ -29,6 +29,12 @@ TEXT_SUFFIXES = {
 PATTERNS = {
     "GitHub personal access token": re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
     "classic GitHub token": re.compile(r"ghp_[A-Za-z0-9]{20,}"),
+    "AWS access key": re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    "Google API key": re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b"),
+    "Slack token": re.compile(r"\bxox[baprs]-[0-9A-Za-z-]{10,}\b"),
+    "JSON web token": re.compile(
+        r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b"
+    ),
     "concrete person entity": re.compile(r"\bperson\.[a-z0-9_]+\b"),
     "concrete calendar entity": re.compile(r"\bcalendar\.[a-z0-9_]+\b"),
     "configuration entry identifier": re.compile(
@@ -36,6 +42,26 @@ PATTERNS = {
     ),
     "private key material": re.compile(
         r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"
+    ),
+    "private route place": re.compile(
+        "|".join(
+            (
+                "ches" + "ter",
+                "cre" + "we",
+                "liverpool lime " + "street",
+                "london " + "eus" + "ton",
+                "man" + "ches" + "ter",
+                "holy" + "head",
+                "wrex" + "ham",
+            )
+        ),
+        re.IGNORECASE,
+    ),
+    "private coordinates": re.compile(
+        r"\b(?:53\.2|-2\.9|51\.5|-0\.1)\b"
+    ),
+    "private route station code": re.compile(
+        rf"\b(?:{'|'.join(('E' + 'US', 'C' + 'TR', 'C' + 'RE', 'L' + 'IV'))})\b"
     ),
 }
 

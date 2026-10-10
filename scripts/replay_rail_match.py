@@ -2,7 +2,8 @@
 
 Usage:
     python scripts/replay_rail_match.py board.json 2026-09-10T10:32:00+01:00 \
-        CTR Chester "Avanti West Coast - Chester to London Euston" "London Euston"
+        EXC "Example Central" "Example Rail - Example Central to Sample Harbour" \
+        "Sample Harbour"
 """
 
 from __future__ import annotations

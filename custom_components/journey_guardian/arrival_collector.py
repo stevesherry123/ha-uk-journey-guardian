@@ -272,19 +272,14 @@ class ArrivalCollector:
 
     def diagnostics(self) -> dict[str, Any]:
         """Expose only bounded, privacy-safe collector state."""
+        attempts: dict[str, int] = {}
+        for item in self._pending.values():
+            attempt = str(item.get("attempt", "invalid"))
+            attempts[attempt] = attempts.get(attempt, 0) + 1
         return {
             "pending_count": len(self._pending),
             "completed_count": len(self._completed),
-            "pending": [
-                {
-                    "journey_fingerprint": item.get("journey_fingerprint"),
-                    "origin_code": item.get("origin_code"),
-                    "destination_code": item.get("destination_code"),
-                    "scheduled_end": item.get("scheduled_end"),
-                    "attempt": item.get("attempt"),
-                }
-                for item in self._pending.values()
-            ],
+            "pending_attempt_counts": attempts,
         }
 
 

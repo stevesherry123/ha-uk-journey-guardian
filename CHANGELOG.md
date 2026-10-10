@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.2.0-beta.11
+
+### Security
+
+- Remove credentials from options-form defaults so saved provider secrets are
+  not returned to the browser; blank submissions preserve the existing value.
+- Minimise downloaded diagnostics by removing entity identifiers, route and
+  service details, exact evidence timestamps, and request fingerprints.
+- Remove installation-specific route examples and coordinates from the current
+  public tree, and expand the repository privacy scanner to catch common secret
+  formats and private route data.
+
+### Fixed
+
+- Require explicit calendar CRS codes or provider resolution instead of a
+  route-specific built-in station map.
+- Gate tagged GitHub releases on tests, lint, privacy scanning, Hassfest, HACS
+  validation, and an exact tag-to-manifest version match.
+- Bring the public documentation in line with the current beta capabilities and
+  automatic checkpoint schedule.
+
 ## 0.2.0-beta.10
 
 - Removed literal entity-shaped placeholders from tests so the repository privacy gate passes.
@@ -150,7 +171,7 @@ All notable changes to Journey Guardian will be documented in this file.
 ### Added
 
 - Station access profiles now allow a specific travel mode per CRS station,
-  such as `CTR=driving`, `CRE=driving`, and `EUS=transit`.
+  such as `EXC=driving`, `SMP=transit`, and `NTH=walking`.
 - Stations without a profile retain the configured default mode and conservative
   fallback; unknown stations are never guessed as driving.
 
@@ -295,8 +316,8 @@ All notable changes to Journey Guardian will be documented in this file.
 
 ### Fixed
 
-- Chester, Liverpool Lime Street and London Euston now use deterministic CRS
-  identities instead of consuming Places quota and depending on provider naming.
+- Explicit calendar CRS codes now use deterministic station identities instead
+  of consuming Places quota and depending on provider naming.
 - Persistent live-check records now identify the exact failing stage: origin
   resolution, destination resolution, timetable acquisition or matching.
 
@@ -373,8 +394,8 @@ All notable changes to Journey Guardian will be documented in this file.
 - Live timetable requests now resolve the intended destination to a CRS code and
   ask TransportAPI only for services that call there. This supports journeys
   whose train continues beyond the calendar destination.
-- Destination evidence now uses whole-name boundaries, so a place name such as
-  `Chester` cannot incorrectly match inside `Manchester`.
+- Destination evidence now uses whole-name boundaries, so a short place name
+  cannot incorrectly match inside a longer unrelated place name.
 - A provider service more than five minutes from the calendar departure is
   rejected instead of silently changing the user's travel advice. The safe
   calendar timing remains available with a stable mismatch error.

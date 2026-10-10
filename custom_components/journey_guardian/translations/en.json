@@ -40,7 +40,7 @@
           "station_access_fallback_minutes": "Minutes allowed to reach the station until live routing is available. Timing is labelled inferred.",
           "station_access_minimum_minutes": "Minimum door-to-station allowance retained when live routing reports a shorter trip. Include parking, walking, and other fixed overhead.",
           "station_access_mode": "Default for stations without a profile. Automatic selects driving at home and public transport while away.",
-          "station_access_profiles": "Optional: one CRS station code and travel mode per line, for example CTR=driving or EUS=transit. These override the default. Unknown stations use the default.",
+          "station_access_profiles": "Optional: one CRS station code and travel mode per line, for example EXC=driving or SMP=transit. These override the default. Unknown stations use the default.",
           "transportapi_app_id": "Optional until TransportAPI rail monitoring is enabled.",
           "transportapi_app_key": "Optional until TransportAPI rail monitoring is enabled. Stored privately in the Home Assistant config entry.",
           "live_rail_provider": "TransportAPI uses the configured daily credit limit. Railinfo is keyless and uses its separate fair-use allowance, with the same bounded checkpoint schedule.",
@@ -57,7 +57,7 @@
     },
     "error": {
       "reserve_must_be_lower": "The urgent reserve must be lower than the daily limit.",
-      "invalid_station_access_profiles": "Use one unique CRS=mode entry per line, such as CRE=driving.",
+      "invalid_station_access_profiles": "Use one unique CRS=mode entry per line, such as EXC=driving.",
       "duplicate_station_access_profile": "Each station can appear only once."
     },
     "abort": {
@@ -93,17 +93,17 @@
           "station_buffer_minutes": "Minutes to arrive at the station before the scheduled train departure.",
           "station_access_fallback_minutes": "Minutes allowed to reach the station until live routing is available. Timing is labelled inferred.",
           "station_access_minimum_minutes": "Minimum door-to-station allowance retained when live routing reports a shorter trip. Include parking, walking, and other fixed overhead.",
-          "station_access_mode": "Choose the default for stations without a profile. Use profiles for regular exceptions such as CRE=driving.",
-          "station_access_profiles": "One CRS station code and travel mode per line, for example CTR=driving or EUS=transit. Unknown stations use the default.",
-          "automatic_live_rail_enabled": "Runs restart-safe, quota-controlled checks about 150, 90, 45, 10, and 2 minutes before departure, with bounded post-departure follow-ups.",
+          "station_access_mode": "Choose the default for stations without a profile. Use profiles for regular exceptions such as EXC=driving.",
+          "station_access_profiles": "One CRS station code and travel mode per line, for example EXC=driving or SMP=transit. Unknown stations use the default.",
+          "automatic_live_rail_enabled": "Runs restart-safe, quota-controlled checks from 150 minutes to 1 minute before departure, plus one 15-minute post-departure check.",
           "live_notifications_enabled": "Off keeps real calendar journeys in shadow mode while allowing simulation notifications.",
           "delay_repay_threshold_minutes": "Confirmed destination delay required before the nightly review raises a possible compensation claim.",
           "announcement_text_entity": "Select the input text helper used by your announcement engine.",
           "announcement_script_entity": "Select the script that delivers the announcement after the helper is updated.",
-          "transportapi_app_id": "Required for manual or automatic live-rail checks.",
-          "transportapi_app_key": "Required for manual or automatic live-rail checks. Stored privately in the Home Assistant config entry.",
+          "transportapi_app_id": "Required for manual or automatic live-rail checks. Leave blank to keep the saved value; a new value replaces it.",
+          "transportapi_app_key": "Required for manual or automatic live-rail checks. Leave blank to keep the saved value; a new value replaces it.",
           "live_rail_provider": "Railinfo needs no credentials and does not consume the TransportAPI budget. Its use remains bounded by Journey Guardian's checkpoint schedule and provider rate-limit back-off.",
-          "google_routes_api_key": "Optional Google Routes key for live station-access timing. Stored privately in the Home Assistant config entry."
+          "google_routes_api_key": "Optional Google Routes key for live station-access timing. Leave blank to keep the saved value; a new value replaces it."
         }
       }
     }

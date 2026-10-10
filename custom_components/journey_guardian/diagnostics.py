@@ -5,6 +5,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import (
+    CONF_ANNOUNCEMENT_SCRIPT_ENTITY,
+    CONF_ANNOUNCEMENT_TEXT_ENTITY,
     CONF_CALENDAR_ENTITY,
     CONF_DESTINATION_ZONES,
     CONF_EARLY_WARNING_MINUTES,
@@ -23,6 +25,10 @@ from .const import (
 )
 
 TO_REDACT = {
+    "entry_id",
+    "unique_id",
+    CONF_ANNOUNCEMENT_SCRIPT_ENTITY,
+    CONF_ANNOUNCEMENT_TEXT_ENTITY,
     CONF_CALENDAR_ENTITY,
     CONF_PERSON_ENTITY,
     CONF_HOME_ZONE,
@@ -69,15 +75,10 @@ async def async_get_config_entry_diagnostics(
                     ),
                     "freshness": snapshot.rail_observation.freshness,
                     "age_seconds": snapshot.rail_observation.age_seconds,
-                    "service_identity": (
-                        snapshot.rail_observation.service_identity
-                    ),
-                    "platform": snapshot.rail_observation.platform,
                     "match_quality": snapshot.rail_observation.match_quality,
                     "schedule_offset_minutes": (
                         snapshot.rail_observation.schedule_offset_minutes
                     ),
-                    "destination_code": snapshot.rail_observation.destination_code,
                 }
                 if snapshot.rail_observation
                 else None
@@ -93,7 +94,31 @@ async def async_get_config_entry_diagnostics(
             ),
         },
         "budget": snapshot.budget.as_dict(),
-        "recent_live_checks": runtime.check_history.records(),
+        "recent_live_checks": [
+            _redact_live_check(record)
+            for record in runtime.check_history.records()
+        ],
         "last_travel_day_review": runtime.end_of_day_review.diagnostics(),
         "arrival_collector": runtime.arrival_collector.diagnostics(),
     }
+
+
+def _redact_live_check(record: dict) -> dict:
+    """Keep diagnostic outcomes while removing journey-identifying evidence."""
+    safe_keys = {
+        "trigger",
+        "operation",
+        "stage",
+        "outcome",
+        "error_category",
+        "schedule_offset_minutes",
+        "match_quality",
+        "calls_used",
+        "status",
+        "arrival_delay_minutes",
+        "completion_status",
+        "cancelled",
+        "evidence_source",
+        "evidence_freshness",
+    }
+    return {key: record.get(key) for key in safe_keys}

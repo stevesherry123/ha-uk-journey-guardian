@@ -15,7 +15,7 @@ SERVICE_DATE = date(2026, 9, 28)
 
 def _movement_payload(*, event_type="ARRIVAL", train_id="701D93ME28"):
     return {
-        "crs": "CTR",
+        "crs": "SMP",
         "movements": [
             {
                 "train_id": train_id,
@@ -75,8 +75,8 @@ async def test_collector_records_completed_arrival(hass) -> None:
     collector._pending["pending-key"] = {
         "journey_fingerprint": "journey-key",
         "journey_date": "2026-09-28",
-        "origin_code": "EUS",
-        "destination_code": "CTR",
+        "origin_code": "EXC",
+        "destination_code": "SMP",
         "service_identity": service_identity("1D93", SERVICE_DATE),
         "service_date": "2026-09-28",
         "scheduled_end": "2026-09-28T21:07:00+01:00",
@@ -92,3 +92,23 @@ async def test_collector_records_completed_arrival(hass) -> None:
     assert record["actual_arrival"] == "2026-09-28T20:19:00+00:00"
     assert "pending-key" not in collector._pending
     assert "pending-key" in collector._completed
+
+
+def test_collector_diagnostics_expose_counts_only(hass) -> None:
+    """Pending journey identifiers and times never enter diagnostics."""
+    collector = ArrivalCollector(hass, Mock(), Mock(), Mock())
+    collector._pending["private-key"] = {
+        "journey_fingerprint": "private-fingerprint",
+        "origin_code": "EXC",
+        "destination_code": "SMP",
+        "scheduled_end": "2026-09-28T21:07:00+01:00",
+        "attempt": 1,
+    }
+
+    diagnostics = collector.diagnostics()
+
+    assert diagnostics == {
+        "pending_count": 1,
+        "completed_count": 0,
+        "pending_attempt_counts": {"1": 1},
+    }

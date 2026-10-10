@@ -25,21 +25,21 @@ def _journey(origin_name: str, *, location: str = "") -> JourneyEvent:
     )
 
 
-def test_profiles_select_a_known_station_by_crs() -> None:
-    profiles = parse_station_access_profiles("CTR=driving\nCRE=driving\nEUS=transit")
+def test_profiles_select_an_explicit_station_by_crs() -> None:
+    profiles = parse_station_access_profiles("EXC=driving\nSMP=transit")
 
-    assert mode_for_journey(_journey("Crewe"), profiles) == "driving"
-    assert mode_for_journey(_journey("Euston Station"), profiles) == "transit"
+    assert mode_for_journey(_journey("Example Central [EXC]"), profiles) == "driving"
+    assert mode_for_journey(_journey("Sample Harbour [SMP]"), profiles) == "transit"
 
 
 def test_unknown_station_uses_default_policy() -> None:
-    profiles = parse_station_access_profiles("CRE=driving")
+    profiles = parse_station_access_profiles("EXC=driving")
 
     assert mode_for_journey(_journey("Unfamiliar Junction"), profiles) is None
 
 
 def test_profiles_reject_invalid_or_duplicate_lines() -> None:
     with pytest.raises(StationAccessProfileError):
-        parse_station_access_profiles("CRE=horseback")
+        parse_station_access_profiles("EXC=horseback")
     with pytest.raises(StationAccessProfileError):
-        parse_station_access_profiles("CRE=driving\nCRE=walking")
+        parse_station_access_profiles("EXC=driving\nEXC=walking")

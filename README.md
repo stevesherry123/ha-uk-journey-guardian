@@ -4,10 +4,10 @@ UK Journey Guardian is a proactive Home Assistant travel engine for timely
 departures, live UK rail disruption handling, multimodal route decisions, and
 split-journey monitoring.
 
-The current alpha targets Home Assistant 2026.8 or newer.
+The current beta targets Home Assistant 2026.8 or newer.
 
 > [!WARNING]
-> UK Journey Guardian is currently an alpha project. The current release provides
+> UK Journey Guardian is currently a beta project. The current release provides
 > the integration foundation and shadow-mode calendar decisions. Do not remove
 > an existing travel alarm or rely on it as the sole source of departure advice.
 
@@ -23,7 +23,7 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - credentials and journey details are redacted from diagnostics
 - provider calls are bounded, cached and protected by failure fallbacks
 
-## Alpha capabilities
+## Beta capabilities
 
 - UI-based Home Assistant configuration
 - privacy-preserving diagnostics
@@ -39,7 +39,7 @@ The current alpha targets Home Assistant 2026.8 or newer.
 - a shared quota-enforcing provider request broker with cache and in-flight
   deduplication
 - explicit rail-data freshness and bounded stale-data handling
-- offline station-code resolution and defensive rail-board normalization
+- explicit station-code resolution and defensive rail-board normalization
 - deterministic service matching with stable privacy-safe service identities
 - manual and opt-in automatic live-rail checks via TransportAPI or Railinfo
 - editable conservative station-access and early-warning timing
@@ -53,11 +53,12 @@ The current alpha targets Home Assistant 2026.8 or newer.
 
 A live rail provider is selected in the integration options. TransportAPI uses
 the configured daily credit budget; Railinfo uses its separate published
-fair-use allowance. Automatic monitoring is off by default. When enabled,
-the integration options, Journey Guardian makes one live check approximately 150,
-90, 45, and 10 minutes before the selected departure. Each checkpoint is claimed
-in persistent private storage before network access, and every request remains
-behind the durable budget. Rail simulations remain provider-free.
+fair-use allowance. Automatic monitoring is off by default. When enabled in the
+integration options, Journey Guardian makes bounded live checks 150, 120, 75,
+45, 30, 15, 10, 7, 5, 3, and 1 minute before departure, plus one check 15
+minutes afterwards. Each checkpoint is claimed in persistent private storage
+before network access, and every request remains behind the durable budget. Rail
+simulations remain provider-free.
 
 The last successful rail observation remains visible between checkpoints. It is
 labelled `retained` before departure and `historical` after departure; only a
@@ -84,16 +85,15 @@ per line. A matching profile takes priority over the default mode; stations
 without a profile keep the default policy. For example:
 
 ```text
-CTR=driving
-CRE=driving
-EUS=transit
+EXC=driving
+SMP=transit
+NTH=walking
 ```
 
 Valid modes are `driving`, `walking`, `bicycling`, and `transit`. If a calendar
-station cannot be identified from a configured CRS, an explicit calendar code,
-or a deterministic known station name, the profile is not guessed: Journey
-Guardian uses the default mode and its conservative fallback if live routing is
-unavailable.
+station cannot be identified from its configured or explicit calendar CRS, the
+profile is not guessed: Journey Guardian uses the default mode and its
+conservative fallback if live routing is unavailable.
 
 ## Calendar format
 
@@ -118,8 +118,8 @@ also require one exact station-name match from a future provider Places response
 Conflicting and ambiguous station evidence is rejected rather than guessed.
 
 A recognized journey remains active until the timed calendar event ends. This
-provides the lifecycle window needed for delayed-service and interchange checks;
-provider monitoring will be added in a later feature slice.
+provides the lifecycle window needed for delayed-service, destination-arrival,
+and interchange checks.
 
 See [PREREQUISITES.md](PREREQUISITES.md) for provider accounts, calendar setup,
 API-key security, and notification requirements.
@@ -158,9 +158,9 @@ International air travel is recorded as a future optional module in the
 airport profiles, and may consume a separately configured flight-tracking
 integration, without changing the existing UK rail path.
 
-The backlog also records a separate evidence-led post-journey Delay Repay
-assistant. Any future claim submission will require explicit per-claim user
-approval.
+The evidence-led post-journey review records confirmed destination delays and
+flags possible Delay Repay claims without submitting anything. Any future claim
+submission will require explicit per-claim user approval.
 
 ### Notification delivery roadmap
 
@@ -198,7 +198,7 @@ Fallback results remain
 uses driving at home and public transport away from home; walking, driving and
 cycling can also be selected explicitly.
 
-## Installation during alpha
+## Installation during beta
 
 During development, add this repository to HACS as a **custom repository** of
 type **Integration**. HACS then installs it under `custom_components/` in the
@@ -245,17 +245,17 @@ The first unresolved origin and destination may use three routine calls: two
 exact station lookups and one live departure-board request filtered to services
 that call at the intended destination. Station resolutions are reused in memory,
 and the broker can reuse a very recent board. This action never bypasses the
-daily limit or consumes the urgent reserve. The next ordinary calendar refresh
-can replace the manual rail observation.
+daily limit or consumes the urgent reserve. Ordinary calendar refreshes retain
+the latest matched rail observation for the same journey.
 
 **Automatic live rail checkpoints** are opt-in under the integration's
-**Configure** menu. They run approximately 150, 90, 45, 10, and 2 minutes before a
-departure, then 5, 15, and 30 minutes afterwards while the journey remains
-current. The first three are routine; near- and post-departure checks may use the
-protected urgent reserve. A restart-safe hashed ledger prevents duplicate checks,
-and a 12-minute catch-up window tolerates modest calendar synchronization or
-startup latency. Enabling or reloading inside that window can therefore perform
-the one recently due check.
+**Configure** menu. They run 150, 120, 75, 45, 30, 15, 10, 7, 5, 3, and 1 minute
+before departure, plus 15 minutes afterwards while the journey remains current.
+Checks through 15 minutes before departure are routine; the final ten minutes and
+post-departure check may use the protected urgent reserve. A restart-safe hashed
+ledger prevents duplicate checks, and a 12-minute catch-up window tolerates
+modest calendar synchronization or startup latency. Enabling or reloading inside
+that window can therefore perform the one recently due check.
 
 The TransportAPI budget entity counts requests reserved by Journey Guardian. It
 cannot observe requests made with the same provider account by legacy packages,
@@ -313,7 +313,7 @@ The maintained development list is in [BACKLOG.md](BACKLOG.md).
 
 ## Release strategy and path to v1.0
 
-Journey Guardian currently uses an alpha `0.1.x` series. Every accepted change
+Journey Guardian currently uses a beta `0.2.0-beta.x` series. Every accepted change
 is versioned and published so HACS can expose the update; therefore patch
 numbers include safe documentation, test, and inactive-scaffold changes as well
 as runtime fixes.
@@ -346,9 +346,9 @@ module exists. It requires all of the following:
 - a defined observation period with legacy automations retained, followed by a
   safe, evidence-led retirement decision
 
-International flight support and Delay Repay assistance are planned `1.x`
-modules. They will be developed behind separate opt-in and acceptance gates;
-they must not delay or weaken the stable rail core.
+International flight support and automated Delay Repay claim submission remain
+post-1.0 modules. They will be developed behind separate opt-in and acceptance
+gates; they must not delay or weaken the stable rail core.
 
 ## Development
 

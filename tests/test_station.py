@@ -75,13 +75,10 @@ def test_provider_rail_station_suffix_matches_calendar_name() -> None:
     assert result.confidence == "exact_name"
 
 
-def test_supported_station_resolves_without_provider_payload() -> None:
-    """Supported routes use deterministic CRS identities without API quota."""
-    result = resolve_station(origin_name="London Euston")
-
-    assert result.code == "EUS"
-    assert result.source == "known_station"
-    assert result.confidence == "deterministic"
+def test_station_without_code_requires_provider_payload() -> None:
+    """The public integration contains no route-specific station shortcuts."""
+    with pytest.raises(StationResolutionError, match="station_code_unresolved"):
+        resolve_station(origin_name="Example Central")
 
 
 def test_places_fixture_rejects_ambiguous_exact_matches() -> None:

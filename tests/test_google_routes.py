@@ -29,9 +29,9 @@ async def test_driving_route_is_traffic_aware_and_minimally_scoped() -> None:
         return_value=NOW,
     ):
         estimate = await client.async_route(
-            latitude=53.2,
-            longitude=-2.9,
-            destination="Chester Station, Chester, UK",
+            latitude=12.3456,
+            longitude=-45.6789,
+            destination="Example Central",
             mode="driving",
             departure_time=datetime(2026, 9, 8, 9, 0, tzinfo=UTC),
         )
@@ -59,9 +59,9 @@ async def test_identical_route_is_cached_until_adaptive_expiry() -> None:
     session.post.return_value = response
     client = GoogleRoutesClient(session, "private-key")
     kwargs = {
-        "latitude": 51.5,
-        "longitude": -0.1,
-        "destination": "London Euston",
+        "latitude": 12.3456,
+        "longitude": -45.6789,
+        "destination": "Example Central",
         "mode": "transit",
         "departure_time": datetime(2026, 9, 8, 9, 0, tzinfo=UTC),
     }
@@ -88,9 +88,9 @@ async def test_forced_route_bypasses_valid_cache() -> None:
     session.post.return_value = response
     client = GoogleRoutesClient(session, "private-key")
     kwargs = {
-        "latitude": 51.5,
-        "longitude": -0.1,
-        "destination": "London Euston",
+        "latitude": 12.3456,
+        "longitude": -45.6789,
+        "destination": "Example Central",
         "mode": "transit",
         "departure_time": datetime(2026, 9, 8, 9, 0, tzinfo=UTC),
     }

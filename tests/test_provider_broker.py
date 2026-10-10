@@ -129,7 +129,7 @@ async def test_separate_provider_does_not_reserve_transportapi_credit(hass) -> N
     public_request = ProviderRequest(
         provider="railinfo",
         operation="departures",
-        parameters={"station_code": "EUS"},
+        parameters={"station_code": "EXC"},
         quota_controlled=False,
     )
 

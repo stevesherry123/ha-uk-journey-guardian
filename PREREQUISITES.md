@@ -7,7 +7,7 @@ notification targets to this repository or an issue report.
 ## Required Home Assistant components
 
 - Home Assistant 2026.8 or newer
-- HACS for update management during the alpha period
+- HACS for update management during the beta period
 - one calendar entity containing timed journey events
 - one person entity with a usable location source
 - a home zone

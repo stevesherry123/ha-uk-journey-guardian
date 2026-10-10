@@ -2,6 +2,7 @@
 
 from unittest.mock import patch
 
+import voluptuous as vol
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -167,3 +168,48 @@ async def test_options_flow_updates_timing_and_reloads(hass) -> None:
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options == updated
     async_reload.assert_awaited_once_with(entry.entry_id)
+
+
+async def test_options_flow_does_not_return_saved_credentials(hass) -> None:
+    """Saved provider credentials remain server-side until replaced."""
+    entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT)
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+
+    markers = {
+        marker.schema: marker for marker in result["data_schema"].schema
+    }
+    for key in (
+        CONF_TRANSPORTAPI_APP_ID,
+        CONF_TRANSPORTAPI_APP_KEY,
+        CONF_GOOGLE_ROUTES_API_KEY,
+    ):
+        assert markers[key].default is vol.UNDEFINED
+
+    submitted = {
+        CONF_PREPARATION_BUFFER_MINUTES: 35,
+        CONF_EARLY_WARNING_MINUTES: 12,
+        CONF_STATION_BUFFER_MINUTES: 20,
+        CONF_STATION_ACCESS_FALLBACK_MINUTES: 75,
+        CONF_STATION_ACCESS_MINIMUM_MINUTES: 30,
+        CONF_STATION_ACCESS_MODE: "driving",
+        CONF_STATION_ACCESS_PROFILES: "",
+        CONF_AUTOMATIC_LIVE_RAIL_ENABLED: True,
+        CONF_LIVE_NOTIFICATIONS_ENABLED: False,
+        CONF_LIVE_RAIL_PROVIDER: "transportapi",
+        CONF_DELAY_REPAY_THRESHOLD_MINUTES: 30,
+        CONF_TRANSPORTAPI_APP_ID: "",
+        CONF_TRANSPORTAPI_APP_KEY: "",
+        CONF_GOOGLE_ROUTES_API_KEY: "",
+    }
+    with patch.object(hass.config_entries, "async_reload"):
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], submitted
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options[CONF_TRANSPORTAPI_APP_ID] == "example-app-id"
+    assert entry.options[CONF_TRANSPORTAPI_APP_KEY] == "example-app-key"
+    assert CONF_GOOGLE_ROUTES_API_KEY not in entry.options

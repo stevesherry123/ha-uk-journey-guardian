@@ -10,8 +10,8 @@ def _record(**overrides):
     record = {
         "checked_at": "2026-09-28T19:03:00+01:00",
         "journey_fingerprint": "safe-fingerprint",
-        "origin_code": "EUS",
-        "destination_code": "CTR",
+        "origin_code": "EXC",
+        "destination_code": "SMP",
         "outcome": "success",
         "status": "active",
     }
@@ -42,7 +42,12 @@ async def test_successful_departure_check_is_not_completion_evidence(hass) -> No
     assert result["journeys"][0]["classification"] == "insufficient_evidence"
     assert result["journeys"][0]["reason"] == "actual_arrival_missing"
     notify.assert_called_once()
-    assert reviewer.diagnostics() == result
+    diagnostics = reviewer.diagnostics()
+    assert diagnostics is not None
+    assert diagnostics["journey_count"] == 1
+    assert diagnostics["unresolved_count"] == 1
+    assert "journeys" not in diagnostics
+    assert "review_date" not in diagnostics
 
 
 async def test_confirmed_on_time_arrival_is_silent(hass) -> None:
@@ -116,12 +121,12 @@ async def test_review_groups_each_leg_of_split_journey(hass) -> None:
     _reviewer, result, _notify = await _review(
         hass,
         [
-            _record(journey_fingerprint="leg-one", destination_code="CRE"),
+            _record(journey_fingerprint="leg-one", destination_code="NTH"),
             _record(
                 checked_at="2026-09-28T06:32:00+01:00",
                 journey_fingerprint="leg-two",
-                origin_code="CRE",
-                destination_code="EUS",
+                origin_code="NTH",
+                destination_code="SMP",
             ),
         ],
     )

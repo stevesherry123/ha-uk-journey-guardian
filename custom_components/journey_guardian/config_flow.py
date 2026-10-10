@@ -204,6 +204,7 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
         self, user_input: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         """Manage timing options."""
+        current = {**self.config_entry.data, **self.config_entry.options}
         if user_input is not None:
             try:
                 parse_station_access_profiles(
@@ -212,11 +213,22 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
             except StationAccessProfileError as err:
                 errors = {CONF_STATION_ACCESS_PROFILES: str(err)}
             else:
-                return self.async_create_entry(title="", data=user_input)
+                updated = dict(user_input)
+                for key in (
+                    CONF_TRANSPORTAPI_APP_ID,
+                    CONF_TRANSPORTAPI_APP_KEY,
+                    CONF_GOOGLE_ROUTES_API_KEY,
+                ):
+                    if str(updated.get(key, "")).strip():
+                        continue
+                    if current.get(key):
+                        updated[key] = current[key]
+                    else:
+                        updated.pop(key, None)
+                return self.async_create_entry(title="", data=updated)
         else:
             errors = {}
 
-        current = {**self.config_entry.data, **self.config_entry.options}
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
@@ -320,11 +332,9 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                     ),
                     vol.Optional(
                         CONF_TRANSPORTAPI_APP_ID,
-                        default=current.get(CONF_TRANSPORTAPI_APP_ID, ""),
                     ): selector.TextSelector(),
                     vol.Optional(
                         CONF_TRANSPORTAPI_APP_KEY,
-                        default=current.get(CONF_TRANSPORTAPI_APP_KEY, ""),
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.PASSWORD
@@ -342,7 +352,6 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                     }),
                     vol.Optional(
                         CONF_GOOGLE_ROUTES_API_KEY,
-                        default=current.get(CONF_GOOGLE_ROUTES_API_KEY, ""),
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.PASSWORD

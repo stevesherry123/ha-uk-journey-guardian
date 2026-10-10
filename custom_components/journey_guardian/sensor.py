@@ -147,9 +147,6 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
             ),
             "rail_freshness": observation.freshness if observation else None,
             "rail_age_seconds": observation.age_seconds if observation else None,
-            "rail_service_identity": (
-                observation.service_identity if observation else None
-            ),
             "rail_platform": observation.platform if observation else None,
             "rail_match_quality": (
                 observation.match_quality if observation else None

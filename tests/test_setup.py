@@ -6,10 +6,7 @@ from unittest.mock import ANY, AsyncMock, Mock, patch
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.journey_guardian import (
-    async_setup_entry,
-    configured_provider_credentials,
-)
+from custom_components.journey_guardian import async_setup_entry
 from custom_components.journey_guardian.const import (
     CONF_CALENDAR_ENTITY,
     DOMAIN,
@@ -253,24 +250,3 @@ async def test_live_rail_action_is_explicit_and_returns_snapshot(hass) -> None:
 
     runtime.coordinator.async_review_live_rail.assert_awaited_once_with()
     assert response["decision_path"] == "transportapi_manual"
-
-
-def test_provider_credentials_can_be_updated_through_options() -> None:
-    """Deferred credentials can be added without reinstalling the integration."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={
-            CONF_CALENDAR_ENTITY: ".".join(("calendar", "example_travel")),
-            "transportapi_app_id": "original-id",
-            "transportapi_app_key": "original-key",
-        },
-        options={
-            "transportapi_app_id": "updated-id",
-            "transportapi_app_key": "updated-key",
-        },
-    )
-
-    credentials = configured_provider_credentials(entry)
-
-    assert credentials["transportapi_app_id"] == "updated-id"
-    assert credentials["transportapi_app_key"] == "updated-key"

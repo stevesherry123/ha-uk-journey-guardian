@@ -332,13 +332,3 @@ def _async_register_services(hass: HomeAssistant) -> None:
             schema=vol.Schema({}),
             supports_response=SupportsResponse.OPTIONAL,
         )
-
-
-def configured_provider_credentials(entry: ConfigEntry) -> dict[str, str]:
-    """Return provider credentials for future clients without logging them."""
-    settings = {**entry.data, **entry.options}
-    return {
-        CONF_TRANSPORTAPI_APP_ID: settings.get(CONF_TRANSPORTAPI_APP_ID, ""),
-        CONF_TRANSPORTAPI_APP_KEY: settings.get(CONF_TRANSPORTAPI_APP_KEY, ""),
-        CONF_GOOGLE_ROUTES_API_KEY: settings.get(CONF_GOOGLE_ROUTES_API_KEY, ""),
-    }

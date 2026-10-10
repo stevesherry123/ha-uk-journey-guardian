@@ -15,15 +15,16 @@ and could repeat work after Home Assistant restarts or calendar synchronization.
 
 - Keep automatic provider use off by default and expose it as an explicit
   integration option.
-- Schedule no more than four checks for the selected journey, approximately 150,
-  90, 45, and 10 minutes before its calendar departure.
+- Schedule a bounded dense set of checks at 150, 120, 75, 45, 30, 15, 10, 7,
+  5, 3, and 1 minute before departure, plus 15 minutes afterwards.
 - Persist a privacy-safe hash of the journey departure and checkpoint before
   reserving provider allowance. A claimed checkpoint is not repeated after a
   reload, restart, reschedule, failure, or provider timeout.
 - Catch up only when a checkpoint became due within the preceding 12 minutes.
   Older missed checkpoints are skipped rather than replayed.
-- Treat the first three checkpoints as routine. Only the final ten-minute check
-  may consume the configured urgent reserve.
+- Treat checkpoints through 15 minutes before departure as routine. Checks in
+  the final ten minutes and the post-departure check may consume the configured
+  urgent reserve.
 - Continue to route Places and timetable requests through the shared broker and
   durable budget. Simulations and ordinary calendar reviews remain provider-free.
 - Cancel and rebuild future callbacks whenever the selected coordinator journey

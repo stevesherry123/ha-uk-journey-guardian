@@ -133,8 +133,23 @@ class EndOfDayReview:
         return review
 
     def diagnostics(self) -> dict[str, Any] | None:
-        """Return a defensive copy of the latest privacy-safe review."""
-        return deepcopy(self._last_review) if self._last_review is not None else None
+        """Return review outcomes without dates, stations, services, or times."""
+        if self._last_review is None:
+            return None
+        safe_keys = {
+            "journey_count",
+            "delayed_count",
+            "potential_claim_count",
+            "delay_repay_threshold_minutes",
+            "departure_delay_observed_count",
+            "cancelled_count",
+            "unresolved_count",
+            "attention_required",
+            "notification_sent",
+        }
+        return deepcopy(
+            {key: self._last_review.get(key) for key in safe_keys}
+        )
 
 
 def _review_journey(

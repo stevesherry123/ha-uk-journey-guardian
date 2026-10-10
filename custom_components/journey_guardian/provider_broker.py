@@ -163,14 +163,11 @@ class ProviderRequestBroker:
         self._last_request = {
             "provider": request.provider,
             "operation": request.operation,
-            "request_fingerprint": fingerprint[:16],
             "urgent": urgent,
-            "requested_at": now.isoformat(),
         }
         _LOGGER.debug(
-            "Provider request operation=%s fingerprint=%s urgent=%s",
+            "Provider request operation=%s urgent=%s",
             request.operation,
-            fingerprint[:16],
             urgent,
         )
         async with self._lock:

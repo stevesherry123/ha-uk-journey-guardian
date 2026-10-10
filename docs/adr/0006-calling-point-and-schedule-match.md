@@ -7,10 +7,10 @@
 ## Context
 
 The calendar describes where the traveller leaves the train, while a station
-board describes the train's ultimate destination. A valid London Euston to
-Chester journey can therefore appear as a Holyhead service. During live
-acceptance, destination substring scoring also treated `Chester` as evidence for
-a Manchester service and selected a train eleven minutes later. That changed
+board describes the train's ultimate destination. A valid journey can therefore
+appear under a destination beyond the intended stop. During live acceptance,
+destination substring scoring also treated a short place name as evidence for
+an unrelated longer name and selected a train eleven minutes later. That changed
 derived leave-home advice using the wrong service.
 
 ## Decision

@@ -77,7 +77,8 @@ async def test_automatic_access_uses_driving_at_home() -> None:
     """Automatic mode uses a traffic-aware home-to-station estimate."""
     hass = Mock()
     hass.states.get.return_value = Mock(
-        state="home", attributes={"latitude": 53.2, "longitude": -2.9}
+        state="home",
+        attributes={"latitude": 12.3456, "longitude": -45.6789},
     )
     routes = Mock()
     routes.configured = True
@@ -120,7 +121,8 @@ async def test_live_access_respects_configured_minimum() -> None:
     """A short road estimate cannot remove fixed station-access overhead."""
     hass = Mock()
     hass.states.get.return_value = Mock(
-        state="home", attributes={"latitude": 53.2, "longitude": -2.9}
+        state="home",
+        attributes={"latitude": 12.3456, "longitude": -45.6789},
     )
     routes = Mock()
     routes.configured = True
@@ -156,7 +158,8 @@ async def test_live_access_above_minimum_remains_unchanged() -> None:
     """Traffic-aware duration wins when it exceeds the configured minimum."""
     hass = Mock()
     hass.states.get.return_value = Mock(
-        state="home", attributes={"latitude": 53.2, "longitude": -2.9}
+        state="home",
+        attributes={"latitude": 12.3456, "longitude": -45.6789},
     )
     routes = Mock()
     routes.configured = True
@@ -191,7 +194,8 @@ async def test_automatic_access_uses_transit_away_from_home() -> None:
     """Automatic mode avoids assuming a car is available on a return leg."""
     hass = Mock()
     hass.states.get.return_value = Mock(
-        state="not_home", attributes={"latitude": 51.5, "longitude": -0.1}
+        state="not_home",
+        attributes={"latitude": 12.3456, "longitude": -45.6789},
     )
     routes = Mock()
     routes.configured = True
@@ -211,7 +215,7 @@ async def test_automatic_access_uses_transit_away_from_home() -> None:
         station_access_mode="auto",
         google_routes_client=routes,
     )
-    journey = _calendar_snapshot(origin_name="London Euston").next_journey
+    journey = _calendar_snapshot(origin_name="Example Central [EXC]").next_journey
     assert journey is not None
 
     timing = await engine._async_calculate_timing(journey)
@@ -225,7 +229,8 @@ async def test_station_profile_overrides_the_global_access_mode() -> None:
     """A known CRS profile takes precedence over automatic mode selection."""
     hass = Mock()
     hass.states.get.return_value = Mock(
-        state="not_home", attributes={"latitude": 51.5, "longitude": -0.1}
+        state="not_home",
+        attributes={"latitude": 12.3456, "longitude": -45.6789},
     )
     routes = Mock()
     routes.configured = True
@@ -243,10 +248,10 @@ async def test_station_profile_overrides_the_global_access_mode() -> None:
         budget=_budget(),
         person_entity="example_person_entity",
         station_access_mode="transit",
-        station_access_profiles="CRE=driving",
+        station_access_profiles="EXC=driving",
         google_routes_client=routes,
     )
-    journey = _calendar_snapshot(origin_name="Crewe").next_journey
+    journey = _calendar_snapshot(origin_name="Example Central [EXC]").next_journey
     assert journey is not None
 
     timing = await engine._async_calculate_timing(journey)
@@ -259,7 +264,8 @@ async def test_route_failure_retains_explicit_fallback(caplog) -> None:
     """Provider failure stays safe, inferred, and visible without log spam."""
     hass = Mock()
     hass.states.get.return_value = Mock(
-        state="home", attributes={"latitude": 53.2, "longitude": -2.9}
+        state="home",
+        attributes={"latitude": 12.3456, "longitude": -45.6789},
     )
     routes = Mock()
     routes.configured = True
@@ -573,22 +579,22 @@ async def test_manual_review_reuses_in_memory_station_resolution() -> None:
     )
 
 
-async def test_supported_route_skips_places_calls() -> None:
-    """Known station metadata does not consume Places API quota."""
+async def test_explicit_route_skips_places_calls() -> None:
+    """Explicit station codes do not consume Places API quota."""
     client = Mock()
     client.configured = True
     client.async_places = AsyncMock()
     client.async_station_board = AsyncMock(return_value=_provider_result(_board()))
-    journey = _calendar_snapshot(origin_name="Chester")
+    journey = _calendar_snapshot(origin_name="Example Central [EXC]")
     journey = replace(
         journey,
         next_journey=replace(
             journey.next_journey,
-            destination_confirmation="London Euston",
+            destination_confirmation="Sample Harbour [SMP]",
         ),
     )
     board = _board()
-    board["station_code"] = "crs:CTR"
+    board["station_code"] = "crs:EXC"
     client.async_station_board.return_value = _provider_result(board)
     engine = JourneyGuardianEngine(
         Mock(),
@@ -602,9 +608,9 @@ async def test_supported_route_skips_places_calls() -> None:
 
     client.async_places.assert_not_awaited()
     client.async_station_board.assert_awaited_once_with(
-        "CTR",
+        "EXC",
         journey.next_journey.start,
-        calling_at="EUS",
+        calling_at="SMP",
         urgent=False,
     )
 

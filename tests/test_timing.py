@@ -42,11 +42,11 @@ def test_morning_journey_preferences_produce_required_deadlines() -> None:
     journey = JourneyEvent(
         start=datetime(2026, 9, 24, 6, 24, tzinfo=UTC),
         end=None,
-        summary="Rail - Chester to London Euston",
-        location="Chester",
-        origin_code="CTR",
-        origin_name="Chester",
-        destination_confirmation="London Euston",
+        summary="Rail - Example Central to Sample Harbour",
+        location="Example Central",
+        origin_code="EXC",
+        origin_name="Example Central",
+        destination_confirmation="Sample Harbour",
         decision_path="calendar_route",
     )
 

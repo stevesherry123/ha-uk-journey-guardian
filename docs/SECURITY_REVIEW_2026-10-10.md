@@ -1,7 +1,7 @@
 # Static Security and Privacy Review
 
 Date: 2026-10-10  
-Release reviewed: 0.2.0-beta.11
+Release reviewed: 0.2.0-beta.12
 
 ## Scope
 
@@ -29,6 +29,9 @@ log output, provider requests, release controls, and obvious reliability flaws.
 5. **A route-specific station lookup limited safe public use.** Station identity
    now comes from an explicit calendar CRS code or provider resolution instead
    of a built-in map tied to one installation.
+6. **Beta tags were published as stable GitHub releases.** Tags containing a
+   prerelease suffix are now explicitly published as prereleases so public
+   update metadata accurately represents their support level.
 
 No committed API keys, passwords, access tokens, private keys, personal email
 addresses, Home Assistant remote URLs, or concrete person/calendar entity IDs

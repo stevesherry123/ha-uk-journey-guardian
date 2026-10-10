@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-beta.12
+
+### Fixed
+
+- Publish version tags containing a prerelease suffix as GitHub prereleases so
+  beta builds are not presented as stable releases.
+
 ## 0.2.0-beta.11
 
 ### Security

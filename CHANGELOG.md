@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0-beta.15
+## 0.2.0-beta.16
 
 ### Added
 

@@ -306,7 +306,11 @@ def test_home_wake_alarm_message_is_explicit() -> None:
         timing=replace(TIMING, leave_home_at=NOW + timedelta(minutes=30)),
     )
 
-    message = _notification_message(snapshot, "wake_alarm")
+    with patch(
+        "custom_components.journey_guardian.notification.dt_util.as_local",
+        side_effect=lambda value: value,
+    ):
+        message = _notification_message(snapshot, "wake_alarm")
 
     assert message.startswith("Wake up now. It is time to get out of bed.")
     assert "Your 10:15 train leaves from Simulation Origin" in message

@@ -171,6 +171,15 @@ to the helper, then calls the script so household-specific delivery remains
 outside the integration. Simulations remain local, and a failed announcement
 falls back to a persistent notification.
 
+An optional home wake-up evidence entity can turn the first preparation reminder
+into a repeating wake-up alarm. While the configured person remains in the home
+zone and the evidence entity has not reached its configured awake state, Journey
+Guardian repeats the wake-up announcement at the configured interval (six
+seconds by default). It stops on awake evidence, leaving home, a journey change,
+the leave-home boundary, or the configurable 15-minute safety limit. Away from
+home, and whenever no evidence entity is configured, the existing three-reminder
+pattern remains unchanged.
+
 The proposed defaults prioritise action: wake-up reminders, leave-now, material
 rail changes, cancellations, connection risk, and provider failures. Repeated
 "on time" reassurance stays opt-in, with a checkpoint cadence and deduplication

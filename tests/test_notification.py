@@ -299,6 +299,116 @@ def test_walking_notification_includes_required_route_advisory() -> None:
     assert "may not include clear pedestrian or cycle paths" in message
 
 
+def test_home_wake_alarm_message_is_explicit() -> None:
+    """The repeating alarm sounds like a wake-up instruction, not a reminder."""
+    snapshot = replace(
+        _snapshot(simulation=False, phase="prepare_now"),
+        timing=replace(TIMING, leave_home_at=NOW + timedelta(minutes=30)),
+    )
+
+    message = _notification_message(snapshot, "wake_alarm")
+
+    assert message.startswith("Wake up now. It is time to get out of bed.")
+    assert "Your 10:15 train leaves from Simulation Origin" in message
+    assert "leave home at 09:30" in message
+
+
+async def test_home_wake_alarm_repeats_until_awake_evidence(hass) -> None:
+    """A home alarm stops on the first configured sign of wakefulness."""
+    person_entity = ".".join(("person", "example_traveller"))
+    awake_entity = ".".join(("input_boolean", "example_awake"))
+    hass.states.async_set(person_entity, "home")
+    hass.states.async_set(awake_entity, "off")
+    snapshot = replace(
+        _snapshot(simulation=False, phase="prepare_now"),
+        timing=replace(TIMING, leave_home_at=NOW + timedelta(minutes=30)),
+    )
+    coordinator = Mock(data=snapshot)
+    coordinator.record_notification = Mock()
+    scheduler = JourneyNotificationScheduler(
+        hass,
+        coordinator,
+        Mock(),
+        live_notifications_enabled=True,
+        person_entity=person_entity,
+        home_wake_awake_entity=awake_entity,
+        home_wake_repeat_seconds=6,
+        home_wake_max_minutes=15,
+    )
+    scheduler._async_deliver = AsyncMock()
+
+    async def mark_awake(_seconds: float) -> None:
+        hass.states.async_set(awake_entity, "on")
+
+    with (
+        patch(
+            "custom_components.journey_guardian.notification.dt_util.now",
+            return_value=NOW,
+        ),
+        patch(
+            "custom_components.journey_guardian.notification.asyncio.sleep",
+            side_effect=mark_awake,
+        ) as sleep,
+    ):
+        await scheduler._async_run_home_wake_alarm(DEPARTURE)
+
+    scheduler._async_deliver.assert_awaited_once()
+    sleep.assert_awaited_once_with(6)
+    coordinator.record_notification.assert_called_once_with("wake_alarm", NOW)
+    hass.states.async_set(awake_entity, "off")
+    assert not scheduler._should_run_home_wake_alarm(snapshot)
+
+
+async def test_away_preparation_keeps_standard_reminder(hass) -> None:
+    """The high-frequency alarm never replaces the normal away pattern."""
+    person_entity = ".".join(("person", "example_traveller"))
+    awake_entity = ".".join(("binary_sensor", "example_awake"))
+    hass.states.async_set(person_entity, "not_home")
+    hass.states.async_set(awake_entity, "off")
+    ledger = Mock()
+    ledger.async_claim = AsyncMock(return_value=True)
+    scheduler = JourneyNotificationScheduler(
+        hass,
+        Mock(),
+        ledger,
+        live_notifications_enabled=True,
+        person_entity=person_entity,
+        home_wake_awake_entity=awake_entity,
+    )
+
+    with patch(
+        "custom_components.journey_guardian.notification."
+        "persistent_notification.async_create"
+    ) as create_notification:
+        await scheduler._async_maybe_notify(
+            _snapshot(simulation=False, phase="prepare_now")
+        )
+
+    ledger.async_claim.assert_awaited_once()
+    assert "Wake-up reminder 1/3" in create_notification.call_args.args[1]
+
+
+def test_home_wake_alarm_accepts_inverted_awake_state(hass) -> None:
+    """An off-is-awake occupancy helper can stop the alarm without a template."""
+    person_entity = ".".join(("person", "example_traveller"))
+    awake_entity = ".".join(("binary_sensor", "example_bed_occupied"))
+    hass.states.async_set(person_entity, "home")
+    hass.states.async_set(awake_entity, "off")
+    scheduler = JourneyNotificationScheduler(
+        hass,
+        Mock(),
+        Mock(),
+        live_notifications_enabled=True,
+        person_entity=person_entity,
+        home_wake_awake_entity=awake_entity,
+        home_wake_awake_state="off",
+    )
+
+    assert not scheduler._should_run_home_wake_alarm(
+        _snapshot(simulation=False, phase="prepare_now")
+    )
+
+
 async def test_bounded_wake_reminder_uses_current_journey() -> None:
     """Preparation reminders stop when the journey or phase changes."""
     coordinator = Mock()

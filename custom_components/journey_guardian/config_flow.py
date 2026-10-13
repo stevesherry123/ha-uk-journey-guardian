@@ -22,6 +22,10 @@ from .const import (
     CONF_DESTINATION_ZONES,
     CONF_EARLY_WARNING_MINUTES,
     CONF_GOOGLE_ROUTES_API_KEY,
+    CONF_HOME_WAKE_AWAKE_ENTITY,
+    CONF_HOME_WAKE_AWAKE_STATE,
+    CONF_HOME_WAKE_MAX_MINUTES,
+    CONF_HOME_WAKE_REPEAT_SECONDS,
     CONF_HOME_ZONE,
     CONF_LIVE_NOTIFICATIONS_ENABLED,
     CONF_LIVE_RAIL_PROVIDER,
@@ -40,6 +44,9 @@ from .const import (
     DEFAULT_DAILY_API_LIMIT,
     DEFAULT_DELAY_REPAY_THRESHOLD_MINUTES,
     DEFAULT_EARLY_WARNING_MINUTES,
+    DEFAULT_HOME_WAKE_AWAKE_STATE,
+    DEFAULT_HOME_WAKE_MAX_MINUTES,
+    DEFAULT_HOME_WAKE_REPEAT_SECONDS,
     DEFAULT_HOME_ZONE,
     DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
     DEFAULT_LIVE_RAIL_PROVIDER,
@@ -197,6 +204,25 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="script")
                 ),
+                vol.Optional(
+                    CONF_HOME_WAKE_AWAKE_ENTITY
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["binary_sensor", "input_boolean"]
+                    )
+                ),
+                vol.Required(
+                    CONF_HOME_WAKE_AWAKE_STATE,
+                    default=DEFAULT_HOME_WAKE_AWAKE_STATE,
+                ): vol.In({"on": "On", "off": "Off"}),
+                vol.Required(
+                    CONF_HOME_WAKE_REPEAT_SECONDS,
+                    default=DEFAULT_HOME_WAKE_REPEAT_SECONDS,
+                ): vol.All(vol.Coerce(int), vol.Range(min=5, max=60)),
+                vol.Required(
+                    CONF_HOME_WAKE_MAX_MINUTES,
+                    default=DEFAULT_HOME_WAKE_MAX_MINUTES,
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
             }
         )
         return self.async_show_form(
@@ -344,6 +370,39 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                     ): selector.EntitySelector(
                         selector.EntitySelectorConfig(domain="script")
                     ),
+                    vol.Optional(
+                        CONF_HOME_WAKE_AWAKE_ENTITY,
+                        **(
+                            {"default": current[CONF_HOME_WAKE_AWAKE_ENTITY]}
+                            if current.get(CONF_HOME_WAKE_AWAKE_ENTITY)
+                            else {}
+                        ),
+                    ): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["binary_sensor", "input_boolean"]
+                        )
+                    ),
+                    vol.Required(
+                        CONF_HOME_WAKE_AWAKE_STATE,
+                        default=current.get(
+                            CONF_HOME_WAKE_AWAKE_STATE,
+                            DEFAULT_HOME_WAKE_AWAKE_STATE,
+                        ),
+                    ): vol.In({"on": "On", "off": "Off"}),
+                    vol.Required(
+                        CONF_HOME_WAKE_REPEAT_SECONDS,
+                        default=current.get(
+                            CONF_HOME_WAKE_REPEAT_SECONDS,
+                            DEFAULT_HOME_WAKE_REPEAT_SECONDS,
+                        ),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=5, max=60)),
+                    vol.Required(
+                        CONF_HOME_WAKE_MAX_MINUTES,
+                        default=current.get(
+                            CONF_HOME_WAKE_MAX_MINUTES,
+                            DEFAULT_HOME_WAKE_MAX_MINUTES,
+                        ),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
                     vol.Optional(
                         CONF_TRANSPORTAPI_APP_ID,
                     ): selector.TextSelector(),

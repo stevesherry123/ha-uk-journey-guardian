@@ -28,7 +28,11 @@
           "automatic_live_rail_enabled": "Enable automatic live rail checkpoints",
           "live_notifications_enabled": "Enable live journey notifications",
           "announcement_text_entity": "Announcement text helper",
-          "announcement_script_entity": "Announcement script"
+          "announcement_script_entity": "Announcement script",
+          "home_wake_awake_entity": "Home wake-up evidence",
+          "home_wake_awake_state": "State meaning awake",
+          "home_wake_repeat_seconds": "Wake-up repeat interval",
+          "home_wake_max_minutes": "Maximum wake-up duration"
         },
         "data_description": {
           "calendar_entity": "Calendar containing timed rail journey events.",
@@ -53,7 +57,11 @@
           "automatic_live_rail_enabled": "Off by default. When enabled, Journey Guardian makes one quota-controlled live rail check at each planned checkpoint.",
           "live_notifications_enabled": "Off by default during shadow testing. Simulations can still create test notifications.",
           "announcement_text_entity": "Input text helper that receives the rendered announcement before the script runs.",
-          "announcement_script_entity": "Script called after the announcement text helper has been updated."
+          "announcement_script_entity": "Script called after the announcement text helper has been updated.",
+          "home_wake_awake_entity": "Optional binary sensor or input boolean that confirms the traveller is awake. When configured, the repeating alarm runs only while the traveller is in the home zone.",
+          "home_wake_awake_state": "Choose whether on or off from the evidence entity means the traveller is awake.",
+          "home_wake_repeat_seconds": "Seconds between home wake-up announcements. Six seconds produces up to ten announcements per minute.",
+          "home_wake_max_minutes": "Safety limit for one home wake-up alarm. It also stops at the leave-home time, when the traveller leaves home, or when awake evidence appears."
         }
       }
     },
@@ -85,6 +93,10 @@
           "delay_repay_threshold_minutes": "Delay Repay alert threshold",
           "announcement_text_entity": "Announcement text helper",
           "announcement_script_entity": "Announcement script",
+          "home_wake_awake_entity": "Home wake-up evidence",
+          "home_wake_awake_state": "State meaning awake",
+          "home_wake_repeat_seconds": "Wake-up repeat interval",
+          "home_wake_max_minutes": "Maximum wake-up duration",
           "transportapi_app_id": "TransportAPI application ID",
           "transportapi_app_key": "TransportAPI application key",
           "live_rail_provider": "Live rail provider",
@@ -104,6 +116,10 @@
           "delay_repay_threshold_minutes": "Confirmed destination delay required before the nightly review raises a possible compensation claim.",
           "announcement_text_entity": "Select the input text helper used by your announcement engine.",
           "announcement_script_entity": "Select the script that delivers the announcement after the helper is updated.",
+          "home_wake_awake_entity": "Select a binary sensor or input boolean that changes when you are awake. Leave blank to retain the standard three reminders everywhere.",
+          "home_wake_awake_state": "Choose whether on or off means awake for the selected evidence entity.",
+          "home_wake_repeat_seconds": "Seconds between home wake-up announcements. The default is six seconds, or up to ten announcements per minute.",
+          "home_wake_max_minutes": "Safety limit for the repeating alarm. It stops earlier on awake evidence, leaving home, a journey change, or the leave-home time.",
           "transportapi_app_id": "Required for manual or automatic live-rail checks. Leave blank to keep the saved value; a new value replaces it.",
           "transportapi_app_key": "Required for manual or automatic live-rail checks. Leave blank to keep the saved value; a new value replaces it.",
           "live_rail_provider": "Railinfo needs no credentials and does not consume the TransportAPI budget. Its use remains bounded by Journey Guardian's checkpoint schedule and provider rate-limit back-off.",

@@ -30,6 +30,11 @@ from .const import (
     CONF_DELAY_REPAY_THRESHOLD_MINUTES,
     CONF_EARLY_WARNING_MINUTES,
     CONF_GOOGLE_ROUTES_API_KEY,
+    CONF_HOME_WAKE_AWAKE_ENTITY,
+    CONF_HOME_WAKE_AWAKE_STATE,
+    CONF_HOME_WAKE_MAX_MINUTES,
+    CONF_HOME_WAKE_REPEAT_SECONDS,
+    CONF_HOME_ZONE,
     CONF_LIVE_NOTIFICATIONS_ENABLED,
     CONF_LIVE_RAIL_PROVIDER,
     CONF_PERSON_ENTITY,
@@ -47,6 +52,10 @@ from .const import (
     DEFAULT_DAILY_API_LIMIT,
     DEFAULT_DELAY_REPAY_THRESHOLD_MINUTES,
     DEFAULT_EARLY_WARNING_MINUTES,
+    DEFAULT_HOME_WAKE_AWAKE_STATE,
+    DEFAULT_HOME_WAKE_MAX_MINUTES,
+    DEFAULT_HOME_WAKE_REPEAT_SECONDS,
+    DEFAULT_HOME_ZONE,
     DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
     DEFAULT_LIVE_RAIL_PROVIDER,
     DEFAULT_PREPARATION_BUFFER_MINUTES,
@@ -179,6 +188,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         announcement_text_entity=settings.get(CONF_ANNOUNCEMENT_TEXT_ENTITY, ""),
         announcement_script_entity=settings.get(
             CONF_ANNOUNCEMENT_SCRIPT_ENTITY, ""
+        ),
+        person_entity=entry.data.get(CONF_PERSON_ENTITY, ""),
+        home_zone_entity=entry.data.get(CONF_HOME_ZONE, DEFAULT_HOME_ZONE),
+        home_wake_awake_entity=settings.get(CONF_HOME_WAKE_AWAKE_ENTITY, ""),
+        home_wake_awake_state=settings.get(
+            CONF_HOME_WAKE_AWAKE_STATE, DEFAULT_HOME_WAKE_AWAKE_STATE
+        ),
+        home_wake_repeat_seconds=settings.get(
+            CONF_HOME_WAKE_REPEAT_SECONDS, DEFAULT_HOME_WAKE_REPEAT_SECONDS
+        ),
+        home_wake_max_minutes=settings.get(
+            CONF_HOME_WAKE_MAX_MINUTES, DEFAULT_HOME_WAKE_MAX_MINUTES
         ),
     )
     automatic_rail_ledger = AutomaticRailLedger(hass)

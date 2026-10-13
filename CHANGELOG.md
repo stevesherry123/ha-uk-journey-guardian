@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0-beta.15
+
+### Added
+
+- Add an opt-in home-only repeating wake-up alarm driven by a user-selected
+  binary sensor or input boolean, with configurable awake polarity, repeat
+  interval, and maximum duration.
+- Stop the alarm when awake evidence appears, the traveller leaves home, the
+  journey changes, the leave-home boundary is reached, or the safety limit
+  expires.
+
+### Changed
+
+- Preserve the existing three-reminder preparation pattern away from home and
+  whenever no wake-up evidence entity is configured.
+
 ## 0.2.0-beta.14
 
 ### Added

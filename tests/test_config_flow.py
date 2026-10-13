@@ -16,6 +16,9 @@ from custom_components.journey_guardian.const import (
     CONF_DESTINATION_ZONES,
     CONF_EARLY_WARNING_MINUTES,
     CONF_GOOGLE_ROUTES_API_KEY,
+    CONF_HOME_WAKE_AWAKE_STATE,
+    CONF_HOME_WAKE_MAX_MINUTES,
+    CONF_HOME_WAKE_REPEAT_SECONDS,
     CONF_HOME_ZONE,
     CONF_LIVE_NOTIFICATIONS_ENABLED,
     CONF_LIVE_RAIL_PROVIDER,
@@ -37,6 +40,9 @@ USER_INPUT = {
     CONF_CALENDAR_REFRESH_INTERVAL_MINUTES: 1440,
     CONF_PERSON_ENTITY: ".".join(("person", "example_traveller")),
     CONF_HOME_ZONE: "zone.home",
+    CONF_HOME_WAKE_AWAKE_STATE: "on",
+    CONF_HOME_WAKE_REPEAT_SECONDS: 6,
+    CONF_HOME_WAKE_MAX_MINUTES: 15,
     CONF_DESTINATION_ZONES: ["zone.example_destination"],
     CONF_PREPARATION_BUFFER_MINUTES: 30,
     CONF_EARLY_WARNING_MINUTES: 10,
@@ -161,6 +167,9 @@ async def test_options_flow_updates_timing_and_reloads(hass) -> None:
         CONF_TRANSPORTAPI_APP_ID: "updated-app-id",
         CONF_TRANSPORTAPI_APP_KEY: "updated-app-key",
         CONF_GOOGLE_ROUTES_API_KEY: "updated-routes-key",
+        CONF_HOME_WAKE_AWAKE_STATE: "on",
+        CONF_HOME_WAKE_REPEAT_SECONDS: 6,
+        CONF_HOME_WAKE_MAX_MINUTES: 15,
     }
     with patch.object(hass.config_entries, "async_reload") as async_reload:
         result = await hass.config_entries.options.async_configure(
@@ -206,6 +215,9 @@ async def test_options_flow_does_not_return_saved_credentials(hass) -> None:
         CONF_TRANSPORTAPI_APP_ID: "",
         CONF_TRANSPORTAPI_APP_KEY: "",
         CONF_GOOGLE_ROUTES_API_KEY: "",
+        CONF_HOME_WAKE_AWAKE_STATE: "on",
+        CONF_HOME_WAKE_REPEAT_SECONDS: 6,
+        CONF_HOME_WAKE_MAX_MINUTES: 15,
     }
     with patch.object(hass.config_entries, "async_reload"):
         result = await hass.config_entries.options.async_configure(

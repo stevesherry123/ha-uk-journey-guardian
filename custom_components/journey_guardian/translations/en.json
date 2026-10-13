@@ -7,6 +7,7 @@
         "description": "Connect a travel calendar, routing providers, and destination zones. Credentials are stored by Home Assistant and are never exposed as entity state.",
         "data": {
           "calendar_entity": "Travel calendar",
+          "calendar_refresh_interval_minutes": "Force calendar source refresh",
           "person_entity": "Traveller",
           "home_zone": "Home zone",
           "destination_zones": "Destination zones",
@@ -31,6 +32,7 @@
         },
         "data_description": {
           "calendar_entity": "Calendar containing timed rail journey events.",
+          "calendar_refresh_interval_minutes": "How often Journey Guardian asks Home Assistant to update the selected calendar from its upstream source. Daily is the default. Disabled leaves refresh timing entirely to the calendar integration.",
           "person_entity": "Person whose location will be used for travel decisions.",
           "home_zone": "Zone used to identify home departures.",
           "destination_zones": "Optional zones representing one or more regular destinations.",
@@ -71,6 +73,7 @@
         "description": "Edit conservative timing, notifications, and the live rail provider.",
         "data": {
           "preparation_buffer_minutes": "Preparation buffer",
+          "calendar_refresh_interval_minutes": "Force calendar source refresh",
           "early_warning_minutes": "Early warning margin",
           "station_buffer_minutes": "Station arrival buffer",
           "station_access_fallback_minutes": "Conservative station access fallback",
@@ -89,6 +92,7 @@
         },
         "data_description": {
           "preparation_buffer_minutes": "Minutes allowed to get ready before leaving for the station.",
+          "calendar_refresh_interval_minutes": "How often Journey Guardian asks Home Assistant to update the selected calendar from its upstream source. The manual refresh button always forces an update.",
           "early_warning_minutes": "Additional conservative margin before preparation should begin.",
           "station_buffer_minutes": "Minutes to arrive at the station before the scheduled train departure.",
           "station_access_fallback_minutes": "Minutes allowed to reach the station until live routing is available. Timing is labelled inferred.",

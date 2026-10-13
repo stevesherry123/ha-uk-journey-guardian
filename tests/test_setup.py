@@ -155,6 +155,32 @@ async def test_review_action_registered_without_entry(hass) -> None:
     assert not hass.services.has_service(DOMAIN, "reset_api_budget")
 
 
+async def test_review_action_forces_source_calendar_refresh(hass) -> None:
+    """A manual review refreshes the upstream calendar before returning."""
+    assert await async_setup_component(hass, DOMAIN, {})
+    runtime = Mock()
+    snapshot = Mock()
+    snapshot.as_dict.return_value = {"status": "planned"}
+    runtime.coordinator.async_refresh_calendar_and_review = AsyncMock(
+        return_value=snapshot
+    )
+
+    with patch(
+        "custom_components.journey_guardian._runtime",
+        return_value=runtime,
+    ):
+        response = await hass.services.async_call(
+            DOMAIN,
+            SERVICE_REVIEW_NOW,
+            {},
+            blocking=True,
+            return_response=True,
+        )
+
+    runtime.coordinator.async_refresh_calendar_and_review.assert_awaited_once_with()
+    assert response == {"status": "planned"}
+
+
 async def test_simulation_action_uses_safe_defaults_and_returns_snapshot(hass) -> None:
     """The public action activates only the in-memory simulation controller."""
     assert await async_setup_component(hass, DOMAIN, {})
@@ -248,5 +274,7 @@ async def test_live_rail_action_is_explicit_and_returns_snapshot(hass) -> None:
             return_response=True,
         )
 
-    runtime.coordinator.async_review_live_rail.assert_awaited_once_with()
+    runtime.coordinator.async_review_live_rail.assert_awaited_once_with(
+        force_calendar_refresh=True
+    )
     assert response["decision_path"] == "transportapi_manual"

@@ -87,6 +87,23 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
                 journey.destination_confirmation if journey else None
             ),
             "error": self.coordinator.data.error,
+            "calendar_source_refresh_interval_minutes": getattr(
+                self.coordinator,
+                "calendar_source_refresh_interval_minutes",
+                0,
+            ),
+            "last_calendar_source_refresh_at": _datetime_attribute(
+                getattr(
+                    self.coordinator,
+                    "last_calendar_source_refresh_at",
+                    None,
+                )
+            ),
+            "last_calendar_source_refresh_error": getattr(
+                self.coordinator,
+                "last_calendar_source_refresh_error",
+                None,
+            ),
             "last_live_rail_error": (
                 self.coordinator.data.last_live_rail_error
             ),

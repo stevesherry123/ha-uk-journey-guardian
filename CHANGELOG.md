@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0-beta.14
+
+### Added
+
+- Add a configurable forced source-calendar refresh interval, with a daily
+  default and choices from 15 minutes to weekly or disabled.
+- Record the last successful source refresh and any privacy-safe refresh error
+  on the status sensor.
+
+### Changed
+
+- Make manual calendar and live-rail reviews refresh the selected Home Assistant
+  calendar entity before Journey Guardian reads its events.
+
 ## 0.2.0-beta.13
 
 ### Changed

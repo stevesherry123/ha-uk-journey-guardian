@@ -6,6 +6,7 @@ DOMAIN = "journey_guardian"
 NAME = "UK Journey Guardian"
 
 CONF_CALENDAR_ENTITY = "calendar_entity"
+CONF_CALENDAR_REFRESH_INTERVAL_MINUTES = "calendar_refresh_interval_minutes"
 CONF_PERSON_ENTITY = "person_entity"
 CONF_HOME_ZONE = "home_zone"
 CONF_DESTINATION_ZONES = "destination_zones"
@@ -41,9 +42,21 @@ DEFAULT_URGENT_API_RESERVE = 3
 DEFAULT_LIVE_RAIL_PROVIDER = "transportapi"
 DEFAULT_LIVE_NOTIFICATIONS_ENABLED = False
 DEFAULT_AUTOMATIC_LIVE_RAIL_ENABLED = False
+DEFAULT_CALENDAR_REFRESH_INTERVAL_MINUTES = 24 * 60
 DEFAULT_LOOKAHEAD_HOURS = 30
 DEFAULT_UPDATE_INTERVAL = timedelta(minutes=10)
 DEFAULT_SIMULATION_DEPARTURE_MINUTES = 180
+
+CALENDAR_REFRESH_INTERVAL_OPTIONS = {
+    0: "Disabled",
+    15: "Every 15 minutes",
+    30: "Every 30 minutes",
+    60: "Every hour",
+    360: "Every 6 hours",
+    720: "Every 12 hours",
+    1440: "Daily",
+    10080: "Weekly",
+}
 
 SERVICE_REVIEW_NOW = "review_now"
 SERVICE_REVIEW_RAIL_NOW = "review_rail_now"

@@ -10,6 +10,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.journey_guardian.const import (
     CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
     CONF_CALENDAR_ENTITY,
+    CONF_CALENDAR_REFRESH_INTERVAL_MINUTES,
     CONF_DAILY_API_LIMIT,
     CONF_DELAY_REPAY_THRESHOLD_MINUTES,
     CONF_DESTINATION_ZONES,
@@ -33,6 +34,7 @@ from custom_components.journey_guardian.const import (
 
 USER_INPUT = {
     CONF_CALENDAR_ENTITY: ".".join(("calendar", "example_travel")),
+    CONF_CALENDAR_REFRESH_INTERVAL_MINUTES: 1440,
     CONF_PERSON_ENTITY: ".".join(("person", "example_traveller")),
     CONF_HOME_ZONE: "zone.home",
     CONF_DESTINATION_ZONES: ["zone.example_destination"],
@@ -145,6 +147,7 @@ async def test_options_flow_updates_timing_and_reloads(hass) -> None:
     assert result["type"] is FlowResultType.FORM
     updated = {
         CONF_PREPARATION_BUFFER_MINUTES: 35,
+        CONF_CALENDAR_REFRESH_INTERVAL_MINUTES: 360,
         CONF_EARLY_WARNING_MINUTES: 12,
         CONF_STATION_BUFFER_MINUTES: 20,
         CONF_STATION_ACCESS_FALLBACK_MINUTES: 75,
@@ -189,6 +192,7 @@ async def test_options_flow_does_not_return_saved_credentials(hass) -> None:
 
     submitted = {
         CONF_PREPARATION_BUFFER_MINUTES: 35,
+        CONF_CALENDAR_REFRESH_INTERVAL_MINUTES: 0,
         CONF_EARLY_WARNING_MINUTES: 12,
         CONF_STATION_BUFFER_MINUTES: 20,
         CONF_STATION_ACCESS_FALLBACK_MINUTES: 75,

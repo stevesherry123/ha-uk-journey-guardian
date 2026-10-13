@@ -210,14 +210,17 @@ After downloading it:
 2. Open **Settings → Devices & services → Add integration**.
 3. Search for **UK Journey Guardian**.
 4. Select the calendar, traveller, and zones. Provider credentials can be
-   deferred until the manual live-rail check is needed.
+   deferred until the manual live-rail check is needed. The calendar source is
+   force-refreshed daily by default; this can be changed from 15 minutes to
+   weekly, or disabled.
 5. Keep existing travel alarms enabled while validating shadow-mode results.
 
 After installation, open **Settings → Devices & services → UK Journey
 Guardian → Configure** to tune the preparation, early-warning,
-station-arrival, and conservative station-access durations. Live-calendar
-notifications are deliberately disabled by default during shadow testing and can
-be enabled on this screen. Simulation notifications remain enabled for testing.
+station-arrival, conservative station-access durations, and upstream calendar
+refresh interval. Live-calendar notifications are deliberately disabled by
+default during shadow testing and can be enabled on this screen. Simulation
+notifications remain enabled for testing.
 
 The project may be submitted to HACS's default catalogue after it is stable,
 branded, released, and passing HACS and Home Assistant validation. HACS indexes
@@ -237,6 +240,14 @@ installations.
 
 `journey_guardian.review_now` immediately refreshes the configured calendar and
 returns the normalized engine snapshot when a response is requested.
+
+Journey Guardian otherwise forces Home Assistant to update the selected source
+calendar once per configured interval. The default is daily. This is separate
+from Journey Guardian's ten-minute local review cadence and prevents integrations
+with slow default polling, such as Remote Calendar, from silently serving stale
+events. Selecting **Disabled** leaves all source refresh timing to the calendar
+integration. The **Refresh calendar and timings** button always forces a source
+update regardless of the configured interval.
 
 `journey_guardian.review_rail_now`—also available as **Check live rail now** on
 the device—first refreshes the calendar and then explicitly checks the selected

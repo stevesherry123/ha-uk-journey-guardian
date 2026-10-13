@@ -11,10 +11,12 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    CALENDAR_REFRESH_INTERVAL_OPTIONS,
     CONF_ANNOUNCEMENT_SCRIPT_ENTITY,
     CONF_ANNOUNCEMENT_TEXT_ENTITY,
     CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
     CONF_CALENDAR_ENTITY,
+    CONF_CALENDAR_REFRESH_INTERVAL_MINUTES,
     CONF_DAILY_API_LIMIT,
     CONF_DELAY_REPAY_THRESHOLD_MINUTES,
     CONF_DESTINATION_ZONES,
@@ -34,6 +36,7 @@ from .const import (
     CONF_TRANSPORTAPI_APP_KEY,
     CONF_URGENT_API_RESERVE,
     DEFAULT_AUTOMATIC_LIVE_RAIL_ENABLED,
+    DEFAULT_CALENDAR_REFRESH_INTERVAL_MINUTES,
     DEFAULT_DAILY_API_LIMIT,
     DEFAULT_DELAY_REPAY_THRESHOLD_MINUTES,
     DEFAULT_EARLY_WARNING_MINUTES,
@@ -93,6 +96,10 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_CALENDAR_ENTITY): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="calendar")
                 ),
+                vol.Required(
+                    CONF_CALENDAR_REFRESH_INTERVAL_MINUTES,
+                    default=DEFAULT_CALENDAR_REFRESH_INTERVAL_MINUTES,
+                ): vol.In(CALENDAR_REFRESH_INTERVAL_OPTIONS),
                 vol.Required(CONF_PERSON_ENTITY): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="person")
                 ),
@@ -234,6 +241,13 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
             data_schema=vol.Schema(
                 {
                     vol.Required(
+                        CONF_CALENDAR_REFRESH_INTERVAL_MINUTES,
+                        default=current.get(
+                            CONF_CALENDAR_REFRESH_INTERVAL_MINUTES,
+                            DEFAULT_CALENDAR_REFRESH_INTERVAL_MINUTES,
+                        ),
+                    ): vol.In(CALENDAR_REFRESH_INTERVAL_OPTIONS),
+                    vol.Required(
                         CONF_PREPARATION_BUFFER_MINUTES,
                         default=current.get(
                             CONF_PREPARATION_BUFFER_MINUTES,
@@ -346,10 +360,14 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                             CONF_LIVE_RAIL_PROVIDER,
                             DEFAULT_LIVE_RAIL_PROVIDER,
                         ),
-                    ): vol.In({
-                        "transportapi": "TransportAPI (uses configured daily limit)",
-                        "railinfo": "Railinfo (no key; separate fair-use limit)",
-                    }),
+                    ): vol.In(
+                        {
+                            "transportapi": (
+                                "TransportAPI (uses configured daily limit)"
+                            ),
+                            "railinfo": "Railinfo (no key; separate fair-use limit)",
+                        }
+                    ),
                     vol.Optional(
                         CONF_GOOGLE_ROUTES_API_KEY,
                     ): selector.TextSelector(

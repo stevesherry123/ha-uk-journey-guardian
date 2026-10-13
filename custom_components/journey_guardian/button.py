@@ -34,7 +34,7 @@ class ReviewNowButton(JourneyGuardianEntity, ButtonEntity):
     _attr_icon = "mdi:map-search"
 
     async def async_press(self) -> None:
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_refresh_calendar_and_review()
 
 
 class LiveRailReviewButton(JourneyGuardianEntity, ButtonEntity):
@@ -44,7 +44,7 @@ class LiveRailReviewButton(JourneyGuardianEntity, ButtonEntity):
     _attr_icon = "mdi:train-clock"
 
     async def async_press(self) -> None:
-        await self.coordinator.async_review_live_rail()
+        await self.coordinator.async_review_live_rail(force_calendar_refresh=True)
 
 
 class StationAccessTestButton(JourneyGuardianEntity, ButtonEntity):

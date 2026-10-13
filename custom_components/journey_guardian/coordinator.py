@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.util import dt as dt_util
 
 from .const import DEFAULT_UPDATE_INTERVAL, NAME
 from .engine import JourneyGuardianEngine
@@ -28,9 +29,24 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         hass: HomeAssistant,
         entry: ConfigEntry,
         engine: JourneyGuardianEngine,
+        *,
+        calendar_entity: str = "",
+        calendar_refresh_interval_minutes: int = 0,
     ) -> None:
         """Initialize the coordinator."""
         self.engine = engine
+        self._calendar_entity = calendar_entity
+        self.calendar_source_refresh_interval_minutes = max(
+            0, calendar_refresh_interval_minutes
+        )
+        self._calendar_source_refresh_interval = (
+            timedelta(minutes=self.calendar_source_refresh_interval_minutes)
+            if self.calendar_source_refresh_interval_minutes
+            else None
+        )
+        self._last_calendar_source_refresh_attempt_at: datetime | None = None
+        self.last_calendar_source_refresh_at: datetime | None = None
+        self.last_calendar_source_refresh_error: str | None = None
         self.last_live_check_at: datetime | None = None
         self.next_live_check_at: datetime | None = None
         self.last_station_access_test_at: datetime | None = None
@@ -50,6 +66,7 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
 
     async def _async_update_data(self) -> JourneySnapshot:
         """Return the latest normalized journey state."""
+        await self.async_refresh_calendar_source()
         snapshot = await self.engine.async_review()
         previous = self._last_live_snapshot
         if previous is None:
@@ -60,13 +77,65 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
             snapshot = _retain_live_evidence(snapshot, previous)
         return snapshot
 
+    async def async_refresh_calendar_source(self, *, force: bool = False) -> bool:
+        """Refresh the upstream calendar entity when configured and due."""
+        if not self._calendar_entity:
+            return False
+        if not force and self._calendar_source_refresh_interval is None:
+            return False
+
+        now = dt_util.now()
+        if (
+            not force
+            and self._last_calendar_source_refresh_attempt_at is not None
+            and now - self._last_calendar_source_refresh_attempt_at
+            < DEFAULT_UPDATE_INTERVAL
+        ):
+            return False
+        if (
+            not force
+            and self.last_calendar_source_refresh_at is not None
+            and now - self.last_calendar_source_refresh_at
+            < self._calendar_source_refresh_interval
+        ):
+            return False
+
+        self._last_calendar_source_refresh_attempt_at = now
+        try:
+            await self.hass.services.async_call(
+                "homeassistant",
+                "update_entity",
+                {"entity_id": self._calendar_entity},
+                blocking=True,
+            )
+        except HomeAssistantError as err:
+            self.last_calendar_source_refresh_error = type(err).__name__
+            _LOGGER.warning(
+                "Unable to refresh the configured calendar source (%s)",
+                self.last_calendar_source_refresh_error,
+            )
+            return False
+
+        self.last_calendar_source_refresh_at = now
+        self.last_calendar_source_refresh_error = None
+        return True
+
+    async def async_refresh_calendar_and_review(self) -> JourneySnapshot:
+        """Force the source calendar to update before reviewing the journey."""
+        await self.async_refresh_calendar_source(force=True)
+        await self.async_request_refresh()
+        return self.data
+
     async def async_review_live_rail(
         self,
         *,
         decision_path: str = "transportapi_manual",
         urgent: bool = False,
+        force_calendar_refresh: bool = False,
     ) -> JourneySnapshot:
         """Run a quota-controlled provider review and publish its snapshot."""
+        if force_calendar_refresh:
+            await self.async_refresh_calendar_source(force=True)
         try:
             snapshot = await self.engine.async_review_live_rail(
                 decision_path=decision_path,

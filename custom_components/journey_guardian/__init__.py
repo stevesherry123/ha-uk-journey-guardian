@@ -25,6 +25,7 @@ from .const import (
     CONF_ANNOUNCEMENT_TEXT_ENTITY,
     CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
     CONF_CALENDAR_ENTITY,
+    CONF_CALENDAR_REFRESH_INTERVAL_MINUTES,
     CONF_DAILY_API_LIMIT,
     CONF_DELAY_REPAY_THRESHOLD_MINUTES,
     CONF_EARLY_WARNING_MINUTES,
@@ -42,6 +43,7 @@ from .const import (
     CONF_TRANSPORTAPI_APP_KEY,
     CONF_URGENT_API_RESERVE,
     DEFAULT_AUTOMATIC_LIVE_RAIL_ENABLED,
+    DEFAULT_CALENDAR_REFRESH_INTERVAL_MINUTES,
     DEFAULT_DAILY_API_LIMIT,
     DEFAULT_DELAY_REPAY_THRESHOLD_MINUTES,
     DEFAULT_EARLY_WARNING_MINUTES,
@@ -149,7 +151,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         station_access_profiles=settings.get(CONF_STATION_ACCESS_PROFILES),
         google_routes_client=google_routes_client,
     )
-    coordinator = JourneyGuardianCoordinator(hass, entry, engine)
+    coordinator = JourneyGuardianCoordinator(
+        hass,
+        entry,
+        engine,
+        calendar_entity=entry.data[CONF_CALENDAR_ENTITY],
+        calendar_refresh_interval_minutes=settings.get(
+            CONF_CALENDAR_REFRESH_INTERVAL_MINUTES,
+            DEFAULT_CALENDAR_REFRESH_INTERVAL_MINUTES,
+        ),
+    )
     await coordinator.live_evidence.async_load()
     notification_ledger = NotificationLedger(hass)
     await notification_ledger.async_load()
@@ -258,8 +269,8 @@ def _runtime(hass: HomeAssistant) -> JourneyGuardianRuntimeData:
 def _async_register_services(hass: HomeAssistant) -> None:
     async def async_review_now(call: ServiceCall) -> dict:
         runtime = _runtime(hass)
-        await runtime.coordinator.async_request_refresh()
-        return runtime.coordinator.data.as_dict()
+        snapshot = await runtime.coordinator.async_refresh_calendar_and_review()
+        return snapshot.as_dict()
 
     async def async_simulate_journey(call: ServiceCall) -> dict:
         runtime = _runtime(hass)
@@ -276,7 +287,9 @@ def _async_register_services(hass: HomeAssistant) -> None:
 
     async def async_review_rail_now(call: ServiceCall) -> dict:
         runtime = _runtime(hass)
-        snapshot = await runtime.coordinator.async_review_live_rail()
+        snapshot = await runtime.coordinator.async_review_live_rail(
+            force_calendar_refresh=True
+        )
         return snapshot.as_dict()
 
     async def async_clear_simulation(call: ServiceCall) -> dict:

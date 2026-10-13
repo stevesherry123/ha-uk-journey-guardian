@@ -2,8 +2,9 @@
 
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
+from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.journey_guardian.const import (
@@ -20,12 +21,117 @@ from custom_components.journey_guardian.models import (
 )
 
 CHECKED_AT = datetime(2026, 8, 28, 14, 15, tzinfo=UTC)
+CALENDAR_ENTITY = ".".join(("calendar", "example_travel"))
 BUDGET = BudgetSnapshot(
     date="2026-08-28",
     calls_used=0,
     daily_limit=30,
     urgent_reserve=3,
 )
+
+
+def _idle_snapshot() -> JourneySnapshot:
+    return JourneySnapshot(
+        status="idle",
+        checked_at=CHECKED_AT,
+        next_journey=None,
+        budget=BUDGET,
+    )
+
+
+async def test_calendar_source_refresh_obeys_configured_interval(hass) -> None:
+    """The upstream calendar is refreshed at startup and when next due."""
+    engine = Mock()
+    engine.async_review = AsyncMock(return_value=_idle_snapshot())
+    coordinator = JourneyGuardianCoordinator(
+        hass,
+        MockConfigEntry(domain=DOMAIN),
+        engine,
+        calendar_entity=CALENDAR_ENTITY,
+        calendar_refresh_interval_minutes=1440,
+    )
+    update_entity = AsyncMock()
+    hass.services.async_register("homeassistant", "update_entity", update_entity)
+
+    with patch(
+        "custom_components.journey_guardian.coordinator.dt_util.now",
+        side_effect=(
+            CHECKED_AT,
+            CHECKED_AT + timedelta(hours=12),
+            CHECKED_AT + timedelta(days=1),
+        ),
+    ):
+        await coordinator._async_update_data()
+        await coordinator._async_update_data()
+        await coordinator._async_update_data()
+
+    assert update_entity.await_count == 2
+    assert update_entity.await_args.args[0].data == {"entity_id": CALENDAR_ENTITY}
+    assert coordinator.last_calendar_source_refresh_at == CHECKED_AT + timedelta(days=1)
+
+
+async def test_calendar_source_refresh_can_be_disabled(hass) -> None:
+    """A zero interval leaves source polling to the calendar integration."""
+    engine = Mock()
+    engine.async_review = AsyncMock(return_value=_idle_snapshot())
+    coordinator = JourneyGuardianCoordinator(
+        hass,
+        MockConfigEntry(domain=DOMAIN),
+        engine,
+        calendar_entity=CALENDAR_ENTITY,
+        calendar_refresh_interval_minutes=0,
+    )
+    update_entity = AsyncMock()
+    hass.services.async_register("homeassistant", "update_entity", update_entity)
+
+    await coordinator._async_update_data()
+
+    update_entity.assert_not_awaited()
+    engine.async_review.assert_awaited_once_with()
+
+
+async def test_forced_calendar_source_refresh_ignores_interval(hass) -> None:
+    """The manual refresh path always updates the selected source calendar."""
+    coordinator = JourneyGuardianCoordinator(
+        hass,
+        MockConfigEntry(domain=DOMAIN),
+        Mock(),
+        calendar_entity=CALENDAR_ENTITY,
+        calendar_refresh_interval_minutes=1440,
+    )
+    coordinator.last_calendar_source_refresh_at = CHECKED_AT
+    update_entity = AsyncMock()
+    hass.services.async_register("homeassistant", "update_entity", update_entity)
+
+    with patch(
+        "custom_components.journey_guardian.coordinator.dt_util.now",
+        return_value=CHECKED_AT + timedelta(minutes=1),
+    ):
+        refreshed = await coordinator.async_refresh_calendar_source(force=True)
+
+    assert refreshed is True
+    update_entity.assert_awaited_once()
+
+
+async def test_calendar_source_refresh_failure_uses_cached_calendar(hass) -> None:
+    """A source update failure does not block the cached calendar review."""
+    engine = Mock()
+    engine.async_review = AsyncMock(return_value=_idle_snapshot())
+    coordinator = JourneyGuardianCoordinator(
+        hass,
+        MockConfigEntry(domain=DOMAIN),
+        engine,
+        calendar_entity=CALENDAR_ENTITY,
+        calendar_refresh_interval_minutes=1440,
+    )
+    update_entity = AsyncMock(side_effect=HomeAssistantError("unavailable"))
+    hass.services.async_register("homeassistant", "update_entity", update_entity)
+
+    snapshot = await coordinator._async_update_data()
+
+    assert snapshot.status == "idle"
+    assert coordinator.last_calendar_source_refresh_error == "HomeAssistantError"
+    engine.async_review.assert_awaited_once_with()
 
 
 async def test_error_retains_normal_polling_interval(hass) -> None:

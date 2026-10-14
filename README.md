@@ -171,14 +171,15 @@ to the helper, then calls the script so household-specific delivery remains
 outside the integration. Simulations remain local, and a failed announcement
 falls back to a persistent notification.
 
-An optional home wake-up evidence entity can turn the first preparation reminder
-into a repeating wake-up alarm. While the configured person remains in the home
-zone and the evidence entity has not reached its configured awake state, Journey
-Guardian repeats the wake-up announcement at the configured interval (six
-seconds by default). It stops on awake evidence, leaving home, a journey change,
-the leave-home boundary, or the configurable 15-minute safety limit. Away from
-home, and whenever no evidence entity is configured, the existing three-reminder
-pattern remains unchanged.
+The separately enabled home wake-up alarm turns the first preparation reminder
+into a repeating announcement. While the configured person remains in the home
+zone, Journey Guardian repeats it at the configured interval (six seconds by
+default). An optional wake-up evidence entity stops the alarm as soon as it
+reports that the traveller is awake. Without evidence, the alarm continues until
+the traveller leaves home, the journey changes, the leave-home boundary arrives,
+or the configurable 15-minute safety limit expires. Away from home, the existing
+three-reminder pattern remains unchanged. Phone and watch haptics depend on the
+selected Home Assistant announcement script delivering a mobile notification.
 
 The proposed defaults prioritise action: wake-up reminders, leave-now, material
 rail changes, cancellations, connection risk, and provider failures. Repeated

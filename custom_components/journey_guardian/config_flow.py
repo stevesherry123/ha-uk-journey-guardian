@@ -24,6 +24,7 @@ from .const import (
     CONF_GOOGLE_ROUTES_API_KEY,
     CONF_HOME_WAKE_AWAKE_ENTITY,
     CONF_HOME_WAKE_AWAKE_STATE,
+    CONF_HOME_WAKE_ENABLED,
     CONF_HOME_WAKE_MAX_MINUTES,
     CONF_HOME_WAKE_REPEAT_SECONDS,
     CONF_HOME_ZONE,
@@ -45,6 +46,7 @@ from .const import (
     DEFAULT_DELAY_REPAY_THRESHOLD_MINUTES,
     DEFAULT_EARLY_WARNING_MINUTES,
     DEFAULT_HOME_WAKE_AWAKE_STATE,
+    DEFAULT_HOME_WAKE_ENABLED,
     DEFAULT_HOME_WAKE_MAX_MINUTES,
     DEFAULT_HOME_WAKE_REPEAT_SECONDS,
     DEFAULT_HOME_ZONE,
@@ -204,6 +206,10 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="script")
                 ),
+                vol.Required(
+                    CONF_HOME_WAKE_ENABLED,
+                    default=DEFAULT_HOME_WAKE_ENABLED,
+                ): selector.BooleanSelector(),
                 vol.Optional(
                     CONF_HOME_WAKE_AWAKE_ENTITY
                 ): selector.EntitySelector(
@@ -370,6 +376,13 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                     ): selector.EntitySelector(
                         selector.EntitySelectorConfig(domain="script")
                     ),
+                    vol.Required(
+                        CONF_HOME_WAKE_ENABLED,
+                        default=current.get(
+                            CONF_HOME_WAKE_ENABLED,
+                            bool(current.get(CONF_ANNOUNCEMENT_SCRIPT_ENTITY)),
+                        ),
+                    ): selector.BooleanSelector(),
                     vol.Optional(
                         CONF_HOME_WAKE_AWAKE_ENTITY,
                         **(

@@ -102,6 +102,7 @@ async def async_get_config_entry_diagnostics(
         ],
         "last_travel_day_review": runtime.end_of_day_review.diagnostics(),
         "arrival_collector": runtime.arrival_collector.diagnostics(),
+        "home_wake_alarm": runtime.notification_scheduler.diagnostics(),
     }
 
 

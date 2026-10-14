@@ -86,6 +86,7 @@ class JourneyNotificationScheduler:
         announcement_script_entity: str = "",
         person_entity: str = "",
         home_zone_entity: str = "zone.home",
+        home_wake_enabled: bool = False,
         home_wake_awake_entity: str = "",
         home_wake_awake_state: str = "on",
         home_wake_repeat_seconds: int = 6,
@@ -101,6 +102,7 @@ class JourneyNotificationScheduler:
         self._announcement_script_entity = announcement_script_entity.strip()
         self._person_entity = person_entity.strip()
         self._home_zone_entity = home_zone_entity.strip()
+        self._home_wake_enabled = home_wake_enabled
         self._home_wake_awake_entity = home_wake_awake_entity.strip()
         self._home_wake_awake_state = home_wake_awake_state.casefold().strip()
         self._home_wake_repeat_seconds = max(5, home_wake_repeat_seconds)
@@ -111,6 +113,9 @@ class JourneyNotificationScheduler:
         self._home_wake_task: asyncio.Task[None] | None = None
         self._home_wake_departure: datetime | None = None
         self._home_wake_completed_departure: datetime | None = None
+        self._home_wake_delivery_count = 0
+        self._home_wake_last_delivery: str | None = None
+        self._home_wake_last_stop_reason: str | None = None
 
     @callback
     def start(self) -> None:
@@ -124,7 +129,7 @@ class JourneyNotificationScheduler:
     def stop(self) -> None:
         """Cancel all boundary and coordinator listeners."""
         self._cancel_boundaries()
-        self._cancel_home_wake_alarm()
+        self._cancel_home_wake_alarm(reason="integration_stopped")
         if self._remove_listener is not None:
             self._remove_listener()
             self._remove_listener = None
@@ -188,7 +193,9 @@ class JourneyNotificationScheduler:
         """Start or stop the high-frequency home wake-up loop."""
         journey = snapshot.next_journey
         if not should_run or journey is None:
-            self._cancel_home_wake_alarm()
+            self._cancel_home_wake_alarm(
+                reason=self._home_wake_readiness(snapshot)
+            )
             return
         if (
             self._home_wake_task is not None
@@ -196,19 +203,23 @@ class JourneyNotificationScheduler:
             and self._home_wake_departure == journey.start
         ):
             return
-        self._cancel_home_wake_alarm()
+        self._cancel_home_wake_alarm(reason="journey_changed")
         self._home_wake_departure = journey.start
+        self._home_wake_delivery_count = 0
+        self._home_wake_last_delivery = None
+        self._home_wake_last_stop_reason = None
         self._home_wake_task = self._hass.async_create_task(
             self._async_run_home_wake_alarm(journey.start),
             f"{DOMAIN} home wake alarm",
         )
 
     @callback
-    def _cancel_home_wake_alarm(self) -> None:
+    def _cancel_home_wake_alarm(self, *, reason: str) -> None:
         task = self._home_wake_task
         self._home_wake_task = None
         self._home_wake_departure = None
         if task is not None and not task.done():
+            self._home_wake_last_stop_reason = reason
             task.cancel()
 
     async def _async_run_home_wake_alarm(self, departure: datetime) -> None:
@@ -221,6 +232,7 @@ class JourneyNotificationScheduler:
                 timing = snapshot.timing
                 if self._awake_state_observed():
                     self._home_wake_completed_departure = departure
+                    self._home_wake_last_stop_reason = "awake"
                     return
                 if (
                     journey is None
@@ -228,6 +240,9 @@ class JourneyNotificationScheduler:
                     or timing is None
                     or not self._should_run_home_wake_alarm(snapshot)
                 ):
+                    self._home_wake_last_stop_reason = (
+                        self._home_wake_readiness(snapshot)
+                    )
                     return
                 deadline = min(
                     timing.leave_home_at,
@@ -236,17 +251,28 @@ class JourneyNotificationScheduler:
                 now = dt_util.now()
                 if now >= deadline:
                     self._home_wake_completed_departure = departure
+                    self._home_wake_last_stop_reason = (
+                        "leave_home"
+                        if now >= timing.leave_home_at
+                        else "safety_limit"
+                    )
                     return
-                await self._async_deliver(
+                self._home_wake_last_delivery = await self._async_deliver(
                     _notification_message(snapshot, "wake_alarm"),
                     title="UK Journey Guardian wake-up",
                     notification_id=HOME_WAKE_NOTIFICATION_ID,
                     simulation=False,
                 )
+                self._home_wake_delivery_count += 1
                 self._coordinator.record_notification("wake_alarm", dt_util.now())
                 remaining = (deadline - dt_util.now()).total_seconds()
                 if remaining <= 0:
                     self._home_wake_completed_departure = departure
+                    self._home_wake_last_stop_reason = (
+                        "leave_home"
+                        if dt_util.now() >= timing.leave_home_at
+                        else "safety_limit"
+                    )
                     return
                 await asyncio.sleep(
                     min(self._home_wake_repeat_seconds, remaining)
@@ -258,18 +284,51 @@ class JourneyNotificationScheduler:
 
     def _should_run_home_wake_alarm(self, snapshot: JourneySnapshot) -> bool:
         """Return whether this snapshot needs the home-only repeating alarm."""
-        return bool(
-            self._live_notifications_enabled
-            and not snapshot.simulation_active
-            and snapshot.operational_phase == "prepare_now"
-            and snapshot.timing is not None
-            and snapshot.next_journey is not None
-            and self._home_wake_completed_departure
-            != snapshot.next_journey.start
-            and self._home_wake_awake_entity
-            and self._person_is_home()
-            and not self._awake_state_observed()
-        )
+        return self._home_wake_readiness(snapshot) == "ready"
+
+    def _home_wake_readiness(self, snapshot: JourneySnapshot) -> str:
+        """Explain whether the repeating alarm can run for this snapshot."""
+        if not self._home_wake_enabled:
+            return "disabled"
+        if not self._live_notifications_enabled:
+            return "notifications_disabled"
+        if snapshot.simulation_active:
+            return "simulation"
+        if snapshot.next_journey is None:
+            return "no_journey"
+        if snapshot.timing is None:
+            return "timing_unavailable"
+        if snapshot.operational_phase != "prepare_now":
+            return snapshot.operational_phase
+        if self._home_wake_completed_departure == snapshot.next_journey.start:
+            return "completed"
+        if not self._person_is_home():
+            return "away"
+        if self._awake_state_observed():
+            return "awake"
+        return "ready"
+
+    def diagnostics(self) -> dict[str, Any]:
+        """Return privacy-safe alarm eligibility and delivery evidence."""
+        task = self._home_wake_task
+        status = self._home_wake_readiness(self._coordinator.data)
+        if task is not None and not task.done():
+            status = "ringing"
+        return {
+            "enabled": self._home_wake_enabled,
+            "status": status,
+            "awake_evidence_configured": bool(
+                self._home_wake_awake_entity
+            ),
+            "announcement_engine_configured": (
+                self._announcement_engine_configured()
+            ),
+            "repeat_seconds": self._home_wake_repeat_seconds,
+            "max_minutes": self._home_wake_max_minutes,
+            "delivery_count": self._home_wake_delivery_count,
+            "last_delivery": self._home_wake_last_delivery,
+            "last_stop_reason": self._home_wake_last_stop_reason,
+        }
 
     def _record_awake_evidence(self, snapshot: JourneySnapshot) -> None:
         """Remember momentary awake evidence for the current departure."""
@@ -379,12 +438,9 @@ class JourneyNotificationScheduler:
         title: str,
         notification_id: str,
         simulation: bool,
-    ) -> None:
+    ) -> str:
         """Deliver live messages through the configured announcement engine."""
-        configured = bool(
-            self._announcement_text_entity.startswith("input_text.")
-            and self._announcement_script_entity.startswith("script.")
-        )
+        configured = self._announcement_engine_configured()
         if not simulation and configured:
             try:
                 async with self._delivery_lock:
@@ -403,7 +459,7 @@ class JourneyNotificationScheduler:
                         {},
                         blocking=True,
                     )
-                return
+                return "announcement_engine"
             except Exception as err:  # HA service failures vary by platform.
                 _LOGGER.warning(
                     "Announcement delivery failed with %s; using local fallback",
@@ -414,6 +470,14 @@ class JourneyNotificationScheduler:
             message,
             title=title,
             notification_id=notification_id,
+        )
+        return "persistent_notification"
+
+    def _announcement_engine_configured(self) -> bool:
+        """Return whether live delivery can call the selected script."""
+        return bool(
+            self._announcement_text_entity.startswith("input_text.")
+            and self._announcement_script_entity.startswith("script.")
         )
 
 

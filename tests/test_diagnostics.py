@@ -75,6 +75,17 @@ async def test_diagnostics_remove_journey_and_configuration_identifiers(hass) ->
         "completed_count": 0,
         "pending_attempt_counts": {"1": 1},
     }
+    runtime.notification_scheduler.diagnostics.return_value = {
+        "enabled": True,
+        "status": "waiting",
+        "awake_evidence_configured": False,
+        "announcement_engine_configured": True,
+        "repeat_seconds": 6,
+        "max_minutes": 15,
+        "delivery_count": 0,
+        "last_delivery": None,
+        "last_stop_reason": None,
+    }
     entry = Mock()
     entry.runtime_data = runtime
     entry.as_dict.return_value = {
@@ -97,6 +108,7 @@ async def test_diagnostics_remove_journey_and_configuration_identifiers(hass) ->
     assert diagnostics["engine"]["next_journey"] == "REDACTED"
     assert diagnostics["engine"]["rail_observation"]["delay_minutes"] == 12
     assert diagnostics["recent_live_checks"][0]["outcome"] == "success"
+    assert diagnostics["home_wake_alarm"]["status"] == "waiting"
     for private_value in (
         "private-entry-id",
         "private-unique-id",

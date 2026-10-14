@@ -25,9 +25,15 @@ async def async_setup_entry(
 ) -> None:
     """Set up Journey Guardian sensors."""
     coordinator = entry.runtime_data.coordinator
+    notification_scheduler = entry.runtime_data.notification_scheduler
     async_add_entities(
         [
-            JourneyStatusSensor(coordinator, entry, "status"),
+            JourneyStatusSensor(
+                coordinator,
+                entry,
+                "status",
+                notification_scheduler=notification_scheduler,
+            ),
             OperationalPhaseSensor(coordinator, entry, "operational_phase"),
             RailDataFreshnessSensor(coordinator, entry, "rail_data_freshness"),
             StationAccessHealthSensor(
@@ -67,6 +73,18 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
     _attr_translation_key = "status"
     _attr_icon = "mdi:shield-check"
 
+    def __init__(
+        self,
+        coordinator,
+        entry: ConfigEntry,
+        key: str,
+        *,
+        notification_scheduler=None,
+    ) -> None:
+        """Initialize the status sensor with optional alarm diagnostics."""
+        super().__init__(coordinator, entry, key)
+        self._notification_scheduler = notification_scheduler
+
     @property
     def native_value(self) -> str:
         return self.coordinator.data.status
@@ -75,7 +93,7 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
     def extra_state_attributes(self) -> dict:
         journey = self.coordinator.data.next_journey
         observation = self.coordinator.data.rail_observation
-        return {
+        attributes = {
             "checked_at": self.coordinator.data.checked_at.isoformat(),
             "simulation_active": self.coordinator.data.simulation_active,
             "journey_end": (
@@ -175,6 +193,26 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
                 observation.retained if observation else False
             ),
         }
+        if self._notification_scheduler is not None:
+            wake = self._notification_scheduler.diagnostics()
+            attributes.update(
+                {
+                    "home_wake_status": wake["status"],
+                    "home_wake_enabled": wake["enabled"],
+                    "home_wake_awake_evidence_configured": wake[
+                        "awake_evidence_configured"
+                    ],
+                    "home_wake_announcement_engine_configured": wake[
+                        "announcement_engine_configured"
+                    ],
+                    "home_wake_delivery_count": wake["delivery_count"],
+                    "home_wake_last_delivery": wake["last_delivery"],
+                    "home_wake_last_stop_reason": wake[
+                        "last_stop_reason"
+                    ],
+                }
+            )
+        return attributes
 
 
 class OperationalPhaseSensor(JourneyGuardianEntity, SensorEntity):

@@ -9,14 +9,14 @@ has not passed the required real-travel acceptance test.
 | --- | --- | --- |
 | Timed calendar journey discovery and lifecycle | Implemented | Retain legacy until real-day validation |
 | Conservative preparation, leave, and station arrival timing | Implemented | Validate against real travel |
-| Repeating acknowledged wake-up alarm | Not implemented | Legacy remains required |
+| Repeating acknowledged wake-up alarm | Implemented with optional awake evidence | Validate watch delivery on a real travel morning |
 | Station access by road, walking, cycling, or transit | Implemented, with CRS profiles | Validate configured profiles |
 | Quota-aware rail checks | Implemented | Direct service validated; waypoint matching needs evidence |
 | Direct service live status, delay, platform, calling point | Partial | Direct outbound test passed; provider mismatch remains for one return service |
 | Post-departure delayed-service checks | Implemented | Needs real journey validation |
 | Split-journey interchange monitoring | Diagnostic helper only | Not ready for cutover |
 | Meaningful-change notification deduplication | Implemented for local persistent alerts | Mobile delivery remains absent |
-| Mobile push, spoken announcements, wearables | Not implemented | Legacy remains required |
+| Mobile push, spoken announcements, wearables | Supported through a selected Home Assistant delivery script | Validate each household delivery script separately |
 | Manual-review parity and failure explanation | Partial | Needs no-journey, ambiguous, and provider-failure acceptance cases |
 | Local destination transit comparison | Not implemented | Legacy remains required |
 | Privacy-safe diagnostics and provider budgeting | Implemented | Continue observation |

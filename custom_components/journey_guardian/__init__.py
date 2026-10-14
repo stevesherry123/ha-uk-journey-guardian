@@ -32,6 +32,7 @@ from .const import (
     CONF_GOOGLE_ROUTES_API_KEY,
     CONF_HOME_WAKE_AWAKE_ENTITY,
     CONF_HOME_WAKE_AWAKE_STATE,
+    CONF_HOME_WAKE_ENABLED,
     CONF_HOME_WAKE_MAX_MINUTES,
     CONF_HOME_WAKE_REPEAT_SECONDS,
     CONF_HOME_ZONE,
@@ -53,6 +54,7 @@ from .const import (
     DEFAULT_DELAY_REPAY_THRESHOLD_MINUTES,
     DEFAULT_EARLY_WARNING_MINUTES,
     DEFAULT_HOME_WAKE_AWAKE_STATE,
+    DEFAULT_HOME_WAKE_ENABLED,
     DEFAULT_HOME_WAKE_MAX_MINUTES,
     DEFAULT_HOME_WAKE_REPEAT_SECONDS,
     DEFAULT_HOME_ZONE,
@@ -191,6 +193,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
         person_entity=entry.data.get(CONF_PERSON_ENTITY, ""),
         home_zone_entity=entry.data.get(CONF_HOME_ZONE, DEFAULT_HOME_ZONE),
+        home_wake_enabled=settings.get(
+            CONF_HOME_WAKE_ENABLED,
+            bool(settings.get(CONF_ANNOUNCEMENT_SCRIPT_ENTITY))
+            or DEFAULT_HOME_WAKE_ENABLED,
+        ),
         home_wake_awake_entity=settings.get(CONF_HOME_WAKE_AWAKE_ENTITY, ""),
         home_wake_awake_state=settings.get(
             CONF_HOME_WAKE_AWAKE_STATE, DEFAULT_HOME_WAKE_AWAKE_STATE

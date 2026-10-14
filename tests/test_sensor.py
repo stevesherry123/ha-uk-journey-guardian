@@ -142,7 +142,22 @@ def test_simulated_delay_is_visible_without_overwriting_schedule() -> None:
     next_departure = NextDepartureSensor(
         coordinator, entry, "next_departure"
     )
-    status = JourneyStatusSensor(coordinator, entry, "status")
+    notification_scheduler = Mock()
+    notification_scheduler.diagnostics.return_value = {
+        "enabled": True,
+        "status": "ringing",
+        "awake_evidence_configured": False,
+        "announcement_engine_configured": True,
+        "delivery_count": 3,
+        "last_delivery": "announcement_engine",
+        "last_stop_reason": None,
+    }
+    status = JourneyStatusSensor(
+        coordinator,
+        entry,
+        "status",
+        notification_scheduler=notification_scheduler,
+    )
     phase = OperationalPhaseSensor(coordinator, entry, "operational_phase")
     freshness = RailDataFreshnessSensor(
         coordinator, entry, "rail_data_freshness"
@@ -177,3 +192,8 @@ def test_simulated_delay_is_visible_without_overwriting_schedule() -> None:
     assert status.extra_state_attributes["last_notification_at"] is None
     assert status.extra_state_attributes["last_live_rail_error"] is None
     assert status.extra_state_attributes["simulation_active"] is True
+    assert status.extra_state_attributes["home_wake_status"] == "ringing"
+    assert status.extra_state_attributes["home_wake_delivery_count"] == 3
+    assert status.extra_state_attributes["home_wake_last_delivery"] == (
+        "announcement_engine"
+    )

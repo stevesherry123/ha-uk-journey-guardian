@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0-beta.17
+
+### Fixed
+
+- Do not silently disable the repeating home wake-up alarm when no optional
+  awake-evidence entity is configured. Without evidence, the alarm now repeats
+  until a home, journey, leave-time, or safety-limit stop is reached.
+- Preserve the wake-up alarm for upgraded installations that already have a
+  delivery script, while giving new installations a separate explicit enable
+  switch.
+
+### Added
+
+- Expose privacy-safe wake-up eligibility, delivery channel, repeat count, and
+  stop reason in the status entity and downloadable diagnostics.
+
 ## 0.2.0-beta.16
 
 ### Added

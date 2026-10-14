@@ -335,6 +335,7 @@ async def test_home_wake_alarm_repeats_until_awake_evidence(hass) -> None:
         Mock(),
         live_notifications_enabled=True,
         person_entity=person_entity,
+        home_wake_enabled=True,
         home_wake_awake_entity=awake_entity,
         home_wake_repeat_seconds=6,
         home_wake_max_minutes=15,
@@ -377,6 +378,7 @@ async def test_away_preparation_keeps_standard_reminder(hass) -> None:
         ledger,
         live_notifications_enabled=True,
         person_entity=person_entity,
+        home_wake_enabled=True,
         home_wake_awake_entity=awake_entity,
     )
 
@@ -404,6 +406,7 @@ def test_home_wake_alarm_accepts_inverted_awake_state(hass) -> None:
         Mock(),
         live_notifications_enabled=True,
         person_entity=person_entity,
+        home_wake_enabled=True,
         home_wake_awake_entity=awake_entity,
         home_wake_awake_state="off",
     )
@@ -411,6 +414,55 @@ def test_home_wake_alarm_accepts_inverted_awake_state(hass) -> None:
     assert not scheduler._should_run_home_wake_alarm(
         _snapshot(simulation=False, phase="prepare_now")
     )
+
+
+async def test_home_wake_alarm_runs_without_awake_evidence(hass) -> None:
+    """Missing optional wake evidence cannot silently disable the alarm."""
+    person_entity = ".".join(("person", "example_traveller"))
+    hass.states.async_set(person_entity, "home")
+    snapshot = replace(
+        _snapshot(simulation=False, phase="prepare_now"),
+        timing=replace(TIMING, leave_home_at=NOW + timedelta(minutes=30)),
+    )
+    coordinator = Mock(data=snapshot)
+    coordinator.record_notification = Mock()
+    scheduler = JourneyNotificationScheduler(
+        hass,
+        coordinator,
+        Mock(),
+        live_notifications_enabled=True,
+        person_entity=person_entity,
+        home_wake_enabled=True,
+    )
+    scheduler._async_deliver = AsyncMock(return_value="announcement_engine")
+
+    async def leave_home(_seconds: float) -> None:
+        hass.states.async_set(person_entity, "not_home")
+
+    with (
+        patch(
+            "custom_components.journey_guardian.notification.dt_util.now",
+            return_value=NOW,
+        ),
+        patch(
+            "custom_components.journey_guardian.notification.asyncio.sleep",
+            side_effect=leave_home,
+        ),
+    ):
+        await scheduler._async_run_home_wake_alarm(DEPARTURE)
+
+    scheduler._async_deliver.assert_awaited_once()
+    assert scheduler.diagnostics() == {
+        "enabled": True,
+        "status": "away",
+        "awake_evidence_configured": False,
+        "announcement_engine_configured": False,
+        "repeat_seconds": 6,
+        "max_minutes": 15,
+        "delivery_count": 1,
+        "last_delivery": "announcement_engine",
+        "last_stop_reason": "away",
+    }
 
 
 async def test_bounded_wake_reminder_uses_current_journey() -> None:

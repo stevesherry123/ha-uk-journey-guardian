@@ -4,12 +4,13 @@ UK Journey Guardian is a proactive Home Assistant travel engine for timely
 departures, live UK rail disruption handling, multimodal route decisions, and
 split-journey monitoring.
 
-The current beta targets Home Assistant 2026.8 or newer.
+The current stable release targets Home Assistant 2026.8 or newer.
 
 > [!WARNING]
-> UK Journey Guardian is currently a beta project. The current release provides
-> the integration foundation and shadow-mode calendar decisions. Do not remove
-> an existing travel alarm or rely on it as the sole source of departure advice.
+> UK Journey Guardian is travel assistance, not a guaranteed transport service.
+> Keep a fallback alarm while validating a new installation, and do not rely on
+> any single provider or Home Assistant instance as the sole source of departure
+> advice.
 
 ## Design principles
 
@@ -23,7 +24,7 @@ The current beta targets Home Assistant 2026.8 or newer.
 - credentials and journey details are redacted from diagnostics
 - provider calls are bounded, cached and protected by failure fallbacks
 
-## Beta capabilities
+## Current capabilities
 
 - UI-based Home Assistant configuration
 - privacy-preserving diagnostics
@@ -208,11 +209,11 @@ Fallback results remain
 uses driving at home and public transport away from home; walking, driving and
 cycling can also be selected explicitly.
 
-## Installation during beta
+## Installation
 
-During development, add this repository to HACS as a **custom repository** of
-type **Integration**. HACS then installs it under `custom_components/` in the
-Home Assistant configuration directory.
+Until the default-catalogue submission is accepted, add this repository to HACS
+as a **custom repository** of type **Integration**. HACS then installs it under
+`custom_components/` in the Home Assistant configuration directory.
 
 After downloading it:
 
@@ -229,11 +230,10 @@ After installation, open **Settings → Devices & services → UK Journey
 Guardian → Configure** to tune the preparation, early-warning,
 station-arrival, conservative station-access durations, and upstream calendar
 refresh interval. Live-calendar notifications are deliberately disabled by
-default during shadow testing and can be enabled on this screen. Simulation
-notifications remain enabled for testing.
+default and can be enabled after the notification preview and simulations match
+the intended behaviour. Simulation notifications remain enabled for testing.
 
-The project may be submitted to HACS's default catalogue after it is stable,
-branded, released, and passing HACS and Home Assistant validation. HACS indexes
+The stable release is being submitted to HACS's default catalogue. HACS indexes
 the GitHub repository; it does not replace or host the source repository.
 
 ## Entities
@@ -334,19 +334,18 @@ The maintained development list is in [BACKLOG.md](BACKLOG.md).
 
 ## Release strategy and path to v1.0
 
-Journey Guardian currently uses a beta `0.2.0-beta.x` series. Every accepted change
-is versioned and published so HACS can expose the update; therefore patch
-numbers include safe documentation, test, and inactive-scaffold changes as well
-as runtime fixes.
+Journey Guardian uses semantic releases. Every accepted change is versioned and
+published so HACS can expose the update; therefore patch numbers include safe
+documentation, test, and inactive-scaffold changes as well as runtime fixes.
 
 The intended progression is:
 
 | Version | Purpose |
 | --- | --- |
 | `0.1.x` | Alpha hardening, shadow-test tools, documentation, and safe scaffolds. |
-| `0.2.0` | Rail-core beta after direct real journeys, restart recovery, routing profiles, and diagnostics are accepted. |
-| `0.3.0` | Split-journey beta after interchange and waypoint matching pass representative real tests. |
-| `0.4.0` | Notification beta with explicit mobile target selection, test-send, preferences, deduplication, and end-to-end acceptance. |
+| `0.2.0` | Initial stable rail core with direct journeys, restart recovery, routing profiles, diagnostics, and conservative notification defaults. |
+| `0.3.0` | Split-journey expansion after interchange and waypoint matching pass representative real tests. |
+| `0.4.0` | Notification-adapter expansion with explicit mobile target selection, test-send, preferences, deduplication, and end-to-end acceptance. |
 | `0.5.x+` | Optional expansion modules, including international air travel. These do not block a stable UK rail core. |
 | `0.9.0` | Release candidate: feature freeze except for acceptance fixes. |
 | `1.0.0` | Stable UK rail Journey Guardian. |

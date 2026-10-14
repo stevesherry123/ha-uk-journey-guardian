@@ -130,17 +130,23 @@ async def test_startup_retry_refreshes_only_calendar_unavailable_state(hass) -> 
 
     coordinator = Mock()
     coordinator.data = Mock(error="calendar_unavailable")
+    coordinator.async_refresh_calendar_source = AsyncMock()
     coordinator.async_request_refresh = AsyncMock()
 
     await _async_retry_calendar_after_startup(coordinator)(datetime.now(UTC))
 
+    coordinator.async_refresh_calendar_source.assert_awaited_once_with(
+        force=True
+    )
     coordinator.async_request_refresh.assert_awaited_once_with()
 
     coordinator.data = Mock(error=None)
+    coordinator.async_refresh_calendar_source.reset_mock()
     coordinator.async_request_refresh.reset_mock()
 
     await _async_retry_calendar_after_startup(coordinator)(datetime.now(UTC))
 
+    coordinator.async_refresh_calendar_source.assert_not_awaited()
     coordinator.async_request_refresh.assert_not_awaited()
 
 

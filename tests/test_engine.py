@@ -341,6 +341,25 @@ async def test_calendar_error_is_sanitized(caplog) -> None:
     assert "RuntimeError" in caplog.text
 
 
+async def test_unloaded_calendar_returns_quiet_startup_state(hass, caplog) -> None:
+    """A late calendar setup is expected startup state, not a log warning."""
+    caplog.set_level(
+        logging.WARNING,
+        logger="custom_components.journey_guardian.engine",
+    )
+    engine = JourneyGuardianEngine(
+        hass,
+        calendar_entity=CALENDAR_ENTITY,
+        budget=_budget(),
+    )
+
+    snapshot = await engine.async_review()
+
+    assert snapshot.status == "error"
+    assert snapshot.error == "calendar_unavailable"
+    assert "Calendar review failed" not in caplog.text
+
+
 async def test_active_calendar_journey_remains_selected() -> None:
     """An underway calendar leg remains available for follow-up monitoring."""
     hass = Mock()

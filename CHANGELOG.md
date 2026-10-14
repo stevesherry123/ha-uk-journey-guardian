@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0
+
+### Fixed
+
+- Treat a selected calendar that has not finished loading as expected startup
+  state instead of calling unavailable Home Assistant calendar services and
+  emitting warnings.
+- Make the bounded startup recovery refresh the upstream calendar before
+  reviewing it, so a late calendar load does not leave stale source data.
+
+### Changed
+
+- Declare the Home Assistant calendar integration as an ordered startup
+  dependency and promote the tested rail core to the first stable HACS release.
+
 ## 0.2.0-beta.17
 
 ### Fixed

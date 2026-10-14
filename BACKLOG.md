@@ -74,7 +74,7 @@ accepted replacement decision. Route names and private entity IDs are omitted.
 
 ## Release polish
 
-- [ ] ship the options-flow translation regression fix so the automatic live rail
+- [x] ship the options-flow translation regression fix so the automatic live rail
   toggle always displays a human label in Home Assistant
 
 ## Legacy defects and temporary controls

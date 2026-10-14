@@ -277,6 +277,7 @@ def _async_retry_calendar_after_startup(
     async def _async_retry(_now) -> None:
         snapshot = coordinator.data
         if snapshot is not None and snapshot.error == "calendar_unavailable":
+            await coordinator.async_refresh_calendar_source(force=True)
             await coordinator.async_request_refresh()
 
     return _async_retry

@@ -107,6 +107,11 @@ class JourneyGuardianEngine:
                     simulated,
                     last_live_rail_error=self._last_live_rail_error,
                 )
+        if (
+            self._hass.states.get(self._calendar_entity) is None
+            or not self._hass.services.has_service("calendar", "get_events")
+        ):
+            return self._calendar_unavailable_snapshot(checked_at)
         try:
             events = await self._async_calendar_events(checked_at)
             next_journey = select_next_journey(events, checked_at)
@@ -146,15 +151,21 @@ class JourneyGuardianEngine:
             _LOGGER.warning(
                 "Calendar review failed with %s", type(err).__name__
             )
-            return JourneySnapshot(
-                status="error",
-                checked_at=checked_at,
-                next_journey=None,
-                budget=self._budget.snapshot(),
-                operational_phase="error",
-                error="calendar_unavailable",
-                last_live_rail_error=self._last_live_rail_error,
-            )
+            return self._calendar_unavailable_snapshot(checked_at)
+
+    def _calendar_unavailable_snapshot(
+        self, checked_at: Any
+    ) -> JourneySnapshot:
+        """Return the stable state used while the calendar is starting."""
+        return JourneySnapshot(
+            status="error",
+            checked_at=checked_at,
+            next_journey=None,
+            budget=self._budget.snapshot(),
+            operational_phase="error",
+            error="calendar_unavailable",
+            last_live_rail_error=self._last_live_rail_error,
+        )
 
     @property
     def live_rail_configured(self) -> bool:

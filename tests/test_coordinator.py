@@ -41,6 +41,7 @@ def _idle_snapshot() -> JourneySnapshot:
 
 async def test_calendar_source_refresh_obeys_configured_interval(hass) -> None:
     """The upstream calendar is refreshed at startup and when next due."""
+    hass.states.async_set(CALENDAR_ENTITY, "off")
     engine = Mock()
     engine.async_review = AsyncMock(return_value=_idle_snapshot())
     coordinator = JourneyGuardianCoordinator(
@@ -92,6 +93,7 @@ async def test_calendar_source_refresh_can_be_disabled(hass) -> None:
 
 async def test_forced_calendar_source_refresh_ignores_interval(hass) -> None:
     """The manual refresh path always updates the selected source calendar."""
+    hass.states.async_set(CALENDAR_ENTITY, "off")
     coordinator = JourneyGuardianCoordinator(
         hass,
         MockConfigEntry(domain=DOMAIN),
@@ -115,6 +117,7 @@ async def test_forced_calendar_source_refresh_ignores_interval(hass) -> None:
 
 async def test_calendar_source_refresh_failure_uses_cached_calendar(hass) -> None:
     """A source update failure does not block the cached calendar review."""
+    hass.states.async_set(CALENDAR_ENTITY, "off")
     engine = Mock()
     engine.async_review = AsyncMock(return_value=_idle_snapshot())
     coordinator = JourneyGuardianCoordinator(
@@ -132,6 +135,29 @@ async def test_calendar_source_refresh_failure_uses_cached_calendar(hass) -> Non
     assert snapshot.status == "idle"
     assert coordinator.last_calendar_source_refresh_error == "HomeAssistantError"
     engine.async_review.assert_awaited_once_with()
+
+
+async def test_calendar_source_refresh_waits_for_entity(hass) -> None:
+    """Startup cannot ask Home Assistant to update an unloaded calendar."""
+    coordinator = JourneyGuardianCoordinator(
+        hass,
+        MockConfigEntry(domain=DOMAIN),
+        Mock(),
+        calendar_entity=CALENDAR_ENTITY,
+        calendar_refresh_interval_minutes=1440,
+    )
+    update_entity = AsyncMock()
+    hass.services.async_register("homeassistant", "update_entity", update_entity)
+
+    assert await coordinator.async_refresh_calendar_source(force=True) is False
+    assert coordinator.last_calendar_source_refresh_error == "calendar_unavailable"
+    update_entity.assert_not_awaited()
+
+    hass.states.async_set(CALENDAR_ENTITY, "off")
+
+    assert await coordinator.async_refresh_calendar_source(force=True) is True
+    assert coordinator.last_calendar_source_refresh_error is None
+    update_entity.assert_awaited_once()
 
 
 async def test_error_retains_normal_polling_interval(hass) -> None:

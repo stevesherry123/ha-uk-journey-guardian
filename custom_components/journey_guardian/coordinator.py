@@ -84,6 +84,10 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         if not force and self._calendar_source_refresh_interval is None:
             return False
 
+        if self.hass.states.get(self._calendar_entity) is None:
+            self.last_calendar_source_refresh_error = "calendar_unavailable"
+            return False
+
         now = dt_util.now()
         if (
             not force

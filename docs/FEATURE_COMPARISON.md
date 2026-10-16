@@ -17,7 +17,7 @@ has not passed the required real-travel acceptance test.
 | Split-journey interchange monitoring | Diagnostic helper only | Not ready for cutover |
 | Meaningful-change notification deduplication | Implemented for local persistent alerts | Mobile delivery remains absent |
 | Mobile push, spoken announcements, wearables | Supported through a selected Home Assistant delivery script | Validate each household delivery script separately |
-| Manual-review parity and failure explanation | Partial | Needs no-journey, ambiguous, and provider-failure acceptance cases |
+| Manual-review parity and failure explanation | Implemented in 0.2.2 | Explicit calendar/access/rail briefing; real watch-tap acceptance remains |
 | Local destination transit comparison | Not implemented | Legacy remains required |
 | Privacy-safe diagnostics and provider budgeting | Implemented | Continue observation |
 

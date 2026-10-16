@@ -66,8 +66,16 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
 
     async def _async_update_data(self) -> JourneySnapshot:
         """Return the latest normalized journey state."""
+        return await self._async_review_data()
+
+    async def _async_review_data(
+        self, *, force_station_access: bool = False
+    ) -> JourneySnapshot:
         await self.async_refresh_calendar_source()
-        snapshot = await self.engine.async_review()
+        snapshot = (
+            await self.engine.async_review(force_station_access=True)
+            if force_station_access else await self.engine.async_review()
+        )
         previous = self._last_live_snapshot
         if previous is None:
             observation = self.live_evidence.restore(snapshot)
@@ -124,10 +132,17 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         self.last_calendar_source_refresh_error = None
         return True
 
-    async def async_refresh_calendar_and_review(self) -> JourneySnapshot:
+    async def async_refresh_calendar_and_review(
+        self, *, force_station_access: bool = False
+    ) -> JourneySnapshot:
         """Force the source calendar to update before reviewing the journey."""
         await self.async_refresh_calendar_source(force=True)
-        await self.async_request_refresh()
+        if force_station_access:
+            self.async_set_updated_data(
+                await self._async_review_data(force_station_access=True)
+            )
+        else:
+            await self.async_request_refresh()
         return self.data
 
     async def async_review_live_rail(
@@ -136,14 +151,17 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         decision_path: str = "transportapi_manual",
         urgent: bool = False,
         force_calendar_refresh: bool = False,
+        snapshot: JourneySnapshot | None = None,
     ) -> JourneySnapshot:
         """Run a quota-controlled provider review and publish its snapshot."""
         if force_calendar_refresh:
             await self.async_refresh_calendar_source(force=True)
         try:
+            review_options = {"snapshot": snapshot} if snapshot is not None else {}
             snapshot = await self.engine.async_review_live_rail(
                 decision_path=decision_path,
                 urgent=urgent,
+                **review_options,
             )
         except ValueError as err:
             raise HomeAssistantError(str(err)) from None

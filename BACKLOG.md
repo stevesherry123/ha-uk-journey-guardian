@@ -8,7 +8,7 @@ inside each user's Home Assistant installation.
 
 - [x] discover and normalize generic timed calendar journeys
 - [x] retain an underway journey until its calendar event ends
-- [ ] provide manual-review parity through the shared decision engine
+- [x] provide manual-review parity through the shared decision engine
 - [ ] monitor direct and split rail legs within the shared provider budget
 - [x] calculate preparation and leave times with a conservative routing fallback
 - [x] send configurable local operational notifications with restart-safe
@@ -58,7 +58,7 @@ accepted replacement decision. Route names and private entity IDs are omitted.
   conservative last-chance warning when normal confirmation cannot be produced
 - [ ] monitor a delayed service after scheduled departure at bounded follow-up
   intervals, stopping when it leaves the board or is cancelled
-- [ ] make manual review cover no upcoming journey, departed journey, unknown
+- [x] make manual review cover no upcoming journey, departed journey, unknown
   origin, board-not-yet-open, provider unavailable, ambiguous match, and the
   configured station-access mode
 - [ ] provide configurable notification adapters for mobile push, spoken

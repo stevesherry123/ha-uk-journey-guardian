@@ -26,6 +26,8 @@ The current stable release targets Home Assistant 2026.8 or newer.
 
 ## Current capabilities
 
+- a [Travel review now briefing](docs/MANUAL_TRAVEL_REVIEW.md) for HA and watch
+  shortcuts, using the shared calendar, station-access, and rail-provider engine
 - optional [GPS station progress](docs/STATION_PROGRESS.md) from ordered station
   zones, with freshness checks and return-leg direction detection
 - UI-based Home Assistant configuration

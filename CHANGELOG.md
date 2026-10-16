@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.2
+
+### Added
+
+- Add a Travel review now button and `journey_guardian.travel_review_now` action
+  that force-refresh the calendar and station-access route, check eligible live
+  rail data through the shared provider broker, and return a readable briefing.
+- Explain missing journeys, calendar problems, unresolved stations, ambiguous
+  services, timetable mismatch, provider failures, cancellations, route fallbacks,
+  and calendar journeys already underway without asserting boarding/departure.
+- Keep the full report in a local HA notification and deliver a summary through
+  the configured announcement script, even when automatic notifications are off.
+  Simulation reviews stay local. `notify: false` returns the report silently.
+- Reuse completed reviews for 30 seconds and serialize simultaneous requests so
+  repeated watch taps do not multiply provider calls or notifications.
+
+### Fixed
+
+- Avoid rereading the calendar and recalculating access while checking rail for
+  the same explicit travel review. Pass the watch summary directly to compatible
+  announcement scripts as well as updating the legacy text helper.
+- Declare config-entry-only setup for Home Assistant metadata validation.
+
 ## 0.2.1
 
 ### Added

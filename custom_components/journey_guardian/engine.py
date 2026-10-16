@@ -185,9 +185,10 @@ class JourneyGuardianEngine:
         *,
         decision_path: str = "transportapi_manual",
         urgent: bool = False,
+        snapshot: JourneySnapshot | None = None,
     ) -> JourneySnapshot:
         """Perform one quota-controlled live rail review."""
-        snapshot = await self.async_review()
+        snapshot = snapshot if snapshot is not None else await self.async_review()
         if snapshot.simulation_active:
             raise ValueError("simulation_active")
         journey = snapshot.next_journey

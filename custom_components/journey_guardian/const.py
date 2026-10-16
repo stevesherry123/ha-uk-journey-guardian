@@ -69,6 +69,7 @@ CALENDAR_REFRESH_INTERVAL_OPTIONS = {
 }
 
 SERVICE_REVIEW_NOW = "review_now"
+SERVICE_TRAVEL_REVIEW_NOW = "travel_review_now"
 SERVICE_REVIEW_RAIL_NOW = "review_rail_now"
 SERVICE_SIMULATE_JOURNEY = "simulate_journey"
 SERVICE_CLEAR_SIMULATION = "clear_simulation"

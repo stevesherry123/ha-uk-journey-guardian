@@ -156,12 +156,20 @@
       "simulation_active": {"name": "Simulation active"}
     },
     "button": {
+      "travel_review_now": {"name": "Travel review now"},
       "review_now": {"name": "Refresh calendar and timings"},
       "review_rail_now": {"name": "Check live rail now"},
       "test_station_access": {"name": "Test station route now"}
     }
   },
   "services": {
+    "travel_review_now": {
+      "name": "Travel review now",
+      "description": "Refresh the calendar, station access and eligible live rail data, then send a briefing. Repeated taps within 30 seconds reuse the result.",
+      "fields": {
+        "notify": {"name": "Send briefing", "description": "Send the summary through the configured announcement script and keep the full report in Home Assistant. Disable for response-only use."}
+      }
+    },
     "review_now": {
       "name": "Review journey now",
       "description": "Immediately refresh the calendar and UK Journey Guardian decision path."

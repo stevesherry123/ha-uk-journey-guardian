@@ -431,6 +431,26 @@ class JourneyNotificationScheduler:
         )
         self._coordinator.record_notification(kind, dt_util.now())
 
+    async def async_manual_review(
+        self, message: str, summary: str, *, simulation: bool
+    ) -> str:
+        """Respond to an explicit request, including while automatic alerts are off."""
+        notification_id = f"{DOMAIN}_travel_review"
+        title = "Travel review simulation" if simulation else "Travel review"
+        try:
+            async with asyncio.timeout(20):
+                delivery = await self._async_deliver(
+                    summary, title=title, notification_id=notification_id,
+                    simulation=simulation, script_data={"message": summary},
+                )
+        except TimeoutError:
+            delivery = "persistent_notification"
+        persistent_notification.async_create(
+            self._hass, message, title=title, notification_id=notification_id
+        )
+        self._coordinator.record_notification("manual_review", dt_util.now())
+        return delivery
+
     async def _async_deliver(
         self,
         message: str,
@@ -438,6 +458,7 @@ class JourneyNotificationScheduler:
         title: str,
         notification_id: str,
         simulation: bool,
+        script_data: dict | None = None,
     ) -> str:
         """Deliver live messages through the configured announcement engine."""
         configured = self._announcement_engine_configured()
@@ -456,7 +477,7 @@ class JourneyNotificationScheduler:
                     await self._hass.services.async_call(
                         "script",
                         self._announcement_script_entity.removeprefix("script."),
-                        {},
+                        script_data or {},
                         blocking=True,
                     )
                 return "announcement_engine"
@@ -558,6 +579,7 @@ def _should_notify_rail(snapshot: JourneySnapshot) -> bool:
     observation = snapshot.rail_observation
     return bool(
         snapshot.next_journey is not None
+        and snapshot.next_journey.decision_path != "travel_review_manual"
         and observation is not None
         and observation.provider_available
         and observation.freshness == "current"

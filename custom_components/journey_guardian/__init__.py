@@ -72,12 +72,14 @@ from .const import (
     SERVICE_REVIEW_NOW,
     SERVICE_REVIEW_RAIL_NOW,
     SERVICE_SIMULATE_JOURNEY,
+    SERVICE_TRAVEL_REVIEW_NOW,
     SIMULATION_SCENARIOS,
 )
 from .coordinator import JourneyGuardianCoordinator
 from .end_of_day import EndOfDayReview
 from .engine import JourneyGuardianEngine
 from .google_routes import GoogleRoutesClient
+from .manual_review import ManualTravelReview
 from .notification import JourneyNotificationScheduler, NotificationLedger
 from .provider_broker import ProviderRequestBroker
 from .rail_monitor import AutomaticRailLedger, AutomaticRailMonitor
@@ -88,6 +90,7 @@ from .station_access_monitor import StationAccessMonitor
 from .transportapi import TransportAPIClient
 
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -245,6 +248,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         check_history=check_history,
         station_access_monitor=station_access_monitor,
         end_of_day_review=end_of_day_review,
+        manual_review=ManualTravelReview(coordinator, notification_scheduler),
     )
     entry.async_on_unload(provider_broker.shutdown)
     await coordinator.async_config_entry_first_refresh()
@@ -296,6 +300,11 @@ def _runtime(hass: HomeAssistant) -> JourneyGuardianRuntimeData:
 
 
 def _async_register_services(hass: HomeAssistant) -> None:
+    async def async_travel_review_now(call: ServiceCall) -> dict:
+        return await _runtime(hass).manual_review.async_run(
+            notify=call.data["notify"]
+        )
+
     async def async_review_now(call: ServiceCall) -> dict:
         runtime = _runtime(hass)
         snapshot = await runtime.coordinator.async_refresh_calendar_and_review()
@@ -327,6 +336,12 @@ def _async_register_services(hass: HomeAssistant) -> None:
         await runtime.coordinator.async_request_refresh()
         return runtime.coordinator.data.as_dict()
 
+    if not hass.services.has_service(DOMAIN, SERVICE_TRAVEL_REVIEW_NOW):
+        hass.services.async_register(
+            DOMAIN, SERVICE_TRAVEL_REVIEW_NOW, async_travel_review_now,
+            schema=vol.Schema({vol.Optional("notify", default=True): cv.boolean}),
+            supports_response=SupportsResponse.OPTIONAL,
+        )
     if not hass.services.has_service(DOMAIN, SERVICE_REVIEW_NOW):
         hass.services.async_register(
             DOMAIN,

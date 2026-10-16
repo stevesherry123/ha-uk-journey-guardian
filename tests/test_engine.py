@@ -61,6 +61,16 @@ def _calendar_snapshot(*, origin_name: str = "Example Central"):
     )
 
 
+async def test_supplied_manual_snapshot_does_not_repeat_calendar_and_routing():
+    engine = JourneyGuardianEngine(
+        Mock(), calendar_entity=CALENDAR_ENTITY, budget=_budget()
+    )
+    engine.async_review = AsyncMock(side_effect=AssertionError("Duplicate review"))
+    with pytest.raises(ValueError, match="transportapi_credentials_missing"):
+        await engine.async_review_live_rail(snapshot=_calendar_snapshot())
+    engine.async_review.assert_not_awaited()
+
+
 def _provider_result(payload):
     observed = datetime(2026, 9, 3, 8, 31, tzinfo=UTC)
     return ProviderResult(

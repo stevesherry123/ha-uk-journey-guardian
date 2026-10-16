@@ -7,6 +7,7 @@ from .budget import TransportAPIBudget
 from .check_history import CheckHistory
 from .coordinator import JourneyGuardianCoordinator
 from .end_of_day import EndOfDayReview
+from .manual_review import ManualTravelReview
 from .notification import JourneyNotificationScheduler
 from .provider_broker import ProviderRequestBroker
 from .rail_monitor import AutomaticRailMonitor
@@ -28,3 +29,4 @@ class JourneyGuardianRuntimeData:
     check_history: CheckHistory
     station_access_monitor: StationAccessMonitor
     end_of_day_review: EndOfDayReview
+    manual_review: ManualTravelReview

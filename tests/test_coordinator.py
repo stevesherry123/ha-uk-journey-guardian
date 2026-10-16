@@ -71,6 +71,19 @@ async def test_calendar_source_refresh_obeys_configured_interval(hass) -> None:
     assert coordinator.last_calendar_source_refresh_at == CHECKED_AT + timedelta(days=1)
 
 
+async def test_travel_review_forces_access_without_an_extra_calendar_review(hass):
+    engine = Mock(async_review=AsyncMock(return_value=_idle_snapshot()))
+    coordinator = JourneyGuardianCoordinator(
+        hass, MockConfigEntry(domain=DOMAIN), engine
+    )
+    coordinator.async_refresh_calendar_source = AsyncMock()
+    result = await coordinator.async_refresh_calendar_and_review(
+        force_station_access=True
+    )
+    engine.async_review.assert_awaited_once_with(force_station_access=True)
+    assert result == coordinator.data == _idle_snapshot()
+
+
 async def test_calendar_source_refresh_can_be_disabled(hass) -> None:
     """A zero interval leaves source polling to the calendar integration."""
     engine = Mock()

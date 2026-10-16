@@ -32,6 +32,7 @@ from .const import (
     CONF_LIVE_RAIL_PROVIDER,
     CONF_PERSON_ENTITY,
     CONF_PREPARATION_BUFFER_MINUTES,
+    CONF_PROGRESS_ZONES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
     CONF_STATION_ACCESS_MINIMUM_MINUTES,
     CONF_STATION_ACCESS_MODE,
@@ -60,6 +61,7 @@ from .const import (
     DEFAULT_URGENT_API_RESERVE,
     DOMAIN,
 )
+from .progress import parse_progress_zones
 from .station_access_profiles import (
     StationAccessProfileError,
     parse_station_access_profiles,
@@ -244,14 +246,19 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
     ) -> dict[str, Any]:
         """Manage timing options."""
         current = {**self.config_entry.data, **self.config_entry.options}
+        errors = {}
         if user_input is not None:
+            try:
+                parse_progress_zones(user_input.get(CONF_PROGRESS_ZONES))
+            except ValueError:
+                errors[CONF_PROGRESS_ZONES] = "invalid_progress_zones"
             try:
                 parse_station_access_profiles(
                     user_input.get(CONF_STATION_ACCESS_PROFILES)
                 )
             except StationAccessProfileError as err:
-                errors = {CONF_STATION_ACCESS_PROFILES: str(err)}
-            else:
+                errors[CONF_STATION_ACCESS_PROFILES] = str(err)
+            if not errors:
                 updated = dict(user_input)
                 for key in (
                     CONF_TRANSPORTAPI_APP_ID,
@@ -265,9 +272,6 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                     else:
                         updated.pop(key, None)
                 return self.async_create_entry(title="", data=updated)
-        else:
-            errors = {}
-
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
@@ -279,6 +283,12 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                             DEFAULT_CALENDAR_REFRESH_INTERVAL_MINUTES,
                         ),
                     ): vol.In(CALENDAR_REFRESH_INTERVAL_OPTIONS),
+                    vol.Optional(
+                        CONF_PROGRESS_ZONES,
+                        default=current.get(CONF_PROGRESS_ZONES, ""),
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(multiline=True)
+                    ),
                     vol.Required(
                         CONF_PREPARATION_BUFFER_MINUTES,
                         default=current.get(

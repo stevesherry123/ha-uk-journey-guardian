@@ -77,11 +77,15 @@
     }
   },
   "options": {
+    "error": {
+      "invalid_progress_zones": "Enter 2 to 100 unique zone entity IDs, one per line, or leave blank to disable progress."
+    },
     "step": {
       "init": {
         "title": "Journey settings",
         "description": "Edit conservative timing, notifications, and the live rail provider.",
         "data": {
+          "progress_zones": "Ordered station zones",
           "preparation_buffer_minutes": "Preparation buffer",
           "calendar_refresh_interval_minutes": "Force calendar source refresh",
           "early_warning_minutes": "Early warning margin",
@@ -107,6 +111,7 @@
         },
         "data_description": {
           "preparation_buffer_minutes": "Minutes allowed to get ready before leaving for the station.",
+          "progress_zones": "Optional: one zone entity ID per line in route order (2 to 100 unique stations). Blank disables GPS progress. Zone names must match calendar endpoints; a leading zzz prefix followed by a space is ignored. Return legs reverse the route automatically.",
           "calendar_refresh_interval_minutes": "How often Journey Guardian asks Home Assistant to update the selected calendar from its upstream source. The manual refresh button always forces an update.",
           "early_warning_minutes": "Additional conservative margin before preparation should begin.",
           "station_buffer_minutes": "Minutes to arrive at the station before the scheduled train departure.",
@@ -134,6 +139,7 @@
   },
   "entity": {
     "sensor": {
+      "station_progress": {"name": "Station progress"},
       "status": {"name": "Status"},
       "operational_phase": {"name": "Operational phase"},
       "rail_data_freshness": {"name": "Rail data freshness"},

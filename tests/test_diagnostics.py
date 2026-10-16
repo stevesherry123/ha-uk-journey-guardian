@@ -92,6 +92,7 @@ async def test_diagnostics_remove_journey_and_configuration_identifiers(hass) ->
         "entry_id": "private-entry-id",
         "unique_id": "private-unique-id",
         "data": {
+            "progress_zones": "zone.private_station_a\nzone.private_station_b",
             "calendar_entity": "private-calendar-entity",
             "person_entity": "private-person-entity",
             "announcement_text_entity": "private-text-entity",
@@ -110,6 +111,8 @@ async def test_diagnostics_remove_journey_and_configuration_identifiers(hass) ->
     assert diagnostics["recent_live_checks"][0]["outcome"] == "success"
     assert diagnostics["home_wake_alarm"]["status"] == "waiting"
     for private_value in (
+        "private_station_a",
+        "private_station_b",
         "private-entry-id",
         "private-unique-id",
         "private-calendar-entity",

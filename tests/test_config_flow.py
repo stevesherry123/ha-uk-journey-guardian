@@ -25,6 +25,7 @@ from custom_components.journey_guardian.const import (
     CONF_LIVE_RAIL_PROVIDER,
     CONF_PERSON_ENTITY,
     CONF_PREPARATION_BUFFER_MINUTES,
+    CONF_PROGRESS_ZONES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
     CONF_STATION_ACCESS_MINIMUM_MINUTES,
     CONF_STATION_ACCESS_MODE,
@@ -154,6 +155,7 @@ async def test_options_flow_updates_timing_and_reloads(hass) -> None:
 
     assert result["type"] is FlowResultType.FORM
     updated = {
+        CONF_PROGRESS_ZONES: "zone.example_origin\nzone.example_destination",
         CONF_PREPARATION_BUFFER_MINUTES: 35,
         CONF_CALENDAR_REFRESH_INTERVAL_MINUTES: 360,
         CONF_EARLY_WARNING_MINUTES: 12,
@@ -183,6 +185,18 @@ async def test_options_flow_updates_timing_and_reloads(hass) -> None:
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options == updated
     async_reload.assert_awaited_once_with(entry.entry_id)
+
+
+async def test_options_reject_duplicate_progress_zones(hass) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT)
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    values = result["data_schema"]({})
+    values[CONF_PROGRESS_ZONES] = "zone.example_origin\nzone.example_origin"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], values
+    )
+    assert result["errors"] == {CONF_PROGRESS_ZONES: "invalid_progress_zones"}
 
 
 async def test_options_flow_does_not_return_saved_credentials(hass) -> None:

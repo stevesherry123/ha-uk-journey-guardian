@@ -10,7 +10,9 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .const import CONF_PERSON_ENTITY, CONF_PROGRESS_ZONES
 from .entity import JourneyGuardianEntity
+from .progress_sensor import JourneyProgressSensor
 
 
 def _datetime_attribute(value) -> str | None:
@@ -26,6 +28,14 @@ async def async_setup_entry(
     """Set up Journey Guardian sensors."""
     coordinator = entry.runtime_data.coordinator
     notification_scheduler = entry.runtime_data.notification_scheduler
+    settings = {**entry.data, **entry.options}
+    if settings.get(CONF_PROGRESS_ZONES, "").strip():
+        async_add_entities([
+            JourneyProgressSensor(
+                coordinator, entry, settings.get(CONF_PERSON_ENTITY, ""),
+                settings[CONF_PROGRESS_ZONES],
+            )
+        ])
     async_add_entities(
         [
             JourneyStatusSensor(

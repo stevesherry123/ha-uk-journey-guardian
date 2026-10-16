@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.1
+
+### Added
+
+- Opt-in station progress using an ordered list of Home Assistant station zones
+  and the configured traveller's GPS source. Calendar endpoints select the route
+  segment and direction, including return legs.
+- Expose the latest observed station, current station proximity, next configured
+  waypoint, and GPS freshness without making additional rail-provider requests.
+- Reject stale, inaccurate, ambiguous, backwards, and out-of-order observations;
+  restore the latest waypoint after restart for the same calendar leg.
+- Strip the leading `zzz ` map-sort prefix from progress labels. Keep private
+  route configuration out of downloadable diagnostics.
+
+### Limitations
+
+- GPS proximity is not proof of boarding, a station call, or railway arrival,
+  and does not change Delay Repay evidence or trigger announcements.
+- Progress follows the coordinator's selected calendar leg. Missed stations are
+  not inferred, and delayed journeys beyond the booked end time or diversions
+  need a future retained-journey/disruption implementation.
+
 ## 0.2.0
 
 ### Fixed

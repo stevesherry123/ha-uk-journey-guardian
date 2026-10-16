@@ -26,6 +26,8 @@ The current stable release targets Home Assistant 2026.8 or newer.
 
 ## Current capabilities
 
+- optional [GPS station progress](docs/STATION_PROGRESS.md) from ordered station
+  zones, with freshness checks and return-leg direction detection
 - UI-based Home Assistant configuration
 - privacy-preserving diagnostics
 - generic normalization of the next timed calendar journey

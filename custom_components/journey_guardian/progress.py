@@ -33,6 +33,80 @@ def parse_progress_zones(value: str | None) -> tuple[str, ...]:
     return zones
 
 
+def parse_progress_alternatives(
+    value: str | None, base: tuple[str, ...]
+) -> tuple[tuple[str, ...], ...]:
+    """Validate bounded, acyclic branches anchored to the base route."""
+    if not value or not value.strip():
+        return ()
+    paths = []
+    interiors: set[str] = set()
+    try:
+        for line in value.splitlines():
+            if not line.strip():
+                continue
+            path = parse_progress_zones(line.replace(">", "\n"))
+            if (
+                len(path) < 3
+                or base.index(path[0]) >= base.index(path[-1])
+                or set(path[1:-1]) & (set(base) | interiors)
+            ):
+                raise ValueError
+            interiors.update(path[1:-1])
+            paths.append(path)
+        if len(paths) > 4 or len(base) + len(interiors) > 100:
+            raise ValueError
+    except ValueError, IndexError:
+        raise ValueError("invalid_progress_alternatives") from None
+    return tuple(paths)
+
+
+def candidate_routes(
+    zones: tuple[StationZone, ...],
+    alternatives: tuple[tuple[StationZone, ...], ...],
+    origin: str,
+    destination: str,
+) -> tuple[tuple[StationZone, ...], ...]:
+    """Enumerate a small directed network, reversing it for return journeys."""
+    stations = {
+        zone.entity_id: zone for path in (zones, *alternatives) for zone in path
+    }
+    origins = [
+        key
+        for key, zone in stations.items()
+        if _name_key(zone.name) == _name_key(origin)
+    ]
+    destinations = [
+        key
+        for key, zone in stations.items()
+        if _name_key(zone.name) == _name_key(destination)
+    ]
+    if len(origins) != 1 or len(destinations) != 1 or origins == destinations:
+        return ()
+    for reverse in (False, True):
+        edges: dict[str, list[str]] = {}
+        for path in (zones, *alternatives):
+            ordered = path[::-1] if reverse else path
+            for left, right in zip(ordered, ordered[1:], strict=False):
+                neighbours = edges.setdefault(left.entity_id, [])
+                if right.entity_id not in neighbours:
+                    neighbours.append(right.entity_id)
+        routes = []
+
+        def visit(path, edges, routes):
+            if path[-1] == destinations[0]:
+                routes.append(tuple(stations[key] for key in path))
+                return
+            for neighbour in edges.get(path[-1], []):
+                if neighbour not in path and len(routes) < 16:
+                    visit((*path, neighbour), edges, routes)
+
+        visit((origins[0],), edges, routes)
+        if routes:
+            return tuple(routes)
+    return ()
+
+
 @dataclass(frozen=True)
 class StationZone:
     """A configured station marker with a human-readable label."""
@@ -75,11 +149,13 @@ class StationProgress:
         self.key: str | None = None
         self.last_index: int | None = None
         self.observed_at: datetime | None = None
+        self.candidate_positions: dict[str, int] = {}
 
     def reset(self) -> None:
         self.key = None
         self.last_index = None
         self.observed_at = None
+        self.candidate_positions = {}
 
     def update(
         self,
@@ -91,6 +167,7 @@ class StationProgress:
         longitude: object = None,
         accuracy: object = None,
         location_time: datetime | None = None,
+        alternatives: tuple[tuple[StationZone, ...], ...] = (),
     ) -> dict:
         """Describe GPS proximity without inferring boarding or station passage."""
         base = {"evidence": "gps_proximity", "rail_arrival_confirmed": False}
@@ -101,27 +178,43 @@ class StationProgress:
         if not zones:
             self.reset()
             return {**base, "status": "route_unavailable"}
-        origins = [
-            i
-            for i, zone in enumerate(zones)
-            if _name_key(zone.name) == _name_key(journey.origin_name)
-        ]
-        destinations = [
-            i
-            for i, zone in enumerate(zones)
-            if _name_key(zone.name) == _name_key(journey.destination_confirmation)
-        ]
-        if len(origins) != 1 or len(destinations) != 1 or origins == destinations:
+        routes = candidate_routes(
+            zones, alternatives, journey.origin_name, journey.destination_confirmation
+        )
+        if not routes:
             self.reset()
             return {**base, "status": "route_unmatched"}
-        start, end = origins[0], destinations[0]
-        route = zones[start : end + 1] if start < end else zones[end : start + 1][::-1]
-        identity = repr((journey.start.isoformat(), journey.end, route))
+        route = routes[0]
+        identities = {
+            hashlib.sha256(
+                repr(tuple(zone.entity_id for zone in path)).encode()
+            ).hexdigest(): path
+            for path in routes
+        }
+        identity = repr(
+            (
+                journey.start.isoformat(),
+                journey.end,
+                route if len(routes) == 1 else routes,
+            )
+        )
         key = hashlib.sha256(identity.encode()).hexdigest()
         if self.key != key:
             self.reset()
             self.key = key
-        if self.last_index is not None and not 0 <= self.last_index < len(route):
+        if (
+            self.candidate_positions
+            and any(
+                token not in identities
+                or isinstance(index, bool)
+                or not isinstance(index, int)
+                or not 0 <= index < len(identities[token])
+                for token, index in self.candidate_positions.items()
+            )
+        ) or (
+            self.last_index is not None
+            and not 0 <= self.last_index < max(map(len, routes))
+        ):
             self.reset()
             self.key = key
         # A future booking must not interpret an unrelated station visit as travel.
@@ -132,25 +225,51 @@ class StationProgress:
             return {**base, "status": "idle"}
 
         def result(status: str, current: str | None = None) -> dict:
-            next_index = 0 if self.last_index is None else self.last_index + 1
+            active = (
+                {token: identities[token] for token in self.candidate_positions}
+                if self.candidate_positions
+                else identities
+            )
+            next_names = []
+            last_names = []
+            for token, path in active.items():
+                index = self.candidate_positions.get(
+                    token, self.last_index if len(routes) == 1 else None
+                )
+                next_index = 0 if index is None else index + 1
+                next_names.append(
+                    station_label(path[next_index].name)
+                    if next_index < len(path)
+                    else None
+                )
+                last_names.append(
+                    station_label(path[index].name) if index is not None else None
+                )
+            counts = sorted({len(path) for path in active.values()})
             return {
                 **base,
                 "status": status,
                 "current_station": current,
                 "last_observed_station": (
-                    station_label(route[self.last_index].name)
-                    if self.last_index is not None
-                    else None
+                    last_names[0] if len(set(last_names)) == 1 else None
                 ),
                 "last_observed_at": (
                     self.observed_at.isoformat() if self.observed_at else None
                 ),
-                "next_waypoint": (
-                    station_label(route[next_index].name)
-                    if next_index < len(route)
-                    else None
+                "next_waypoint": (next_names[0] if len(set(next_names)) == 1 else None),
+                "next_waypoints": list(
+                    dict.fromkeys(name for name in next_names if name is not None)
                 ),
-                "waypoint_count": len(route),
+                "waypoint_count": counts[0] if len(counts) == 1 else None,
+                "candidate_route_count": len(active),
+                "route_waypoints": (
+                    [station_label(zone.name) for zone in next(iter(active.values()))]
+                    if len(active) == 1
+                    else []
+                ),
+                "route_selection": "ambiguous"
+                if len(active) > 1
+                else ("observed" if len(routes) > 1 else "configured"),
                 "location_age_seconds": (
                     max(0, int((now - location_time).total_seconds()))
                     if location_time
@@ -175,20 +294,36 @@ class StationProgress:
             return result("location_stale")
         if error > MAX_ACCURACY_METRES:
             return result("location_inaccurate")
+        all_zones = {zone.entity_id: zone for path in routes for zone in path}
         matches = [
-            i
-            for i, zone in enumerate(route)
+            zone.entity_id
+            for zone in all_zones.values()
             if distance_metres(lat, lon, zone) + error <= zone.radius
         ]
         if len(matches) > 1:
             return result("location_ambiguous")
         if not matches:
             return result("between_observations")
-        index = matches[0]
-        if self.last_index is not None and index < self.last_index:
-            return result("direction_conflict")
         if self.observed_at is not None and location_time < self.observed_at:
             return result("location_out_of_order")
-        self.last_index = index
+        station = matches[0]
+        compatible = {}
+        contains = False
+        for token, path in identities.items():
+            if self.candidate_positions and token not in self.candidate_positions:
+                continue
+            ids = [zone.entity_id for zone in path]
+            if station in ids:
+                contains = True
+                index = ids.index(station)
+                previous = self.candidate_positions.get(
+                    token, self.last_index if len(routes) == 1 else None
+                )
+                if previous is None or index >= previous:
+                    compatible[token] = index
+        if not compatible:
+            return result("direction_conflict" if contains else "route_conflict")
+        self.candidate_positions = compatible
+        self.last_index = next(iter(compatible.values()))
         self.observed_at = location_time
-        return result("near_station", station_label(route[index].name))
+        return result("near_station", station_label(all_zones[station].name))

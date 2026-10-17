@@ -14,7 +14,13 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .entity import JourneyGuardianEntity
-from .progress import StationProgress, StationZone, finite_number, parse_progress_zones
+from .progress import (
+    StationProgress,
+    StationZone,
+    finite_number,
+    parse_progress_alternatives,
+    parse_progress_zones,
+)
 
 
 class JourneyProgressSensor(JourneyGuardianEntity, SensorEntity):
@@ -23,10 +29,20 @@ class JourneyProgressSensor(JourneyGuardianEntity, SensorEntity):
     _attr_translation_key = "station_progress"
     _attr_icon = "mdi:map-marker-path"
 
-    def __init__(self, coordinator, entry, person_entity: str, zones: str) -> None:
+    def __init__(
+        self, coordinator, entry, person_entity: str, zones: str, alternatives: str = ""
+    ) -> None:
         super().__init__(coordinator, entry, "station_progress")
         self._person = person_entity
-        self._zones = parse_progress_zones(zones)
+        self._base_zones = parse_progress_zones(zones)
+        self._alternatives = parse_progress_alternatives(alternatives, self._base_zones)
+        self._zones = tuple(
+            dict.fromkeys(
+                zone
+                for path in (self._base_zones, *self._alternatives)
+                for zone in path
+            )
+        )
         self._progress = StationProgress()
         self._result = {"status": "waiting"}
         self._store = Store(
@@ -53,6 +69,20 @@ class JourneyProgressSensor(JourneyGuardianEntity, SensorEntity):
                 self._progress.key = key
                 self._progress.last_index = index
                 self._progress.observed_at = observed
+                positions = saved.get("candidate_positions", {})
+                if (
+                    isinstance(positions, dict)
+                    and len(positions) <= 16
+                    and all(
+                        isinstance(token, str)
+                        and len(token) == 64
+                        and isinstance(position, int)
+                        and not isinstance(position, bool)
+                        and 0 <= position < len(self._zones)
+                        for token, position in positions.items()
+                    )
+                ):
+                    self._progress.candidate_positions = positions
         self.async_on_remove(
             async_track_state_change_event(
                 self.hass, [self._person, *self._zones], self._handle_location_update
@@ -87,6 +117,7 @@ class JourneyProgressSensor(JourneyGuardianEntity, SensorEntity):
         return {
             "key": self._progress.key,
             "last_index": self._progress.last_index,
+            "candidate_positions": dict(self._progress.candidate_positions),
             "observed_at": (
                 self._progress.observed_at.isoformat()
                 if self._progress.observed_at
@@ -137,9 +168,16 @@ class JourneyProgressSensor(JourneyGuardianEntity, SensorEntity):
             and source.attributes.get("source_type") == "gps"
             else {}
         )
+        by_id = {zone.entity_id: zone for zone in zones}
         self._result = self._progress.update(
             self.coordinator.data,
-            tuple(zones),
+            tuple(by_id[entity_id] for entity_id in self._base_zones) if zones else (),
+            alternatives=tuple(
+                tuple(by_id[entity_id] for entity_id in path)
+                for path in self._alternatives
+            )
+            if zones
+            else (),
             now=dt_util.now(),
             latitude=attrs.get("latitude"),
             longitude=attrs.get("longitude"),

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.3
+
+### Added
+
+- Optional alternative GPS station paths, including automatic reversal for return
+  journeys and calendar endpoints on a diversion.
+- Evidence-led route selection: retain multiple possible paths until fresh GPS
+  identifies one. Missed branch observations remain uncertain after rejoining.
+- Expose possible next waypoints and the selected station path; preserve route
+  selection across restarts without storing station names or coordinates.
+- Validate bounded, acyclic route configuration and redact alternative paths
+  from diagnostics. Existing single-route installations remain compatible.
+
+### Limitations
+
+- Configured GPS diversions do not prove boarding, railway arrival, cancellation
+  or compensation entitlement. Tracking still follows the selected calendar leg,
+  which currently ends at its booked end time.
+
 ## 0.2.2
 
 ### Added

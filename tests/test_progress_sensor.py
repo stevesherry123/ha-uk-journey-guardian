@@ -53,7 +53,7 @@ async def test_sensor_uses_source_freshness_and_restores(hass, freezer):
         await sensor.async_added_to_hass()
         assert sensor.native_value == "near_station"
         saved = sensor._saved_data()
-        assert set(saved) == {"key", "last_index", "observed_at"}
+        assert set(saved) == {"key", "last_index", "observed_at", "candidate_positions"}
         assert "latitude" not in str(saved)
         freezer.tick(timedelta(minutes=6))
         # A fresh person state cannot make an old GPS fix fresh again.
@@ -101,3 +101,70 @@ async def test_sensor_uses_source_freshness_and_restores(hass, freezer):
             == dt_util.utcnow().isoformat()
         )
         await restored.async_remove()
+
+
+async def test_alternative_sensor_restores_selected_path(hass, freezer):
+    from test_progress_alternatives import EXTRA
+
+    freezer.move_to(NOW)
+    person_id = ".".join(("person", "example_branch_traveller"))
+    source_id = ".".join(("device_tracker", "example_branch_phone"))
+    for zone in (*ZONES, EXTRA):
+        hass.states.async_set(
+            zone.entity_id,
+            "0",
+            {
+                "friendly_name": zone.name,
+                "latitude": zone.latitude,
+                "longitude": zone.longitude,
+                "radius": zone.radius,
+            },
+        )
+    hass.states.async_set(
+        source_id,
+        "not_home",
+        {
+            "latitude": EXTRA.latitude,
+            "longitude": EXTRA.longitude,
+            "gps_accuracy": 10,
+            "source_type": "gps",
+        },
+    )
+    hass.states.async_set(person_id, "not_home", {"source": source_id})
+    coordinator = Mock(hass=hass, data=snapshot())
+    entry = MockConfigEntry(domain=DOMAIN)
+    zones = "\n".join(zone.entity_id for zone in ZONES)
+    alternatives = f"{ZONES[0].entity_id} > {EXTRA.entity_id} > {ZONES[2].entity_id}"
+    saved = None
+    with patch(
+        "custom_components.journey_guardian.progress_sensor."
+        "JourneyGuardianEntity.async_added_to_hass",
+        new_callable=AsyncMock,
+    ):
+        for attempt in range(2):
+            sensor = JourneyProgressSensor(
+                coordinator, entry, person_id, zones, alternatives
+            )
+            sensor.hass = hass
+            sensor.entity_id = "sensor.example_branch_progress"
+            sensor.async_write_ha_state = Mock()
+            sensor._store = Mock(async_load=AsyncMock(return_value=saved))
+            await sensor.async_added_to_hass()
+            assert sensor.extra_state_attributes["candidate_route_count"] == 1
+            assert sensor.extra_state_attributes["route_waypoints"] == [
+                "Example 0",
+                "Branch",
+                "Example 2",
+            ]
+            assert sensor.extra_state_attributes["last_observed_station"] == "Branch"
+            saved = sensor._saved_data()
+            assert "Branch" not in str(saved)
+            assert EXTRA.entity_id not in str(saved)
+            if attempt == 0:
+                freezer.tick(timedelta(minutes=6))
+            else:
+                assert sensor.native_value == "location_stale"
+                hass.states.async_remove(EXTRA.entity_id)
+                sensor._update()
+                assert sensor.native_value == "route_unavailable"
+            await sensor.async_remove()

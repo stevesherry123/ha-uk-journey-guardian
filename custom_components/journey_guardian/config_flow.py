@@ -32,6 +32,7 @@ from .const import (
     CONF_LIVE_RAIL_PROVIDER,
     CONF_PERSON_ENTITY,
     CONF_PREPARATION_BUFFER_MINUTES,
+    CONF_PROGRESS_ALTERNATIVES,
     CONF_PROGRESS_ZONES,
     CONF_STATION_ACCESS_FALLBACK_MINUTES,
     CONF_STATION_ACCESS_MINIMUM_MINUTES,
@@ -61,7 +62,7 @@ from .const import (
     DEFAULT_URGENT_API_RESERVE,
     DOMAIN,
 )
-from .progress import parse_progress_zones
+from .progress import parse_progress_alternatives, parse_progress_zones
 from .station_access_profiles import (
     StationAccessProfileError,
     parse_station_access_profiles,
@@ -156,28 +157,24 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         "transit": "Public transport",
                     }
                 ),
-                vol.Optional(
-                    CONF_STATION_ACCESS_PROFILES
-                ): selector.TextSelector(
+                vol.Optional(CONF_STATION_ACCESS_PROFILES): selector.TextSelector(
                     selector.TextSelectorConfig(multiline=True)
                 ),
                 vol.Optional(CONF_TRANSPORTAPI_APP_ID): selector.TextSelector(),
                 vol.Optional(CONF_TRANSPORTAPI_APP_KEY): selector.TextSelector(
-                    selector.TextSelectorConfig(
-                        type=selector.TextSelectorType.PASSWORD
-                    )
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
                 ),
                 vol.Required(
                     CONF_LIVE_RAIL_PROVIDER,
                     default=DEFAULT_LIVE_RAIL_PROVIDER,
-                ): vol.In({
-                    "transportapi": "TransportAPI (uses configured daily limit)",
-                    "railinfo": "Railinfo (no key; separate fair-use limit)",
-                }),
+                ): vol.In(
+                    {
+                        "transportapi": "TransportAPI (uses configured daily limit)",
+                        "railinfo": "Railinfo (no key; separate fair-use limit)",
+                    }
+                ),
                 vol.Optional(CONF_GOOGLE_ROUTES_API_KEY): selector.TextSelector(
-                    selector.TextSelectorConfig(
-                        type=selector.TextSelectorType.PASSWORD
-                    )
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
                 ),
                 vol.Required(
                     CONF_DAILY_API_LIMIT, default=DEFAULT_DAILY_API_LIMIT
@@ -198,23 +195,17 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_LIVE_NOTIFICATIONS_ENABLED,
                     default=DEFAULT_LIVE_NOTIFICATIONS_ENABLED,
                 ): selector.BooleanSelector(),
-                vol.Optional(
-                    CONF_ANNOUNCEMENT_TEXT_ENTITY
-                ): selector.EntitySelector(
+                vol.Optional(CONF_ANNOUNCEMENT_TEXT_ENTITY): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="input_text")
                 ),
-                vol.Optional(
-                    CONF_ANNOUNCEMENT_SCRIPT_ENTITY
-                ): selector.EntitySelector(
+                vol.Optional(CONF_ANNOUNCEMENT_SCRIPT_ENTITY): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="script")
                 ),
                 vol.Required(
                     CONF_HOME_WAKE_ENABLED,
                     default=DEFAULT_HOME_WAKE_ENABLED,
                 ): selector.BooleanSelector(),
-                vol.Optional(
-                    CONF_HOME_WAKE_AWAKE_ENTITY
-                ): selector.EntitySelector(
+                vol.Optional(CONF_HOME_WAKE_AWAKE_ENTITY): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain=["binary_sensor", "input_boolean"]
                     )
@@ -233,9 +224,7 @@ class JourneyGuardianConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
             }
         )
-        return self.async_show_form(
-            step_id="user", data_schema=schema, errors=errors
-        )
+        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
 
 
 class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
@@ -249,7 +238,13 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
         errors = {}
         if user_input is not None:
             try:
-                parse_progress_zones(user_input.get(CONF_PROGRESS_ZONES))
+                base = parse_progress_zones(user_input.get(CONF_PROGRESS_ZONES))
+                try:
+                    parse_progress_alternatives(
+                        user_input.get(CONF_PROGRESS_ALTERNATIVES), base
+                    )
+                except ValueError:
+                    errors[CONF_PROGRESS_ALTERNATIVES] = "invalid_progress_alternatives"
             except ValueError:
                 errors[CONF_PROGRESS_ZONES] = "invalid_progress_zones"
             try:
@@ -286,6 +281,12 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                     vol.Optional(
                         CONF_PROGRESS_ZONES,
                         default=current.get(CONF_PROGRESS_ZONES, ""),
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(multiline=True)
+                    ),
+                    vol.Optional(
+                        CONF_PROGRESS_ALTERNATIVES,
+                        default=current.get(CONF_PROGRESS_ALTERNATIVES, ""),
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(multiline=True)
                     ),

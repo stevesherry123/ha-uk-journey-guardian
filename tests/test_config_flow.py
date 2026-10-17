@@ -141,9 +141,7 @@ async def test_user_flow_rejects_reserve_at_limit(hass) -> None:
     )
 
     assert result["type"] is FlowResultType.FORM
-    assert result["errors"] == {
-        CONF_URGENT_API_RESERVE: "reserve_must_be_lower"
-    }
+    assert result["errors"] == {CONF_URGENT_API_RESERVE: "reserve_must_be_lower"}
 
 
 async def test_options_flow_updates_timing_and_reloads(hass) -> None:
@@ -156,6 +154,7 @@ async def test_options_flow_updates_timing_and_reloads(hass) -> None:
     assert result["type"] is FlowResultType.FORM
     updated = {
         CONF_PROGRESS_ZONES: "zone.example_origin\nzone.example_destination",
+        "progress_alternatives": "",
         CONF_PREPARATION_BUFFER_MINUTES: 35,
         CONF_CALENDAR_REFRESH_INTERVAL_MINUTES: 360,
         CONF_EARLY_WARNING_MINUTES: 12,
@@ -199,6 +198,23 @@ async def test_options_reject_duplicate_progress_zones(hass) -> None:
     assert result["errors"] == {CONF_PROGRESS_ZONES: "invalid_progress_zones"}
 
 
+async def test_options_reject_unanchored_alternative(hass) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT)
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    values = result["data_schema"]({})
+    values[CONF_PROGRESS_ZONES] = "zone.example_origin\nzone.example_destination"
+    values["progress_alternatives"] = (
+        "zone.unknown > zone.extra > zone.example_destination"
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], values
+    )
+    assert result["errors"] == {
+        "progress_alternatives": "invalid_progress_alternatives"
+    }
+
+
 async def test_options_flow_does_not_return_saved_credentials(hass) -> None:
     """Saved provider credentials remain server-side until replaced."""
     entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT)
@@ -206,9 +222,7 @@ async def test_options_flow_does_not_return_saved_credentials(hass) -> None:
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
 
-    markers = {
-        marker.schema: marker for marker in result["data_schema"].schema
-    }
+    markers = {marker.schema: marker for marker in result["data_schema"].schema}
     for key in (
         CONF_TRANSPORTAPI_APP_ID,
         CONF_TRANSPORTAPI_APP_KEY,

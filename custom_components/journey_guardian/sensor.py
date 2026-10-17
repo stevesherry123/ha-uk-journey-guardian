@@ -10,7 +10,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import CONF_PERSON_ENTITY, CONF_PROGRESS_ZONES
+from .const import CONF_PERSON_ENTITY, CONF_PROGRESS_ALTERNATIVES, CONF_PROGRESS_ZONES
 from .entity import JourneyGuardianEntity
 from .progress_sensor import JourneyProgressSensor
 
@@ -34,6 +34,7 @@ async def async_setup_entry(
             JourneyProgressSensor(
                 coordinator, entry, settings.get(CONF_PERSON_ENTITY, ""),
                 settings[CONF_PROGRESS_ZONES],
+                settings.get(CONF_PROGRESS_ALTERNATIVES, ""),
             )
         ])
     async_add_entities(

@@ -21,6 +21,7 @@ from .progress import (
     parse_progress_alternatives,
     parse_progress_zones,
 )
+from .progress_retention import ProgressRetention
 
 
 class JourneyProgressSensor(JourneyGuardianEntity, SensorEntity):
@@ -44,6 +45,7 @@ class JourneyProgressSensor(JourneyGuardianEntity, SensorEntity):
             )
         )
         self._progress = StationProgress()
+        self._retention = ProgressRetention()
         self._result = {"status": "waiting"}
         self._store = Store(
             coordinator.hass, 1, f"journey_guardian.progress.{entry.entry_id}"
@@ -69,6 +71,20 @@ class JourneyProgressSensor(JourneyGuardianEntity, SensorEntity):
                 self._progress.key = key
                 self._progress.last_index = index
                 self._progress.observed_at = observed
+                self._retention.restore(
+                    saved.get("monitoring"),
+                    [
+                        str(state.attributes.get("friendly_name", ""))
+                        for entity_id in self._zones
+                        if (state := self.hass.states.get(entity_id)) is not None
+                    ],
+                    dt_util.now(),
+                )
+                if (
+                    self._retention.journey
+                    and observed < self._retention.journey.start
+                ):
+                    self._retention.reset()
                 positions = saved.get("candidate_positions", {})
                 if (
                     isinstance(positions, dict)
@@ -118,6 +134,7 @@ class JourneyProgressSensor(JourneyGuardianEntity, SensorEntity):
             "key": self._progress.key,
             "last_index": self._progress.last_index,
             "candidate_positions": dict(self._progress.candidate_positions),
+            "monitoring": self._retention.dump(),
             "observed_at": (
                 self._progress.observed_at.isoformat()
                 if self._progress.observed_at
@@ -169,8 +186,10 @@ class JourneyProgressSensor(JourneyGuardianEntity, SensorEntity):
             else {}
         )
         by_id = {zone.entity_id: zone for zone in zones}
+        now = dt_util.now()
+        snapshot, extended = self._retention.select(self.coordinator.data, now)
         self._result = self._progress.update(
-            self.coordinator.data,
+            snapshot,
             tuple(by_id[entity_id] for entity_id in self._base_zones) if zones else (),
             alternatives=tuple(
                 tuple(by_id[entity_id] for entity_id in path)
@@ -178,11 +197,24 @@ class JourneyProgressSensor(JourneyGuardianEntity, SensorEntity):
             )
             if zones
             else (),
-            now=dt_util.now(),
+            now=now,
             latitude=attrs.get("latitude"),
             longitude=attrs.get("longitude"),
             accuracy=attrs.get("gps_accuracy"),
             location_time=source.last_updated if attrs else None,
+        )
+        self._retention.observe(self._result)
+        journey = self._retention.journey
+        self._result.update(
+            {
+                "monitoring_extended": extended and journey is not None,
+                "booked_arrival_at": journey.end.isoformat()
+                if journey and journey.end
+                else None,
+                "monitoring_deadline": self._retention.deadline.isoformat()
+                if self._retention.deadline
+                else None,
+            }
         )
         if before != self._saved_data():
             self._store.async_delay_save(self._saved_data, 5)

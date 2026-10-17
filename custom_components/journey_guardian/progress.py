@@ -194,7 +194,7 @@ class StationProgress:
         identity = repr(
             (
                 journey.start.isoformat(),
-                journey.end,
+                journey.end.isoformat() if journey.end else None,
                 route if len(routes) == 1 else routes,
             )
         )

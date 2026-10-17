@@ -69,17 +69,40 @@ checks freshness even when the person stops updating.
 ## Scope and privacy
 
 Progress starts no earlier than two hours before the selected calendar departure
-and resets when the coordinator selects another leg or simulation is enabled.
-The current calendar selector stops selecting a leg at its booked end time.
-Consequently this is not a complete delayed-travel or multi-leg journey tracker.
-Only explicitly configured diversions can be followed. It does not modify
-wake-up notifications, existing
-announcement automations, arrival collection, or Delay Repay decisions.
+and normally follows the selected calendar leg. A fresh accepted fix beyond the
+origin, timestamped after booked departure, makes that leg eligible for bounded
+continued GPS monitoring. An origin-only visit or pre-departure fix does not.
+
+GPS monitoring may continue for up to **three hours after booked arrival**, even
+when the calendar selector moves to a later booking or the calendar temporarily
+becomes unavailable. It stops on destination proximity, the next booked train's
+departure, expiry, simulation, or invalid route configuration. It is monitoring
+of booked intent, not proof that the traveller boarded or that a train is delayed.
+An explicit calendar removal before booked arrival clears monitoring, except
+while the calendar reports unavailable. Configured-zone loss clears progress.
+
+The sensor exposes `monitoring_extended`, `booked_arrival_at`, and
+`monitoring_deadline`. A destination fix remains visible for that update; the next
+update can switch to the next booking or idle. GPS proximity never changes
+railway-arrival evidence or compensation classifications.
+
+This is a GPS-only extension, not a retained multi-leg rail engine. The calendar
+selector and next-train notifications remain unchanged. Existing provider-based
+arrival collection remains separate. Only explicitly configured diversions can
+be followed; wake-up and announcement behaviour are unaffected. Intentional
+touring breaks are outside scope: separate commuting bookings remain supported
+without adding a dedicated break state.
 
 The latest route fingerprint, candidate-route fingerprints and indices, and
-observation time are stored
-locally for restart recovery, accepted for at most 24 hours and only for the same
-leg and route. Coordinates and station names are not written to that store.
+observation time are stored locally for restart recovery, accepted for at most
+24 hours and only for the same leg and route. Eligible monitoring also stores
+booked departure/arrival times, a known next departure, and endpoint fingerprints,
+valid only within the
+three-hour extension and resolvable uniquely against current configured zones.
+Coordinates, station names, entity IDs and calendar titles are not written to
+that store. Fingerprints are pseudonymous, not anonymized location information.
+The stable timestamp fingerprint format changes in v0.2.4, so upgrading may
+reset an older saved observation once; fresh accepted fixes establish progress.
 The sensor itself contains station names and observation times: Home Assistant's
 normal history/recorder and backups can retain these. Exclude the sensor from
 Recorder if location-history retention is unwanted. Route options are redacted

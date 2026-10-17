@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.4
+
+### Added
+
+- Keep positively observed GPS journeys under monitoring for up to three hours
+  beyond booked arrival, including during temporary calendar unavailability.
+- End the extension at destination proximity, the next booked departure, expiry,
+  simulation, or invalid route configuration without changing next-train alerts.
+- Restore eligible monitoring and selected diversions after restart using only
+  endpoint fingerprints and booked times, not calendar titles or station names.
+- Expose extended-monitoring state and its booked-arrival and expiry boundaries.
+
+### Fixed
+
+- Use stable timestamp serialization for route fingerprints across restoration.
+  Upgrading can reset an older saved observation once.
+
+### Scope
+
+- This is GPS-only monitoring, not boarding, railway arrival or compensation
+  evidence. Provider-based arrival collection remains separate. Intentional
+  touring breaks are outside the commuting-assistant scope.
+
 ## 0.2.3
 
 ### Added

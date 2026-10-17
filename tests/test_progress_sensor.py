@@ -1,5 +1,6 @@
 """Home Assistant GPS source freshness and restart persistence."""
 
+from dataclasses import replace
 from datetime import timedelta
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -53,7 +54,13 @@ async def test_sensor_uses_source_freshness_and_restores(hass, freezer):
         await sensor.async_added_to_hass()
         assert sensor.native_value == "near_station"
         saved = sensor._saved_data()
-        assert set(saved) == {"key", "last_index", "observed_at", "candidate_positions"}
+        assert set(saved) == {
+            "key",
+            "last_index",
+            "observed_at",
+            "candidate_positions",
+            "monitoring",
+        }
         assert "latitude" not in str(saved)
         freezer.tick(timedelta(minutes=6))
         # A fresh person state cannot make an old GPS fix fresh again.
@@ -161,10 +168,14 @@ async def test_alternative_sensor_restores_selected_path(hass, freezer):
             assert "Branch" not in str(saved)
             assert EXTRA.entity_id not in str(saved)
             if attempt == 0:
-                freezer.tick(timedelta(minutes=6))
+                freezer.tick(timedelta(hours=1, minutes=1))
+                coordinator.data = replace(coordinator.data, next_journey=None)
             else:
                 assert sensor.native_value == "location_stale"
+                assert sensor.extra_state_attributes["monitoring_extended"] is True
                 hass.states.async_remove(EXTRA.entity_id)
                 sensor._update()
-                assert sensor.native_value == "route_unavailable"
+                # The state listener may already have cleared the retained leg.
+                assert sensor.native_value in {"route_unavailable", "idle"}
+                assert sensor._retention.dump() is None
             await sensor.async_remove()

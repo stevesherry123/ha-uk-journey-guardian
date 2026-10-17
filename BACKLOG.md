@@ -4,6 +4,13 @@ This backlog deliberately uses generic terminology. Real stations, destinations,
 addresses, calendars, people, notification targets, and credentials must remain
 inside each user's Home Assistant installation.
 
+## Product scope
+
+Journey Guardian is a commuting assistant, not a touring itinerary planner.
+Separate rail bookings and interchanges remain supported; dedicated intentional
+break states are out of scope. Prioritize observed travel continuity, useful
+disruption advice, next-train alerts, and trustworthy arrival evidence.
+
 ## Legacy cutover checklist
 
 - [x] discover and normalize generic timed calendar journeys
@@ -19,6 +26,9 @@ inside each user's Home Assistant installation.
 - [ ] remove the legacy packages only after the observation period succeeds
 
 ## Real-travel readiness sequence
+
+- [x] keep eligible GPS progress beyond booked arrival for a bounded period,
+  recover it after restart, and leave next-train scheduling unchanged
 
 - [x] retain successful pre-departure rail evidence between calendar and route
   refreshes without duplicating notifications

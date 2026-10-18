@@ -175,6 +175,19 @@ class JourneyNotificationScheduler:
                             point,
                         )
                     )
+                elif point <= now < timing.leave_home_at and now - point <= timedelta(
+                    minutes=1
+                ):
+                    # A simultaneous coordinator refresh can cancel a due timer.
+                    # The ledger makes this catch-up safe if the timer also ran.
+                    self._hass.async_create_task(
+                        self._async_wake_reminder_reached(
+                            now,
+                            departure=journey.start,
+                            reminder_number=reminder_number,
+                        ),
+                        f"{DOMAIN} catch up preparation reminder",
+                    )
         self._hass.async_create_task(
             self._async_evaluate_notifications(snapshot),
             f"{DOMAIN} evaluate operational notification",
@@ -286,6 +299,20 @@ class JourneyNotificationScheduler:
         """Return whether this snapshot needs the home-only repeating alarm."""
         return self._home_wake_readiness(snapshot) == "ready"
 
+    def _home_wake_finished(self, snapshot: JourneySnapshot) -> bool:
+        """Do not restart bounded wake reminders after the home alarm finishes."""
+        journey = snapshot.next_journey
+        return bool(
+            self._home_wake_enabled
+            and not snapshot.simulation_active
+            and journey is not None
+            and self._person_is_home()
+            and (
+                self._awake_state_observed()
+                or self._home_wake_completed_departure == journey.start
+            )
+        )
+
     def _home_wake_readiness(self, snapshot: JourneySnapshot) -> str:
         """Explain whether the repeating alarm can run for this snapshot."""
         if not self._home_wake_enabled:
@@ -382,6 +409,7 @@ class JourneyNotificationScheduler:
             journey is None
             or journey.start != departure
             or snapshot.operational_phase != "prepare_now"
+            or self._home_wake_finished(snapshot)
         ):
             return
         await self._async_notify(snapshot, f"wake_{reminder_number}")
@@ -403,7 +431,10 @@ class JourneyNotificationScheduler:
             return
         if not snapshot.simulation_active and not self._live_notifications_enabled:
             return
-        if phase == "prepare_now" and self._should_run_home_wake_alarm(snapshot):
+        if phase == "prepare_now" and (
+            self._should_run_home_wake_alarm(snapshot)
+            or self._home_wake_finished(snapshot)
+        ):
             return
         kind = "wake_1" if phase == "prepare_now" else phase
         await self._async_notify(snapshot, kind)

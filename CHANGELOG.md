@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.2.5
+
+### Added
+
+- Full-runtime Home Assistant commute rehearsals with real entities, services,
+  timers, provider parsing, storage reloads, GPS tracking and nightly review.
+  Only calendar/provider I/O and announcement delivery are fictional.
+- A network-disabled rehearsal gate in validation and release workflows.
+- An explicit expected-failure acceptance case for shortened services, separate
+  from passing coverage. Unexpected errors in that case are not suppressed.
+
+### Fixed
+
+- Suppress bounded home wake reminders after awake evidence or the repeating
+  alarm's safety limit has finished the wake-up phase. Away reminders remain.
+- Recover a due preparation reminder if a simultaneous coordinator refresh
+  cancels its timer, using the durable ledger to avoid duplicate delivery.
+- Distinguish destination-arrival delay from saved departure-delay observations
+  in the nightly report, preserving genuine earlier departure-delay evidence.
+
+### Known Gap
+
+- A shortened-service response can remain unmatched rather than produce an
+  early-termination cancellation/recovery workflow. The rehearsal leaves that
+  journey unresolved, never fabricating a destination arrival. Recovery search
+  and reliable early-termination evidence remain separate work.
+
 ## 0.2.4
 
 ### Added

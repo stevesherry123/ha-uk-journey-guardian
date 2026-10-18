@@ -165,7 +165,11 @@ def _review_journey(
         and isinstance(arrival_delay, int)
     )
     cancelled = bool(latest.get("cancelled")) or latest.get("status") == "cancelled"
-    departure_delay = latest.get("status") == "delayed"
+    departure_delay = any(
+        record.get("operation") == "station_timetables"
+        and record.get("status") == "delayed"
+        for record in records
+    )
 
     if cancelled:
         classification = "potential_claim"

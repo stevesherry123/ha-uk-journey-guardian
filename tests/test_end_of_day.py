@@ -133,3 +133,41 @@ async def test_review_groups_each_leg_of_split_journey(hass) -> None:
 
     assert result["journey_count"] == 2
     assert result["unresolved_count"] == 2
+
+
+async def test_arrival_delay_is_not_departure_delay(hass) -> None:
+    _reviewer, result, _notify = await _review(
+        hass,
+        [
+            _record(operation="station_timetables", status="planned"),
+            _record(
+                operation="destination_arrivals",
+                status="delayed",
+                completion_status="completed",
+                arrival_delay_minutes=18,
+                scheduled_arrival="2026-09-28T21:10:00+01:00",
+                actual_arrival="2026-09-28T21:28:00+01:00",
+            ),
+        ],
+    )
+    assert result["delayed_count"] == 1
+    assert result["departure_delay_observed_count"] == 0
+
+
+async def test_departure_delay_survives_a_later_on_time_arrival(hass) -> None:
+    _reviewer, result, _notify = await _review(
+        hass,
+        [
+            _record(operation="station_timetables", status="delayed"),
+            _record(
+                operation="destination_arrivals",
+                status="completed",
+                completion_status="completed",
+                arrival_delay_minutes=0,
+                scheduled_arrival="2026-09-28T21:10:00+01:00",
+                actual_arrival="2026-09-28T21:10:00+01:00",
+            ),
+        ],
+    )
+    assert result["delayed_count"] == 0
+    assert result["departure_delay_observed_count"] == 1

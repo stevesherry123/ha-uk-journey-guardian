@@ -376,6 +376,11 @@ gates; they must not delay or weaken the stable rail core.
 
 ## Development
 
+The [isolated HA commute rehearsal](docs/COMMUTE_REHEARSAL.md) exercises runtime
+wiring with fictional external inputs and captured announcements. It includes
+an explicit open acceptance case for early termination, not a passing claim of
+recovery support.
+
 ```bash
 python -m pip install pytest ruff
 ruff check .

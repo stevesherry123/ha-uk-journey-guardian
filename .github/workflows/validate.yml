@@ -37,6 +37,9 @@ jobs:
       - name: Test
         run: pytest
 
+      - name: Rehearse the HA commute without network access
+        run: pytest tests/test_commute_rehearsal.py --disable-socket --allow-unix-socket --timeout=30
+
       - name: Scan for committed secrets and installation identifiers
         run: python scripts/privacy_scan.py
 

@@ -27,6 +27,11 @@ disruption advice, next-train alerts, and trustworthy arrival evidence.
 
 ## Real-travel readiness sequence
 
+- [x] run a network-disabled [full-runtime HA commute rehearsal](docs/COMMUTE_REHEARSAL.md)
+  and regression-test notification/arrival-review defects it exposes
+- [ ] close the shortened-service acceptance gap with reliable early-termination
+  evidence, cancellation classification, and bounded recovery prompting/search
+
 - [x] keep eligible GPS progress beyond booked arrival for a bounded period,
   recover it after restart, and leave next-train scheduling unchanged
 

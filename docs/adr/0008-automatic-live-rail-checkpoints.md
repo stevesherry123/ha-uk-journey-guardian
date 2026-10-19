@@ -32,8 +32,10 @@ and could repeat work after Home Assistant restarts or calendar synchronization.
 
 ## Consequences
 
-- A normal journey uses at most four timetable requests plus any uncached station
-  resolutions, without rapid polling.
+- A journey can schedule twelve checkpoint checks plus uncached station
+  resolutions. Cache reuse, provider budget, lookahead and journey lifecycle may
+  reduce actual requests. Separate station-access and arrival collectors have
+  their own bounded work; twelve is not a whole-integration request ceiling.
 - Late calendar synchronization can still obtain a useful recent checkpoint but
   cannot trigger a cascade of historical calls.
 - A transient failure is not retried at the same checkpoint. The next planned

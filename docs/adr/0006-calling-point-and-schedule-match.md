@@ -4,6 +4,10 @@
 - Date: 2026-09-03
 - Provenance: first live TransportAPI acceptance check in v0.1.9
 
+The manual-only acquisition scope below was subsequently expanded by
+[ADR 0008](0008-automatic-live-rail-checkpoints.md). These TransportAPI matching
+rules do not imply every provider exposes the same evidence.
+
 ## Context
 
 The calendar describes where the traveller leaves the train, while a station

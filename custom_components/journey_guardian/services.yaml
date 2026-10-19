@@ -15,11 +15,11 @@ review_now:
 
 review_rail_now:
   name: Check live rail now
-  description: Explicitly check TransportAPI for the current calendar journey. This can consume provider allowance.
+  description: Explicitly check the selected rail provider for the current calendar journey. This can consume provider allowance.
 
 simulate_journey:
   name: Simulate journey
-  description: Activate a deterministic journey scenario without contacting TransportAPI or consuming provider allowance.
+  description: Activate a deterministic journey scenario without contacting live providers or consuming provider allowance.
   fields:
     scenario:
       name: Scenario

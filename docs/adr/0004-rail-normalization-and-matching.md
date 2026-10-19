@@ -4,6 +4,11 @@
 - Date: 2026-09-03
 - Provenance: EB-004, EB-005, EB-007, EB-021, EB-037, and offline acceptance testing
 
+Historical milestone: this decision introduced offline normalization. Live
+clients were added later, and matching was tightened by
+[ADR 0006](0006-calling-point-and-schedule-match.md). The offline-only wording
+below describes that original slice, not today's integration.
+
 ## Context
 
 Calendar events contain human-readable station names and planned times, while a

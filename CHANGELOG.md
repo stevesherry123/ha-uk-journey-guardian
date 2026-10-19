@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.6
+
+### Documentation
+
+- Add a first-install, calendar, notification-script, wake-alarm and upgrade guide.
+- Add troubleshooting and an honest arrival/nightly-review guide, including
+  Railinfo-only collection, bounded attempts, quiet-report semantics and gaps.
+- Correct stale feature comparisons, simulation/restart claims, provider action
+  descriptions, checkpoint request counts, and development setup instructions.
+- Link the existing HACS submission and distinguish current features from plans.
+- Add documentation-link and delivery-example regression checks.
+
+No journey timing, provider acquisition or notification behaviour changes.
+
 ## 0.2.5
 
 ### Added

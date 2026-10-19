@@ -7,15 +7,15 @@ notification targets to this repository or an issue report.
 ## Required Home Assistant components
 
 - Home Assistant 2026.8 or newer
-- HACS for update management during the beta period
+- HACS for installation and update management
 - one calendar entity containing timed journey events
 - one person entity with a usable location source
 - a home zone
-- at least one notification route before operational alerts are enabled
+- a tested delivery script before phone/watch alerts are relied upon
 
-Destination zones and customised announcement scripts are optional. The setup
-health check will identify unavailable optional features without preventing the
-core calendar review from running.
+Destination zones and announcement scripts are optional. Calendar review works
+without a script; notifications then stay inside Home Assistant. A healthy
+calendar result does not prove that routing, live rail, or watch delivery works.
 
 Each traveller selects two independent safety margins:
 
@@ -27,15 +27,17 @@ They can also edit an **early-warning margin** and a conservative
 configured or cannot return a trustworthy route and is always labelled as
 inferred in Journey Guardian entities.
 
-They also select a default station-access mode: automatic, walking, driving, or
-cycling. These settings remain in Home Assistant and are not published.
+They also select a default station-access mode: automatic, walking, driving,
+cycling, or public transport. Settings remain in Home Assistant and are not
+published.
 Automatic mode uses driving while the traveller is home and public transport
 while away. Live routing also requires a restricted Google Routes API key.
 
 ## Calendar source
 
 [TripIt](https://www.tripit.com/) is the preferred source used during development.
-Its free plan supports itinerary organisation and calendar synchronisation.
+Configure its calendar feed as a Home Assistant calendar before selecting it in
+Journey Guardian. Keep the feed URL private: it can grant access to itinerary data.
 
 - [TripIt getting started](https://help.tripit.com/en/support/solutions/articles/103000063304-getting-started)
 - [TripIt calendar-feed setup](https://help.tripit.com/en/support/solutions/articles/103000063280-calendar-feed-setup-and-sync)
@@ -54,9 +56,11 @@ and does not decrement the TransportAPI budget entity.
 
 - [Railinfo developer information](https://railinfo.uk/developers)
 
-Create a TransportAPI developer account and obtain the `app_id` and `app_key`
-for an application. The free plan currently advertises 30 calls per day, so the
-integration enforces a daily budget and preserves an urgent reserve.
+If choosing TransportAPI instead, create a developer account and obtain the
+`app_id` and `app_key` for an application. Its developer portal advertises a free
+30-hit daily plan as checked on 19 October 2026; check your account's current
+terms and allowance. The integration enforces its configured budget and urgent
+reserve. Railinfo does not require a TransportAPI account.
 
 - [TransportAPI signup](https://developer.transportapi.com/signup)
 - [TransportAPI developer portal](https://developer.transportapi.com/)
@@ -70,8 +74,8 @@ or issue reports.
 ## Walking and road estimates
 
 Create a Google Cloud project, enable billing and the **Routes API**, then create
-a dedicated API key for UK Journey Guardian. The integration will use Compute
-Routes for walking, cycling, and road duration/distance estimates. This includes
+a dedicated API key for UK Journey Guardian. The integration uses Compute
+Routes for walking, cycling, road, and public-transport estimates. This includes
 the home-to-station leg when the traveller chooses to walk.
 
 - [Set up the Routes API](https://developers.google.com/maps/documentation/routes/get-api-key)
@@ -85,29 +89,28 @@ Google Cloud quota appropriate for the household's expected usage and budget.
 
 ## Notifications and customised Home Assistant elements
 
-Operational alerts require a configured notification route. The public
-integration will not hard-code private service or entity names. Instead, it will
-support adapters for:
+The current delivery route uses a selected Text helper (`input_text`, maximum
+length 255) and a selected script. Journey Guardian writes the message to that
+helper before calling the script. The script should read the helper; automatic
+alerts do not supply title/message variables. Manual review also supplies a
+`message` variable, but the helper-based contract works for both paths.
 
-- Home Assistant Companion App notifications
-- a user-selected notification action or script
-- an optional text-to-speech or announcement script
-- an optional wearable/manual-review trigger
-
-Existing customised scripts must accept plain title/message inputs or be wrapped
-by a small local adapter. Their names and implementation stay solely within the
-user's Home Assistant installation.
+The script can deliver through the Companion App, an existing announcement
+system, or another chosen route. Dedicated mobile adapters and per-event
+preferences are future work. See the [setup guide](docs/GETTING_STARTED.md) for
+an example and a safe test sequence. Delivery destinations remain private.
 
 ## Destination profiles
 
-The planned profile model supports any number of destinations. Each profile can
-contain a private display label, rail station name/code, optional zone, final
-waypoint, travel-mode preferences, buffer time, and notification adapter. These
-values are stored in Home Assistant and redacted from diagnostics.
+Current options support multiple destination zones and CRS-based station-access
+mode overrides. The richer per-destination profile model, including separate
+buffers, final waypoints and delivery preferences, is planned, not implemented.
 
-## Affiliate links
+## Data sent to providers
 
-No verified public affiliate or referral programmes were found for the required
-services at the time this guide was written, so all links above are direct
-official links. If an affiliate programme is used later, the relationship and
-link will be clearly disclosed.
+Rail checks send station identifiers and journey dates/times to the selected
+rail provider. Optional Google routing sends the traveller's current coordinates,
+station destination and travel timing to Google. Disabling live routing avoids
+those Google requests and uses conservative timing instead. Local entity states,
+notifications, history and backups may still contain private journey details;
+redacted diagnostics do not make those other records anonymous.

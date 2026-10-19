@@ -1,10 +1,13 @@
 # UK Journey Guardian
 
-UK Journey Guardian is a proactive Home Assistant travel engine for timely
-departures, live UK rail disruption handling, multimodal route decisions, and
-split-journey monitoring.
+UK Journey Guardian is a Home Assistant commuting assistant for departure
+timing, live UK rail checks, station access, and separate booked rail legs.
 
 The current stable release targets Home Assistant 2026.8 or newer.
+
+Start with the [setup and first-journey guide](docs/GETTING_STARTED.md).
+For missing journeys, alarms, or provider results, use
+[troubleshooting](docs/TROUBLESHOOTING.md).
 
 > [!WARNING]
 > UK Journey Guardian is travel assistance, not a guaranteed transport service.
@@ -19,7 +22,7 @@ The current stable release targets Home Assistant 2026.8 or newer.
 - more than one regular destination can be configured
 - preparation and station-arrival buffers are configurable per traveller
 - the route to the station can be walking, driving, cycling, or automatically chosen
-- split journeys are represented as separate calendar events and monitored by leg
+- split bookings use separate calendar events; automatic interchange recovery is planned
 - departure location and time select the live service; destination confirms it
 - credentials and journey details are redacted from diagnostics
 - provider calls are bounded, cached and protected by failure fallbacks
@@ -122,9 +125,11 @@ When known, a CRS station code can be appended to the origin or location as
 also require one exact station-name match from a future provider Places response.
 Conflicting and ambiguous station evidence is rejected rather than guessed.
 
-A recognized journey remains active until the timed calendar event ends. This
-provides the lifecycle window needed for delayed-service, destination-arrival,
-and interchange checks.
+A recognized journey remains selected until the timed calendar event ends.
+Selection is booked intent, not proof of boarding or arrival. GPS progress and
+provider-based arrival collection have separate bounded monitoring rules.
+Automatic interchange recovery and early-termination detection are not yet
+implemented.
 
 See [PREREQUISITES.md](PREREQUISITES.md) for provider accounts, calendar setup,
 API-key security, and notification requirements.
@@ -144,6 +149,8 @@ Destination calling-point and strict schedule matching are recorded in
 [ADR 0006](docs/adr/0006-calling-point-and-schedule-match.md).
 Shared-account quota reconciliation and durable live-error evidence are recorded
 in [ADR 0007](docs/adr/0007-shared-provider-account-quota.md).
+Automatic checkpoint scheduling is recorded in
+[ADR 0008](docs/adr/0008-automatic-live-rail-checkpoints.md).
 
 Accepted development work follows the repository's
 [release policy](docs/RELEASE_POLICY.md): unless explicitly held as draft work, a
@@ -166,6 +173,8 @@ integration, without changing the existing UK rail path.
 The evidence-led post-journey review records confirmed destination delays and
 flags possible Delay Repay claims without submitting anything. Any future claim
 submission will require explicit per-claim user approval.
+See [arrival evidence and the nightly safety net](docs/TRAVEL_DAY_REVIEW.md)
+for supported providers, collection limits, and what a missing report means.
 
 ### Notification delivery roadmap
 
@@ -186,11 +195,11 @@ or the configurable 15-minute safety limit expires. Away from home, the existing
 three-reminder pattern remains unchanged. Phone and watch haptics depend on the
 selected Home Assistant announcement script delivering a mobile notification.
 
-The proposed defaults prioritise action: wake-up reminders, leave-now, material
-rail changes, cancellations, connection risk, and provider failures. Repeated
-"on time" reassurance stays opt-in, with a checkpoint cadence and deduplication
-so it is useful rather than noisy. Timetable changes remain informational; they
-will not automatically move the departure plan.
+Live notifications require explicit opt-in. Current delivery covers preparation,
+leave-now, and selected live-rail updates; it is not automatic connection-risk or
+replacement-train advice. There is not yet a per-event preference screen or a
+dedicated mobile adapter. Test the configured delivery script separately before
+relying on phone or watch alerts.
 
 ## Departure calculation
 
@@ -218,6 +227,11 @@ cycling can also be selected explicitly.
 Until the default-catalogue submission is accepted, add this repository to HACS
 as a **custom repository** of type **Integration**. HACS then installs it under
 `custom_components/` in the Home Assistant configuration directory.
+Use this repository URL:
+
+```text
+https://github.com/stevesherry123/ha-uk-journey-guardian
+```
 
 After downloading it:
 
@@ -234,23 +248,30 @@ After installation, open **Settings → Devices & services → UK Journey
 Guardian → Configure** to tune the preparation, early-warning,
 station-arrival, conservative station-access durations, and upstream calendar
 refresh interval. Live-calendar notifications are deliberately disabled by
-default and can be enabled after the notification preview and simulations match
-the intended behaviour. Simulation notifications remain enabled for testing.
+default. Validate local simulations and separately test the delivery script
+before enabling them. The development notification-preview helper is not a
+user-facing preview screen. Simulation notifications remain enabled for testing.
 
-The stable release is being submitted to HACS's default catalogue. HACS indexes
-the GitHub repository; it does not replace or host the source repository.
+The [default-catalogue submission](https://github.com/hacs/default/pull/11772)
+was opened on 10 October 2026. Consult that page for its current status. HACS
+indexes the GitHub repository; it does not replace or host the source repository.
 
 ## Entities
 
 The integration creates **Status**, **Operational phase**, **Rail data
 freshness**, **Next departure**, **Prepare at**, **Leave home at**, **Station
 arrival at**, **Decision path**, **Journey Guardian TransportAPI budget**,
-**Data health**,
-**Refresh calendar and timings**, and **Check live rail now** entities. Home Assistant generates
-their entity IDs from the configured device name, so IDs can differ between
-installations.
+**Data health**, **Simulation active**, **Station access routing**,
+**Travel review now**, **Refresh calendar and timings**, **Check live rail now**,
+and **Test station route now** entities. **Station progress** is added when
+ordered station zones are configured. Home Assistant generates their entity IDs
+from the configured device name, so IDs can differ between installations.
 
 ## Actions
+
+`journey_guardian.travel_review_now` refreshes calendar, access timing, and
+eligible live rail data, then delivers a briefing. Use `notify: false` for a
+response without delivery. See [Travel review now](docs/MANUAL_TRAVEL_REVIEW.md).
 
 `journey_guardian.review_now` immediately refreshes the configured calendar and
 returns the normalized engine snapshot when a response is requested.
@@ -307,8 +328,9 @@ For a rapid acceptance test, select the `on_time` scenario, set **Departure in
 minutes** to `6`, and enable **Accelerated timeline**. The operational phase then
 changes to preparation after one minute, leaving after three, station arrival
 after five, and active travel after six. Preparation and leaving create local
-Home Assistant persistent notifications once each, including across a restart.
-This path does not call or reserve allowance from TransportAPI.
+Home Assistant persistent notifications. Simulations clear on restart, so this
+is not a restart-recovery test. They do not contact live rail or routing providers
+and do not test physical phone/watch delivery.
 
 > [!IMPORTANT]
 > Always confirm that the **Simulation active** entity is off before relying on
@@ -325,16 +347,17 @@ Please report security concerns according to [SECURITY.md](SECURITY.md).
 
 ## Roadmap
 
-1. destination profiles and user-facing station resolution
-2. validate automatic TransportAPI checkpoints against representative journeys
-3. unified manual-review decision tree
-4. richer station-wide disruption notifications
-5. lightweight interchange monitoring
-6. Google walking/driving estimates and UK local-transit comparison
-7. notification adapters and wearable entry points
-8. HACS default-catalogue submission after stable releases
+1. reliable early-termination evidence and bounded recovery advice
+2. retained actionable rail status across restart and delayed-service follow-up
+3. real-travel acceptance of direct and split commuting bookings
+4. richer station-wide disruption and interchange monitoring
+5. destination profiles and optional local-transit comparison
+6. dedicated notification adapters and per-event preferences
+7. HACS catalogue review and public-user feedback
 
 The maintained development list is in [BACKLOG.md](BACKLOG.md).
+The [public-readiness review](docs/PUBLIC_READINESS.md) records remaining
+acceptance work and the latest documentation audit.
 
 ## Release strategy and path to v1.0
 
@@ -382,11 +405,14 @@ an explicit open acceptance case for early termination, not a passing claim of
 recovery support.
 
 ```bash
-python -m pip install pytest ruff
+python -m pip install -e '.[test]'
 ruff check .
 pytest
 python -m compileall custom_components/journey_guardian
 ```
+
+Use Python 3.14.2 or newer, matching the test environment. See the rehearsal
+guide for the network-disabled test command and the known acceptance gap.
 
 ## Licence
 

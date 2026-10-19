@@ -4,6 +4,10 @@
 - Date: 2026-09-03
 - Provenance: Journey Guardian shadow-mode acceptance testing
 
+Historical scope: later releases added an optional helper/script delivery path
+and a bounded home wake-up alarm. The original local-only milestone below is
+not the current delivery feature list. See [setup](../GETTING_STARTED.md).
+
 ## Context
 
 Journey Guardian must eventually replace time-sensitive legacy automations, but

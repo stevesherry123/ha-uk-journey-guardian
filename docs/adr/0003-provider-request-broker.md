@@ -4,6 +4,12 @@
 - Date: 2026-09-03
 - Provenance: EB-004, EB-005, EB-007, EB-037, and Journey Guardian testing
 
+Historical acquisition scope: later decisions enabled live clients and opt-in
+[automatic checkpoints](0008-automatic-live-rail-checkpoints.md). Railinfo and
+Google routing use their own provider policies, not TransportAPI credits.
+Setup/reload can now trigger bounded enabled-provider work; the original
+provider-free milestone below must not be read as a current network guarantee.
+
 ## Context
 
 TransportAPI allowance is limited and must be shared by scheduled reviews,

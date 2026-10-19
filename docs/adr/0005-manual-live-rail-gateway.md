@@ -4,6 +4,11 @@
 - Date: 2026-09-03
 - Provenance: EB-004, EB-005, EB-007, EB-037, and user acceptance of v0.1.8
 
+Historical decision: the manual-only restriction was superseded by opt-in
+[automatic checkpoints](0008-automatic-live-rail-checkpoints.md). Later releases
+also retain observations between refreshes and support Railinfo. The original
+decision below records the first live milestone, not current setup instructions.
+
 ## Context
 
 The provider broker, rail normalizer, and simulations have passed offline tests,

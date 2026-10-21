@@ -279,7 +279,8 @@ privacy, and never submit a financial claim without explicit user approval.
 Current documentation and remaining public acceptance work are summarized in
 [Public-readiness review](docs/PUBLIC_READINESS.md). Older items below are a
 historical distribution inventory; the default-catalogue submission is already
-open as [HACS #11772](https://github.com/hacs/default/pull/11772).
+approved and merged as [HACS #11772](https://github.com/hacs/default/pull/11772)
+on 21 October 2026.
 
 - publish alpha releases for installation as a HACS custom repository
 - create non-identifying brand assets (packaged and regression-tested)
@@ -291,4 +292,4 @@ open as [HACS #11772](https://github.com/hacs/default/pull/11772).
 - protect the default branch with required validation checks when the development
   workflow is ready for pull requests
 - document supported Home Assistant versions and upgrade migrations
-- [x] submit to the HACS default catalogue; await review and respond to feedback
+- [x] obtain HACS default-catalogue approval and address catalogue-first setup feedback

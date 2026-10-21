@@ -233,10 +233,14 @@ cycling can also be selected explicitly.
 
 ## Installation
 
-Until the default-catalogue submission is accepted, add this repository to HACS
-as a **custom repository** of type **Integration**. HACS then installs it under
+Open HACS and search for **UK Journey Guardian**. Open its entry and download
+the latest stable release. The integration is included in the default HACS
+catalogue; adding a custom repository is not normally necessary.
+
+If it does not appear yet, refresh HACS and allow time for catalogue updates.
+As a fallback, add the URL below as a **custom repository** of type
+**Integration**, then download it. HACS installs the files under
 `custom_components/` in the Home Assistant configuration directory.
-Use this repository URL:
 
 ```text
 https://github.com/stevesherry123/ha-uk-journey-guardian
@@ -262,8 +266,9 @@ before enabling them. The development notification-preview helper is not a
 user-facing preview screen. Simulation notifications remain enabled for testing.
 
 The [default-catalogue submission](https://github.com/hacs/default/pull/11772)
-was opened on 10 October 2026. Consult that page for its current status. HACS
-indexes the GitHub repository; it does not replace or host the source repository.
+was approved and merged on 21 October 2026. Catalogue availability may take up
+to eight hours after approval. HACS indexes the GitHub repository; it does not
+replace or host the source repository.
 
 ## Entities
 

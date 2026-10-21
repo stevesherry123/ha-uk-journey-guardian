@@ -5,7 +5,7 @@ timing, live UK rail checks, station access, and separate booked rail legs.
 
 The current stable release targets Home Assistant 2026.8 or newer.
 
-The stable maintenance line is **0.2.7**. The **0.3.0-beta.1** prerelease adds a
+The stable maintenance line is **0.2.8**. The **0.3.0-beta.2** prerelease adds a
 [read-only booking overview](docs/BOOKING_OVERVIEW.md), not completed automatic
 interchange or disruption recovery. Choose prereleases deliberately.
 

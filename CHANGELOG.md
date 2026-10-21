@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0-beta.2
+
+- Apply the HACS review's catalogue-first installation guidance to the preview
+  line and link stable v0.2.8. No runtime changes from 0.3.0-beta.1.
+
+## 0.2.8 (Stable Line)
+
+- Record HACS approval on 21 October 2026 and lead installation with HACS search;
+  custom repositories remain a fallback. Includes a wording regression check.
+- Runtime unchanged from v0.2.7; no 0.3 booking-overview preview in this stable tag.
+
 ## 0.3.0-beta.1
 
 ### Added

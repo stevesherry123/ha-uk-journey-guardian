@@ -144,6 +144,8 @@ class JourneySnapshot:
     operational_phase: str = "idle"
     error: str | None = None
     last_live_rail_error: str | None = None
+    booked_legs: tuple[JourneyEvent, ...] = ()
+    booked_leg_count: int = 0
 
     @property
     def data_healthy(self) -> bool:
@@ -170,4 +172,6 @@ class JourneySnapshot:
             "data_healthy": self.data_healthy,
             "error": self.error,
             "last_live_rail_error": self.last_live_rail_error,
+            "booked_legs": [leg.as_dict() for leg in self.booked_legs],
+            "booked_leg_count": self.booked_leg_count,
         }

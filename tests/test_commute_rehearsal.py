@@ -501,6 +501,52 @@ async def test_active_calendar_outage_recovers_intent_after_runtime_reload(rehea
     assert h.runtime.coordinator.data.next_journey is None
 
 
+async def test_four_bookings_visible_without_new_provider_calls_or_plan_changes(
+    rehearsal,
+):
+    h = rehearsal
+    h.events[0]["end"] = clock("09:30").isoformat()
+    for start, end, origin, destination in (
+        ("09:40", "10:30", NAMES[2], NAMES[3]),
+        ("17:00", "17:40", NAMES[3], NAMES[2]),
+        ("18:00", "19:00", NAMES[2], NAMES[0]),
+    ):
+        h.events.append({
+            "start": clock(start).isoformat(), "end": clock(end).isoformat(),
+            "summary": f"Example Rail - {origin} to {destination}",
+            "location": origin,
+        })
+    await h.load()
+    assert len(h.requests) == 0
+    registry = er.async_get(h.hass)
+    entity_id = registry.async_get_entity_id(
+        "sensor", DOMAIN, f"{h.entry.entry_id}_status"
+    )
+    attributes = h.hass.states.get(entity_id).attributes
+    assert attributes["upcoming_booked_leg_count"] == 4
+    assert not attributes["booking_overview_truncated"]
+    assert [
+        item["relationship_to_previous"]
+        for item in attributes["upcoming_booked_legs"]
+    ] == ["first_booking", "possible_connection", "separate_booking",
+          "possible_connection"]
+    leave = h.runtime.coordinator.data.timing.leave_home_at
+    await h.advance("08:45")
+    assert h.runtime.coordinator.data.next_journey.start == clock("09:00")
+    assert h.runtime.coordinator.data.timing.leave_home_at == leave
+    requests = len(h.requests)
+    await h.reload()
+    assert len(h.requests) == requests
+    assert h.runtime.coordinator.data.booked_leg_count == 4
+    # Diagnostics must not acquire the new private calendar overview.
+    from custom_components.journey_guardian.diagnostics import (
+        async_get_config_entry_diagnostics,
+    )
+    diagnostics = await async_get_config_entry_diagnostics(h.hass, h.entry)
+    assert "upcoming_booked_legs" not in str(diagnostics)
+    assert NAMES[0] not in str(diagnostics)
+
+
 async def test_home_wake_ten_pulses_per_minute_and_mid_alarm_reload(rehearsal):
     h = rehearsal
     h.awake_after = 10

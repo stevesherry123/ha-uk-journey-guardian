@@ -10,6 +10,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .booking_overview import render_bookings
 from .const import CONF_PERSON_ENTITY, CONF_PROGRESS_ALTERNATIVES, CONF_PROGRESS_ZONES
 from .entity import JourneyGuardianEntity
 from .progress_sensor import JourneyProgressSensor
@@ -105,6 +106,20 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
         journey = self.coordinator.data.next_journey
         observation = self.coordinator.data.rail_observation
         attributes = {
+            "booking_overview_source": (
+                "unavailable" if self.coordinator.data.error == "calendar_unavailable"
+                else "simulation" if self.coordinator.data.simulation_active
+                else "calendar"
+            ),
+            "upcoming_booked_legs": render_bookings(
+                self.coordinator.data.booked_legs,
+                self.coordinator.data.checked_at,
+            ),
+            "upcoming_booked_leg_count": self.coordinator.data.booked_leg_count,
+            "booking_overview_truncated": (
+                self.coordinator.data.booked_leg_count
+                > len(self.coordinator.data.booked_legs)
+            ),
             "checked_at": self.coordinator.data.checked_at.isoformat(),
             "simulation_active": self.coordinator.data.simulation_active,
             "journey_end": (

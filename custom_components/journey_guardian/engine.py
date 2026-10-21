@@ -11,6 +11,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
+from .booking_overview import upcoming_bookings
 from .budget import TransportAPIBudget
 from .check_history import CheckHistory
 from .const import (
@@ -115,6 +116,7 @@ class JourneyGuardianEngine:
         try:
             events = await self._async_calendar_events(checked_at)
             next_journey = select_next_journey(events, checked_at)
+            booked_legs, booked_leg_count = upcoming_bookings(events, checked_at)
             if next_journey is None:
                 status = "idle"
             elif next_journey.start <= checked_at:
@@ -143,6 +145,8 @@ class JourneyGuardianEngine:
                     now=checked_at,
                 ),
                 last_live_rail_error=self._last_live_rail_error,
+                booked_legs=booked_legs,
+                booked_leg_count=booked_leg_count,
             )
         except Exception as err:  # Home Assistant service errors vary by provider
             # Exception messages from calendars and future provider clients may
@@ -311,6 +315,8 @@ class JourneyGuardianEngine:
             ),
             error=board.error_category,
             last_live_rail_error=None,
+            booked_legs=snapshot.booked_legs,
+            booked_leg_count=snapshot.booked_leg_count,
         )
         await self._async_record_live_check(
             result,

@@ -27,6 +27,11 @@ disruption advice, next-train alerts, and trustworthy arrival evidence.
 
 ## Real-travel readiness sequence
 
+- [x] start the 0.3 plan groundwork with a read-only upcoming booking overview
+  and schedule-only continuity hints, without changing selection or alarms
+- [ ] graduate the 0.3 preview into retained multi-leg monitoring, live connection
+  assessment and bounded disruption recovery after provider evidence validation
+
 - [x] run a network-disabled [full-runtime HA commute rehearsal](docs/COMMUTE_REHEARSAL.md)
   and regression-test notification/arrival-review defects it exposes
 - [ ] close the shortened-service acceptance gap with reliable early-termination

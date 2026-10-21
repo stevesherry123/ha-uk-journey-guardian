@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.3.0-beta.1
+
+### Added
+
+- Read-only upcoming-booking overview on Status, using the existing calendar
+  response. Includes independent endpoints/times and schedule-only continuity
+  hints, with exact-duplicate removal and explicit truncation above 16 legs.
+- Four-booking integration rehearsal proving the overview survives reload without
+  new provider work or changes to the current departure/leave plan.
+
+### Scope
+
+- Includes v0.2.7 reliability fixes. This is a prerelease, not the stable 0.3
+  multi-leg/disruption milestone. Stable users can remain on v0.2.7.
+- Connection hints do not assert a shared ticket, feasible transfer, train
+  arrival, missed connection or early termination. No new alerts or searches.
+- The window is the existing 30-hour calendar lookahead, not a complete travel-day
+  ledger. Completed legs disappear; calendar outage is explicitly unavailable.
+- Overview details are local private HA state, omitted from diagnostics, but may
+  be retained by Recorder, service consumers, exports or backups.
+
 ## 0.2.7
 
 ### Added

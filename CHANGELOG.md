@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.0-beta.4
+
+- Retain up to 64 independent booked legs across calendar refreshes and HA
+  reload/restart in a separate, read-only local travel plan. Completed booking
+  windows no longer disappear from this view as the next train advances.
+- Keep a 48-hour window after each booked arrival (departure if unknown), with
+  expiry pruning, scoped storage, corruption validation and bounded checkpoints.
+- Label calendar absence, restart retention, truncation, persistence failures
+  and unconfirmed outcomes explicitly. Edited bookings remain separate rather
+  than guessing that one service replaced another.
+- Preserve current alarm, next-train, routing, quota and provider scheduling.
+  Simulations neither mutate nor display the real retained plan. No live
+  multi-leg monitoring, cancellation detection or recovery search is added yet.
+- Extend the network-disabled four-booking HA rehearsal across the complete day
+  and successive runtime reloads. Raw titles/locations and retained plan details
+  remain excluded from downloadable diagnostics.
+
 ## 0.3.0-beta.3
 
 - Include the stable v0.2.10 packaging, safe route-error categories and sustained

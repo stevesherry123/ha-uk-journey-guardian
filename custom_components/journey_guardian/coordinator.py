@@ -18,6 +18,7 @@ from .health_issues import JourneyHealthIssues
 from .live_evidence import MAX_OBSERVATION_AGE, LiveEvidenceStore
 from .models import JourneySnapshot
 from .phase import calculate_operational_phase
+from .travel_plan import TravelPlanStore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,6 +64,9 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
             hass, scope=f"{entry.entry_id}|{calendar_entity}",
             provider=settings.get(CONF_LIVE_RAIL_PROVIDER, ""),
         )
+        self.travel_plan = TravelPlanStore(
+            hass, scope=f"{entry.entry_id}|{calendar_entity}"
+        )
         super().__init__(
             hass,
             logger=_LOGGER,
@@ -85,6 +89,7 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
             if force_station_access else await self.engine.async_review()
         )
         self._update_health_issues(snapshot)
+        await self.travel_plan.async_update(snapshot)
         recovered = self.live_evidence.restore_journey(snapshot)
         if recovered is not None:
             snapshot = replace(

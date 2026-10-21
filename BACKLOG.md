@@ -29,6 +29,8 @@ disruption advice, next-train alerts, and trustworthy arrival evidence.
 
 - [x] start the 0.3 plan groundwork with a read-only upcoming booking overview
   and schedule-only continuity hints, without changing selection or alarms
+- [x] retain independently booked legs through refresh/restart in a bounded
+  read-only plan, preserving unconfirmed history without driving alarms
 - [ ] graduate the 0.3 preview into retained multi-leg monitoring, live connection
   assessment and bounded disruption recovery after provider evidence validation
 

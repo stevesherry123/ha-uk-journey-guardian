@@ -21,6 +21,7 @@ def test_release_is_deterministic_flat_runtime_only_and_version_aligned(tmp_path
         assert "brand/icon.png" in names
         assert "translations/en.json" in names
         assert "health_issues.py" in names
+        assert "travel_plan.py" in names
         assert not any(
             part in {"tests", "docs", "__pycache__", "custom_components"}
             or part.startswith(".")

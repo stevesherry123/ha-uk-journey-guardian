@@ -33,6 +33,7 @@ async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
     coordinator = Mock()
     coordinator.async_config_entry_first_refresh = AsyncMock()
     coordinator.live_evidence.async_load = AsyncMock()
+    coordinator.travel_plan.async_load = AsyncMock()
     ledger = Mock()
     ledger.async_load = AsyncMock()
     scheduler = Mock()

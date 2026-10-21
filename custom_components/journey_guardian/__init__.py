@@ -176,6 +176,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
     )
     await coordinator.live_evidence.async_load()
+    await coordinator.travel_plan.async_load(dt_util.now())
     notification_ledger = NotificationLedger(hass)
     await notification_ledger.async_load()
     notification_scheduler = JourneyNotificationScheduler(

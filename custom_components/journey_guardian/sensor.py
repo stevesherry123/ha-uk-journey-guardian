@@ -106,6 +106,10 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
         journey = self.coordinator.data.next_journey
         observation = self.coordinator.data.rail_observation
         attributes = {
+            **self.coordinator.travel_plan.attributes(
+                self.coordinator.data.checked_at,
+                simulation=self.coordinator.data.simulation_active,
+            ),
             "booking_overview_source": (
                 "unavailable" if self.coordinator.data.error == "calendar_unavailable"
                 else "simulation" if self.coordinator.data.simulation_active

@@ -158,6 +158,7 @@ def test_simulated_delay_is_visible_without_overwriting_schedule() -> None:
         "status",
         notification_scheduler=notification_scheduler,
     )
+    coordinator.travel_plan.attributes.return_value = {}
     phase = OperationalPhaseSensor(coordinator, entry, "operational_phase")
     freshness = RailDataFreshnessSensor(
         coordinator, entry, "rail_data_freshness"

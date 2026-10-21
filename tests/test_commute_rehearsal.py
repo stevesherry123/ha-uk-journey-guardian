@@ -545,6 +545,22 @@ async def test_four_bookings_visible_without_new_provider_calls_or_plan_changes(
     diagnostics = await async_get_config_entry_diagnostics(h.hass, h.entry)
     assert "upcoming_booked_legs" not in str(diagnostics)
     assert NAMES[0] not in str(diagnostics)
+    assert "retained_booked_legs" not in str(diagnostics)
+    ids = [item["booking_id"] for item in attributes["retained_booked_legs"]]
+    for point, remaining in (("09:31", 3), ("10:31", 2),
+                             ("17:41", 1), ("19:01", 0)):
+        await h.advance(point)
+        await h.review()
+        await h.reload()
+        attributes = h.hass.states.get(entity_id).attributes
+        assert attributes["upcoming_booked_leg_count"] == remaining
+        assert [item["booking_id"] for item in
+                attributes["retained_booked_legs"]] == ids
+        assert attributes["retained_booked_leg_count"] == 4
+        assert all(item["outcome"] == "unconfirmed" for item in
+                   attributes["retained_booked_legs"])
+    assert all(item["booked_window"] == "booked_window_elapsed" for item in
+               attributes["retained_booked_legs"])
 
 
 async def test_home_wake_ten_pulses_per_minute_and_mid_alarm_reload(rehearsal):

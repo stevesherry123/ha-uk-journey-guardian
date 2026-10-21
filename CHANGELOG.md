@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.9
+
+### Added
+
+- Runtime-only reproducible HACS ZIP release assets, validated for layout,
+  required files and version alignment. No install telemetry or user IDs.
+- Explanatory Repairs notices after three distinct failed checks and at least
+  30 minutes of sustained calendar/source, routing or live-rail failure. Notices
+  clear on corresponding success or unload; no extra requests are introduced.
+- Last successful calendar-read timestamp on Status, separate from source refresh.
+
+### Fixed
+
+- Distinguish Google Routes request, authentication, access, quota, timeout and
+  provider failures without exposing response bodies or credentials.
+- Reject malformed provider payloads, non-finite/unbounded durations and invalid
+  coordinates before they can change station-access timing.
+
+Alarm configuration, conservative fallback timing and rail checkpoint cadence
+are unchanged. Detailed error classification helps diagnose the existing live
+routing issue; it does not itself change Google account access or credentials.
+
 ## 0.2.8
 
 ### Documentation

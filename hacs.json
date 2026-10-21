@@ -2,5 +2,7 @@
   "name": "UK Journey Guardian",
   "country": "GB",
   "render_readme": true,
+  "zip_release": true,
+  "filename": "journey_guardian.zip",
   "homeassistant": "2026.8.0"
 }

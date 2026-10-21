@@ -196,5 +196,19 @@
       "name": "Clear simulation",
       "description": "Return Journey Guardian to its configured calendar source. No provider call is made."
     }
+  },
+  "issues": {
+    "sustained_calendar": {
+      "title": "Journey Guardian cannot refresh its calendar",
+      "description": "Calendar reviews have failed repeatedly for at least 30 minutes. Check the selected calendar and its upstream source, then use Refresh calendar and timings. Recovered booked intent is not confirmation that the calendar is current. Keep an independent travel alarm. This notice clears after a successful review."
+    },
+    "sustained_routing": {
+      "title": "Journey Guardian is using fallback station-access timing",
+      "description": "Station-access routing has failed repeatedly for at least 30 minutes. Check the Station access routing error attribute and your Google Routes API access, restrictions, billing and quota. Journey Guardian is using the configured conservative allowance, not a live estimate. This notice clears after a successful route calculation."
+    },
+    "sustained_rail": {
+      "title": "Journey Guardian cannot obtain current rail status",
+      "description": "Live rail checks have failed repeatedly for at least 30 minutes. Check the provider configuration, credentials, allowance and the Status entity's last live rail error. Do not reset the stored budget to bypass limits. Retained observations are not current railway confirmation. This notice clears after a successful live rail check."
+    }
   }
 }

@@ -22,6 +22,29 @@ provider calls.
 
 ## A useful support report
 
+### Sustained failures in Repairs
+
+From v0.2.9, calendar/source-refresh, routing and live-rail failures can create
+an explanatory notice in **Settings > System > Repairs** after at least three
+distinct failed checks and a 30-minute failure window. This makes no extra
+provider requests. Repeated reads of one retained rail/source error do not count
+as fresh failed attempts. Notices clear after a genuinely successful corresponding
+check; simulation does not create or clear real notices. Unload/reload clears
+the notices and starts a new observation window. These are explanatory notices,
+not an automatic credential repair or a guarantee that every outage is detected.
+
+The **Station access routing** error now distinguishes `invalid_request`,
+`authentication_failed`, `permission_denied`, `endpoint_unavailable`,
+`quota_exceeded`, `timeout`, `provider_unavailable` and malformed responses, with
+the `google_routes_` prefix. Google response text and credentials are not shown.
+For denied access, check the Routes API, key restrictions, billing and quota in
+your own Google project; the category alone does not prove which setting failed.
+Conservative fallback timing remains in use until a route succeeds.
+
+The Status attribute `last_successful_calendar_review_at` records successful
+calendar reads since startup, not proof of a successful upstream feed refresh.
+Inspect the separate source-refresh time/error attributes for that.
+
 Include the integration version, HA version, expected behaviour, what happened,
 approximate stage (preparation, departure or arrival), selected provider, and
 stable error category. State whether a simulation was active and whether the

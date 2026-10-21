@@ -14,6 +14,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import CONF_LIVE_RAIL_PROVIDER, DEFAULT_UPDATE_INTERVAL, NAME
 from .engine import JourneyGuardianEngine
+from .health_issues import JourneyHealthIssues
 from .live_evidence import MAX_OBSERVATION_AGE, LiveEvidenceStore
 from .models import JourneySnapshot
 from .phase import calculate_operational_phase
@@ -53,6 +54,9 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         self.next_station_access_check_at: datetime | None = None
         self.last_notification: str | None = None
         self.last_notification_at: datetime | None = None
+        self.last_successful_calendar_review_at: datetime | None = None
+        self.health_issues = JourneyHealthIssues(hass)
+        entry.async_on_unload(self.health_issues.stop)
         self._last_live_snapshot: JourneySnapshot | None = None
         settings = {**entry.data, **entry.options}
         self.live_evidence = LiveEvidenceStore(
@@ -80,6 +84,7 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
             await self.engine.async_review(force_station_access=True)
             if force_station_access else await self.engine.async_review()
         )
+        self._update_health_issues(snapshot)
         recovered = self.live_evidence.restore_journey(snapshot)
         if recovered is not None:
             snapshot = replace(
@@ -179,6 +184,11 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         except ValueError as err:
             raise HomeAssistantError(str(err)) from None
         self.last_live_check_at = snapshot.checked_at
+        if not snapshot.simulation_active:
+            self.health_issues.observe(
+                "rail", failed=snapshot.last_live_rail_error is not None,
+                now=snapshot.checked_at, token=snapshot.checked_at.isoformat(),
+            )
         previous = self._last_live_snapshot
         if (
             snapshot.rail_observation is None
@@ -205,6 +215,38 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         """Record privacy-safe notification diagnostics."""
         self.last_notification = kind
         self.last_notification_at = sent_at
+
+    def _update_health_issues(self, snapshot: JourneySnapshot) -> None:
+        if snapshot.simulation_active:
+            return
+        now = snapshot.checked_at
+        calendar_failed = snapshot.error == "calendar_unavailable"
+        source_failed = self.last_calendar_source_refresh_error is not None
+        source_attempt = self._last_calendar_source_refresh_attempt_at
+        self.health_issues.observe(
+            "calendar", failed=calendar_failed or source_failed, now=now,
+            token=(
+                source_attempt.isoformat()
+                if source_failed and not calendar_failed and source_attempt else
+                now.isoformat()
+            ),
+        )
+        if not calendar_failed:
+            self.last_successful_calendar_review_at = now
+        timing = snapshot.timing
+        if timing is not None and (
+            timing.station_access_error is not None
+            or timing.station_access_source == "google_routes"
+        ):
+            self.health_issues.observe(
+                "routing", failed=timing.station_access_error is not None,
+                now=now, token=(timing.station_access_checked_at or now).isoformat(),
+            )
+        if self.last_live_check_at is not None and snapshot.last_live_rail_error:
+            self.health_issues.observe(
+                "rail", failed=True, now=now,
+                token=self.last_live_check_at.isoformat(),
+            )
 
 
 def _retain_live_evidence(

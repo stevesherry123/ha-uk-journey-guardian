@@ -3,10 +3,13 @@
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
+
 from custom_components.journey_guardian.google_routes import (
     FIELD_MASK,
     ROUTES_URL,
     GoogleRoutesClient,
+    GoogleRoutesError,
 )
 
 NOW = datetime(2026, 9, 8, 8, 0, tzinfo=UTC)
@@ -104,3 +107,83 @@ async def test_forced_route_bypasses_valid_cache() -> None:
 
     assert forced.cache_hit is False
     assert session.post.call_count == 2
+
+
+@pytest.mark.parametrize(
+    "status,category",
+    [
+        (400, "invalid_request"),
+        (401, "authentication_failed"),
+        (403, "permission_denied"),
+        (404, "endpoint_unavailable"),
+        (429, "quota_exceeded"),
+        (500, "provider_unavailable"),
+    ],
+)
+async def test_http_failures_are_actionable_without_reading_raw_error(status, category):
+    response = AsyncMock()
+    response.status = status
+    response.__aenter__.return_value = response
+    response.json.return_value = {"error": "private-key, private route and URL"}
+    session = Mock(post=Mock(return_value=response))
+    client = GoogleRoutesClient(session, "private-key")
+    with pytest.raises(GoogleRoutesError, match=f"^{category}$"):
+        await client.async_route(
+            latitude=12,
+            longitude=34,
+            destination="Example Central",
+            mode="transit",
+            departure_time=NOW,
+        )
+    response.json.assert_not_awaited()
+    assert not client._cache
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        [],
+        None,
+        {"routes": [None]},
+        {"routes": [{"duration": "nans"}]},
+        {"routes": [{"duration": "infs"}]},
+        {"routes": [{"duration": "-60s"}]},
+        {"routes": [{"duration": "9999999999s"}]},
+    ],
+)
+async def test_malformed_or_unbounded_durations_fail_closed(payload):
+    response = AsyncMock(status=200)
+    response.__aenter__.return_value = response
+    response.json.return_value = payload
+    client = GoogleRoutesClient(Mock(post=Mock(return_value=response)), "private-key")
+    with pytest.raises(GoogleRoutesError, match="^invalid_response$"):
+        await client.async_route(
+            latitude=12,
+            longitude=34,
+            destination="Example Central",
+            mode="transit",
+            departure_time=NOW,
+        )
+
+
+async def test_timeout_is_distinct_and_invalid_coordinates_never_reach_network():
+    session = Mock(post=Mock(side_effect=TimeoutError("private-key")))
+    client = GoogleRoutesClient(session, "private-key")
+    with pytest.raises(GoogleRoutesError, match="^timeout$"):
+        await client.async_route(
+            latitude=12,
+            longitude=34,
+            destination="Example Central",
+            mode="walking",
+            departure_time=NOW,
+        )
+    session.post.reset_mock()
+    with pytest.raises(GoogleRoutesError, match="^invalid_request$"):
+        await client.async_route(
+            latitude=float("nan"),
+            longitude=34,
+            destination="Example Central",
+            mode="walking",
+            departure_time=NOW,
+        )
+    session.post.assert_not_called()

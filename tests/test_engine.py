@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, Mock, call, patch
 
 import pytest
+from homeassistant.core import SupportsResponse
 
 from custom_components.journey_guardian.engine import JourneyGuardianEngine
 from custom_components.journey_guardian.google_routes import (
@@ -368,6 +369,66 @@ async def test_unloaded_calendar_returns_quiet_startup_state(hass, caplog) -> No
     assert snapshot.status == "error"
     assert snapshot.error == "calendar_unavailable"
     assert "Calendar review failed" not in caplog.text
+
+
+@pytest.mark.parametrize("state", ["unavailable", "unknown"])
+async def test_unavailable_calendar_cannot_return_healthy_cached_events(hass, state):
+    hass.states.async_set(CALENDAR_ENTITY, state)
+    service = AsyncMock(return_value={CALENDAR_ENTITY: {"events": []}})
+    hass.services.async_register(
+        "calendar", "get_events", service, supports_response=SupportsResponse.ONLY
+    )
+    engine = JourneyGuardianEngine(
+        hass, calendar_entity=CALENDAR_ENTITY, budget=_budget()
+    )
+    result = await engine.async_review()
+    assert result.error == "calendar_unavailable"
+    assert not result.data_healthy
+    service.assert_not_awaited()
+
+
+@pytest.mark.parametrize("payload", [
+    None, [], {}, {CALENDAR_ENTITY: None}, {CALENDAR_ENTITY: {}},
+    {CALENDAR_ENTITY: {"events": None}}, {CALENDAR_ENTITY: {"events": {}}},
+    {CALENDAR_ENTITY: {"events": [None]}},
+])
+async def test_missing_or_malformed_calendar_response_is_not_an_empty_day(payload):
+    hass = Mock()
+    hass.services.async_call = AsyncMock(return_value=payload)
+    engine = JourneyGuardianEngine(
+        hass, calendar_entity=CALENDAR_ENTITY, budget=_budget()
+    )
+    result = await engine.async_review()
+    assert result.error == "calendar_unavailable"
+    assert not result.data_healthy
+
+
+async def test_explicit_empty_calendar_response_is_a_healthy_idle_day():
+    hass = Mock()
+    hass.services.async_call = AsyncMock(return_value={CALENDAR_ENTITY: {"events": []}})
+    engine = JourneyGuardianEngine(
+        hass, calendar_entity=CALENDAR_ENTITY, budget=_budget()
+    )
+    result = await engine.async_review()
+    assert result.status == "idle"
+    assert result.data_healthy
+
+
+async def test_calendar_becoming_unavailable_during_read_is_not_healthy(hass):
+    hass.states.async_set(CALENDAR_ENTITY, "off")
+
+    async def read(_call):
+        hass.states.async_set(CALENDAR_ENTITY, "unavailable")
+        return {CALENDAR_ENTITY: {"events": []}}
+
+    hass.services.async_register(
+        "calendar", "get_events", read, supports_response=SupportsResponse.ONLY
+    )
+    result = await JourneyGuardianEngine(
+        hass, calendar_entity=CALENDAR_ENTITY, budget=_budget()
+    ).async_review()
+    assert not result.data_healthy
+    assert result.error == "calendar_unavailable"
 
 
 async def test_active_calendar_journey_remains_selected() -> None:

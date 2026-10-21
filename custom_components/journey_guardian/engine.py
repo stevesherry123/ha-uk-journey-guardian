@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import logging
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import timedelta
 from typing import Any
 
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
@@ -107,8 +109,10 @@ class JourneyGuardianEngine:
                     simulated,
                     last_live_rail_error=self._last_live_rail_error,
                 )
+        calendar_state = self._hass.states.get(self._calendar_entity)
         if (
-            self._hass.states.get(self._calendar_entity) is None
+            calendar_state is None
+            or calendar_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN)
             or not self._hass.services.has_service("calendar", "get_events")
         ):
             return self._calendar_unavailable_snapshot(checked_at)
@@ -545,9 +549,20 @@ class JourneyGuardianEngine:
             blocking=True,
             return_response=True,
         )
-        calendar_data = response.get(self._calendar_entity, {})
-        events = calendar_data.get("events", [])
-        return list(events) if isinstance(events, list) else []
+        state = self._hass.states.get(self._calendar_entity)
+        if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            raise ValueError("calendar_unavailable")
+        if not isinstance(response, Mapping):
+            raise ValueError("calendar_response_invalid")
+        calendar_data = response.get(self._calendar_entity)
+        if not isinstance(calendar_data, Mapping):
+            raise ValueError("calendar_response_invalid")
+        events = calendar_data.get("events")
+        if not isinstance(events, list) or any(
+            not isinstance(event, Mapping) for event in events
+        ):
+            raise ValueError("calendar_response_invalid")
+        return events
 
 
 def _station_destination(journey: JourneyEvent) -> str:

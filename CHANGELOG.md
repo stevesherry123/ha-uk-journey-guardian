@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.2.9
+## 0.2.10
+
+The v0.2.9 tag was blocked before publication by a packaging-test import issue.
+This release fixes that test without requiring a custom Python path.
 
 ### Added
 

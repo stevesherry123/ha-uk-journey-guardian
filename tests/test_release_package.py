@@ -2,11 +2,11 @@
 
 import json
 from pathlib import Path
+from runpy import run_path
 from zipfile import ZipFile
 
-from scripts.build_release import build_release
-
 ROOT = Path(__file__).parents[1]
+build_release = run_path(str(ROOT / "scripts/build_release.py"))["build_release"]
 
 
 def test_release_is_deterministic_flat_runtime_only_and_version_aligned(tmp_path):

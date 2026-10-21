@@ -5,7 +5,7 @@ timing, live UK rail checks, station access, and separate booked rail legs.
 
 The current stable release targets Home Assistant 2026.8 or newer.
 
-Releases include a [runtime-only HACS ZIP](docs/RELEASE_PACKAGING.md) from v0.2.9.
+Releases include a [runtime-only HACS ZIP](docs/RELEASE_PACKAGING.md) from v0.2.10.
 Existing installations update in place; no uninstall is needed.
 
 Start with the [setup and first-journey guide](docs/GETTING_STARTED.md).

@@ -7,6 +7,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
@@ -21,6 +22,7 @@ from .phase import calculate_operational_phase
 from .travel_plan import TravelPlanStore
 
 _LOGGER = logging.getLogger(__name__)
+CALENDAR_SOURCE_RETRY_INTERVAL = timedelta(minutes=15)
 
 
 class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
@@ -120,15 +122,21 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
             return False
 
         now = dt_util.now()
+        retry_interval = (
+            CALENDAR_SOURCE_RETRY_INTERVAL
+            if self.last_calendar_source_refresh_error is not None
+            else DEFAULT_UPDATE_INTERVAL
+        )
         if (
             not force
             and self._last_calendar_source_refresh_attempt_at is not None
             and now - self._last_calendar_source_refresh_attempt_at
-            < DEFAULT_UPDATE_INTERVAL
+            < retry_interval
         ):
             return False
         if (
             not force
+            and self.last_calendar_source_refresh_error is None
             and self.last_calendar_source_refresh_at is not None
             and now - self.last_calendar_source_refresh_at
             < self._calendar_source_refresh_interval
@@ -151,6 +159,10 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
             )
             return False
 
+        state = self.hass.states.get(self._calendar_entity)
+        if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            self.last_calendar_source_refresh_error = "calendar_unavailable"
+            return False
         self.last_calendar_source_refresh_at = now
         self.last_calendar_source_refresh_error = None
         return True

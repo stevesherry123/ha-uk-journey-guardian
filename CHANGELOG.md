@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.0-beta.5
+
+- Include stable v0.2.11 calendar availability, response validation and bounded
+  source-refresh recovery fixes alongside the retained-booking preview.
+
+## 0.2.11 (Stable Line)
+
+- Do not treat absent/unavailable/unknown calendars, missing response entries or
+  malformed event lists as a healthy empty travel day. Detect a calendar that
+  becomes unavailable during its service response as well.
+- Verify calendar availability after a forced source update before recording a
+  successful refresh. Retry failed configured refreshes after a bounded
+  15-minute interval, even when a prior successful daily refresh is recent.
+- Rehearse unavailable-source startup, reload and recovery without provider
+  requests; add regression tests for silent update failures and malformed data.
+- No calendar/feed credentials, alarm settings, provider quota or TLS settings
+  change. External feed/network outages still require source recovery; this
+  release does not claim to prevent upstream failures or revive future alarms
+  from stale bookings.
+
 ## 0.3.0-beta.4
 
 - Retain up to 64 independent booked legs across calendar refreshes and HA

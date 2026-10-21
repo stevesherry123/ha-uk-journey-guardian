@@ -4,6 +4,7 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -473,3 +474,54 @@ async def test_upstream_refresh_error_does_not_count_each_cached_read_as_retry(h
             _idle_snapshot(), checked_at=CHECKED_AT + timedelta(minutes=minute)
         ))
     assert coordinator.health_issues._counts["calendar"] == 1
+
+
+@pytest.mark.parametrize("state", [None, "unavailable", "unknown"])
+async def test_silent_failed_refresh_does_not_record_success(hass, state):
+    hass.states.async_set(CALENDAR_ENTITY, "off")
+    coordinator = JourneyGuardianCoordinator(
+        hass, MockConfigEntry(domain=DOMAIN), Mock(), calendar_entity=CALENDAR_ENTITY,
+        calendar_refresh_interval_minutes=1440,
+    )
+    coordinator.last_calendar_source_refresh_at = CHECKED_AT - timedelta(hours=1)
+
+    async def refresh(_call):
+        if state is None:
+            hass.states.async_remove(CALENDAR_ENTITY)
+        else:
+            hass.states.async_set(CALENDAR_ENTITY, state)
+
+    hass.services.async_register("homeassistant", "update_entity", refresh)
+    assert not await coordinator.async_refresh_calendar_source(force=True)
+    assert coordinator.last_calendar_source_refresh_error == "calendar_unavailable"
+    assert coordinator.last_calendar_source_refresh_at == (
+        CHECKED_AT - timedelta(hours=1)
+    )
+
+
+async def test_failed_manual_refresh_retries_without_waiting_a_whole_day(hass):
+    hass.states.async_set(CALENDAR_ENTITY, "off")
+    coordinator = JourneyGuardianCoordinator(
+        hass, MockConfigEntry(domain=DOMAIN), Mock(), calendar_entity=CALENDAR_ENTITY,
+        calendar_refresh_interval_minutes=1440,
+    )
+    coordinator.last_calendar_source_refresh_at = CHECKED_AT - timedelta(hours=1)
+    refresh = AsyncMock(side_effect=HomeAssistantError("private source details"))
+    hass.services.async_register("homeassistant", "update_entity", refresh)
+    with patch("custom_components.journey_guardian.coordinator.dt_util.now",
+               return_value=CHECKED_AT):
+        assert not await coordinator.async_refresh_calendar_source(force=True)
+    refresh.side_effect = None
+    with patch("custom_components.journey_guardian.coordinator.dt_util.now",
+               return_value=CHECKED_AT + timedelta(minutes=14)):
+        assert not await coordinator.async_refresh_calendar_source()
+    assert refresh.await_count == 1
+    with patch("custom_components.journey_guardian.coordinator.dt_util.now",
+               return_value=CHECKED_AT + timedelta(minutes=15)):
+        assert await coordinator.async_refresh_calendar_source()
+    assert refresh.await_count == 2
+    assert coordinator.last_calendar_source_refresh_error is None
+    with patch("custom_components.journey_guardian.coordinator.dt_util.now",
+               return_value=CHECKED_AT + timedelta(hours=1)):
+        assert not await coordinator.async_refresh_calendar_source()
+    assert refresh.await_count == 2

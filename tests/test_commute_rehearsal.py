@@ -847,3 +847,28 @@ async def test_station_route_button_uses_live_estimate_and_safe_outage_fallback(
         sum(item["path"] == "/directions/v2:computeRoutes" for item in h.requests) == 3
     )
     h.mark("Forced station-route button recovers live estimate")
+
+
+async def test_unavailable_calendar_then_recovery_does_not_look_like_empty_day(
+    rehearsal,
+):
+    h = rehearsal
+    await h.load()
+    original = h.runtime.coordinator.data.next_journey
+    provider_calls = len(h.requests)
+    h.hass.states.async_set(CALENDAR, "unavailable")
+    await h.review()
+    data = h.runtime.coordinator.data
+    assert data.error == "calendar_unavailable"
+    assert not data.data_healthy
+    assert data.status != "idle"
+    await h.reload()
+    assert h.runtime.coordinator.data.error == "calendar_unavailable"
+    assert len(h.requests) == provider_calls
+    h.hass.states.async_set(CALENDAR, "off")
+    await h.review()
+    data = h.runtime.coordinator.data
+    assert data.data_healthy
+    assert data.status == "planned"
+    assert data.next_journey == original
+    assert len(h.requests) == provider_calls

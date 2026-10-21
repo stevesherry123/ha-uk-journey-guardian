@@ -20,6 +20,36 @@ provider calls.
 | No nightly report | Read the [safety-net guide](TRAVEL_DAY_REVIEW.md). It only alerts on saved possible claims or unresolved outcomes; no report is not proof of punctuality. |
 | HACS shows a newer version than HA | Downloaded files take effect after an HA restart. Check the running integration version afterwards. |
 
+## Calendar Unavailable After Restart
+
+If the selected calendar itself appears under **Needs attention** in HA's
+integrations, inspect that source before changing Journey Guardian settings.
+Remote Calendar fetches its feed at startup and retries setup failures; after
+success its normal polling interval is 24 hours. A temporary feed/network failure
+can therefore leave the calendar entity absent while HA is starting. See
+[HA's Remote Calendar guide](https://www.home-assistant.io/integrations/remote_calendar/).
+
+Journey Guardian automatically reviews again at its normal interval and resumes
+when the source becomes available. It does not need the Calendar dashboard opened.
+Do not remove/re-add the calendar, disable TLS verification, or publish its private
+feed URL as a first response. If the source continues failing, obtain its safe
+HTTP/network error category locally; the generic fetch message alone cannot
+distinguish a remote HTTP rejection from DNS, connection or certificate errors.
+
+From v0.2.11, missing, unknown or unavailable calendar entities and malformed or
+missing service responses cannot become a healthy-looking empty travel day.
+A successful update action is not counted as a successful source refresh if the
+entity remains unavailable afterwards. When Journey Guardian's configured forced
+refresh fails, it retries no sooner than 15 minutes later instead of waiting for
+the next full daily interval; HA's calendar integration can independently recover
+sooner. Healthy forced refreshes still follow the user's configured interval.
+Setting that interval to zero continues to leave polling entirely to the source.
+
+After recovery, press **Refresh calendar and timings** once, then confirm
+**Data healthy**, **Next departure**, **Prepare at** and **Leave home at** against
+the itinerary. A healthy calendar is not proof of physical watch delivery or
+successful Google routing. Keep an independent alarm during an outage.
+
 ## A useful support report
 
 ### Sustained failures in Repairs

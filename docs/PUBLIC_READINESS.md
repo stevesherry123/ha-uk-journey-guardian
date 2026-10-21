@@ -45,8 +45,10 @@ linked official documentation and your account allowance before enabling them.
 - Improve the per-journey safety-net view/export and whole-trip evidence before
   presenting it as comprehensive compensation assistance. Operator-specific
   policies, ticket-aware eligibility and claim submission are not implemented.
-- Continue watching the existing [HACS submission](https://github.com/hacs/default/pull/11772)
-  for maintainer feedback. Repository updates do not require a duplicate request.
+- The [HACS submission](https://github.com/hacs/default/pull/11772) was approved
+  and merged on 21 October 2026. The review requested catalogue-first installation
+  guidance; README and setup instructions now lead with HACS search and retain
+  custom repositories only as a fallback. No duplicate submission is needed.
 
 These are release-confidence and feature-scope tasks, not grounds to withhold
 already-tested maintenance fixes. Keep limitations prominent while they remain.

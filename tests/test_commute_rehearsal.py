@@ -463,6 +463,44 @@ async def test_full_commute_to_nightly_review(rehearsal, delay):
     assert len(h.requests) == requests_before
 
 
+async def test_active_calendar_outage_recovers_intent_after_runtime_reload(rehearsal):
+    h = rehearsal
+    await h.load()
+    await h.advance("08:45")
+    await h.advance("09:10")
+    h.calendar_error = True
+    await h.review()
+    requests, messages = len(h.requests), len(h.deliveries)
+    await h.reload()
+    data = h.runtime.coordinator.data
+    assert data.next_journey is not None
+    assert data.next_journey.origin_name == NAMES[0]
+    assert data.next_journey.decision_path == "calendar_recovered"
+    assert data.status == "active"
+    assert data.error == "calendar_unavailable"
+    assert not data.data_healthy
+    assert data.rail_observation.retained
+    assert data.rail_observation.freshness == "historical"
+    assert len(h.requests) == requests
+    assert len(h.deliveries) == messages
+    await h.advance("09:15")
+    assert len(h.requests) == requests
+    h.calendar_error = False
+    await h.advance("09:16")
+    await h.review()
+    assert h.runtime.coordinator.data.data_healthy
+    assert h.runtime.coordinator.data.next_journey.summary == h.events[0]["summary"]
+    # The newly healthy calendar may now run its one due +15-minute checkpoint.
+    assert h.runtime.coordinator.data.rail_observation.source == "railinfo"
+    h.events = []
+    await h.advance("09:17")
+    await h.review()
+    assert h.runtime.coordinator.data.next_journey is None
+    h.calendar_error = True
+    await h.reload()
+    assert h.runtime.coordinator.data.next_journey is None
+
+
 async def test_home_wake_ten_pulses_per_minute_and_mid_alarm_reload(rehearsal):
     h = rehearsal
     h.awake_after = 10

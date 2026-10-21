@@ -26,6 +26,7 @@ _LOGGER = logging.getLogger(__name__)
 
 CHECKPOINT_MINUTES = (150, 120, 75, 45, 30, 15, 10, 7, 5, 3, 1)
 POST_DEPARTURE_CHECKPOINT_MINUTES = (15,)
+DELAY_FOLLOWUP_MINUTES = (30, 45, 60)
 CATCHUP_WINDOW = timedelta(minutes=12)
 MAX_LEDGER_ENTRIES = 100
 
@@ -109,6 +110,7 @@ class AutomaticRailMonitor:
         if (
             journey is None
             or snapshot.simulation_active
+            or snapshot.error == "calendar_unavailable"
             or snapshot.status == "cancelled"
             or not self._coordinator.engine.live_rail_configured
         ):
@@ -137,7 +139,15 @@ class AutomaticRailMonitor:
         # A service which is still reported on time at the final pre-departure
         # check can acquire a delay afterwards. Always keep a bounded set of
         # post-departure checks so that this last-minute change is observed.
-        for elapsed_minutes in POST_DEPARTURE_CHECKPOINT_MINUTES:
+        post_points = POST_DEPARTURE_CHECKPOINT_MINUTES
+        observation = snapshot.rail_observation
+        if (
+            observation is not None
+            and observation.delay_minutes > 0
+            and observation.provider_available
+        ):
+            post_points += DELAY_FOLLOWUP_MINUTES
+        for elapsed_minutes in post_points:
             point = journey.start + timedelta(minutes=elapsed_minutes)
             if point > now:
                 future_points.append(point)
@@ -186,7 +196,12 @@ class AutomaticRailMonitor:
     ) -> None:
         """Claim and execute a checkpoint if it is still the current journey."""
         current = self._coordinator.data.next_journey
-        if current is None or current.start != departure:
+        if (
+            current is None or current.start != departure
+            or self._coordinator.data.simulation_active
+            or self._coordinator.data.status == "cancelled"
+            or self._coordinator.data.error == "calendar_unavailable"
+        ):
             return
         claim = hashlib.sha256(
             f"{departure.isoformat()}|{lead_minutes}".encode()

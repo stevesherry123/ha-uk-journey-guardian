@@ -71,6 +71,11 @@ simulations remain provider-free.
 The last successful rail observation remains visible between checkpoints. It is
 labelled `retained` before departure and `historical` after departure; only a
 genuinely new `current` observation can produce a new live-rail notification.
+Recovery rejects rail observations older than six hours or with invalid time,
+provider or schedule evidence. During a calendar outage, a minimal saved booking
+can remain visible only while underway and before its original end; data health
+stays off and automatic departure-board checks pause until the calendar returns.
+See [restart recovery](docs/RESTART_RECOVERY.md).
 
 When a Google Routes key is configured, calendar reviews calculate the
 station-access leg using the traveller's current Home Assistant coordinates.
@@ -302,6 +307,11 @@ post-departure check may use the protected urgent reserve. A restart-safe hashed
 ledger prevents duplicate checks, and a 12-minute catch-up window tolerates
 modest calendar synchronization or startup latency. Enabling or reloading inside
 that window can therefore perform the one recently due check.
+When the latest available rail observation reports a delay, three additional
+bounded checks at +30, +45 and +60 minutes can run while that booking remains
+current. They stop when delay evidence is absent/unavailable, the service is
+cancelled, the calendar is unavailable, or the booking changes/ends. A service
+missing from a board is not proof that it departed.
 
 The TransportAPI budget entity counts requests reserved by Journey Guardian. It
 cannot observe requests made with the same provider account by legacy packages,

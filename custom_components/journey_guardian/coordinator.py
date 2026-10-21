@@ -12,9 +12,9 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from .const import DEFAULT_UPDATE_INTERVAL, NAME
+from .const import CONF_LIVE_RAIL_PROVIDER, DEFAULT_UPDATE_INTERVAL, NAME
 from .engine import JourneyGuardianEngine
-from .live_evidence import LiveEvidenceStore
+from .live_evidence import MAX_OBSERVATION_AGE, LiveEvidenceStore
 from .models import JourneySnapshot
 from .phase import calculate_operational_phase
 
@@ -54,7 +54,11 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         self.last_notification: str | None = None
         self.last_notification_at: datetime | None = None
         self._last_live_snapshot: JourneySnapshot | None = None
-        self.live_evidence = LiveEvidenceStore(hass)
+        settings = {**entry.data, **entry.options}
+        self.live_evidence = LiveEvidenceStore(
+            hass, scope=f"{entry.entry_id}|{calendar_entity}",
+            provider=settings.get(CONF_LIVE_RAIL_PROVIDER, ""),
+        )
         super().__init__(
             hass,
             logger=_LOGGER,
@@ -76,13 +80,22 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
             await self.engine.async_review(force_station_access=True)
             if force_station_access else await self.engine.async_review()
         )
+        recovered = self.live_evidence.restore_journey(snapshot)
+        if recovered is not None:
+            snapshot = replace(
+                snapshot, next_journey=recovered, status="active",
+                operational_phase="active",
+            )
         previous = self._last_live_snapshot
-        if previous is None:
-            observation = self.live_evidence.restore(snapshot)
+        if not _can_retain_live_evidence(snapshot, previous):
+            observation = self.live_evidence.restore(
+                snapshot, recovered=recovered is not None
+            )
             if observation is not None:
                 previous = replace(snapshot, rail_observation=observation)
         if _can_retain_live_evidence(snapshot, previous):
             snapshot = _retain_live_evidence(snapshot, previous)
+        await self.live_evidence.async_save(snapshot)
         return snapshot
 
     async def async_refresh_calendar_source(self, *, force: bool = False) -> bool:
@@ -183,9 +196,7 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
 
     async def async_test_station_access(self) -> JourneySnapshot:
         """Force one station-access request and publish the result."""
-        snapshot = await self.engine.async_review(force_station_access=True)
-        if _can_retain_live_evidence(snapshot, self._last_live_snapshot):
-            snapshot = _retain_live_evidence(snapshot, self._last_live_snapshot)
+        snapshot = await self._async_review_data(force_station_access=True)
         self.last_station_access_test_at = snapshot.checked_at
         self.async_set_updated_data(snapshot)
         return snapshot
@@ -260,4 +271,9 @@ def _can_retain_live_evidence(
         and previous.rail_observation is not None
         and snapshot.next_journey.start == previous.next_journey.start
         and snapshot.next_journey.summary == previous.next_journey.summary
+        and snapshot.next_journey.end == previous.next_journey.end
+        and not snapshot.simulation_active
+        and not previous.simulation_active
+        and timedelta(0) <= snapshot.checked_at
+        - previous.rail_observation.observed_at <= MAX_OBSERVATION_AGE
     )

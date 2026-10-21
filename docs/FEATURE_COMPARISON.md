@@ -16,7 +16,7 @@ has not passed the required real-travel acceptance test.
 | Station access by road, walking, cycling, or transit | Implemented, with CRS profiles | Validate configured profiles |
 | Quota-aware rail checks | Implemented | Direct service validated; waypoint matching needs evidence |
 | Direct service live status, delay, platform, calling point | Partial | Direct outbound test passed; provider mismatch remains for one return service |
-| Post-departure delayed-service checks | One automatic check at +15 minutes while the journey remains current | Repeated follow-up until departure is not implemented |
+| Post-departure delayed-service checks | +15-minute check, plus +30/+45/+60 when delay evidence is available | Bounded to current booking; no confirmed departure from board absence |
 | Split-journey interchange monitoring | Diagnostic helper only | Not ready for cutover |
 | Meaningful-change notification deduplication | Implemented for persistent alerts and the shared script path | Physical delivery needs household acceptance |
 | Mobile push, spoken announcements, wearables | Supported through a selected Home Assistant delivery script | Validate each household delivery script separately |

@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.2.7
+
+### Added
+
+- Versioned, minimal booked-intent recovery during calendar outages after
+  restart, bounded to an underway booking's original end and a 24-hour duration.
+- At most three extra automatic rail checkpoints (+30, +45 and +60 minutes)
+  while the latest available observation reports a delay and the booking remains
+  current. Existing provider budgets, back-off and durable claims still apply.
+- Full-runtime rehearsal of calendar outage, integration reload, recovery and
+  confirmed booking removal, without duplicate alerts or outage rail requests.
+
+### Fixed
+
+- Validate restored observation types, timezone-aware timestamps, provider,
+  schedule match and a six-hour maximum evidence age. Simulation, corrupt,
+  future-dated and incompatible records fail closed.
+- Retain explicit historical/retained labels after restart; a restored booking
+  never turns a failed calendar into healthy data or starts pre-departure alarms.
+
+### Privacy and Scope
+
+- Local recovery now stores minimal endpoint names/codes and booked times, but
+  not raw calendar titles, descriptions, locations or credentials. Protect HA
+  storage and backups. Diagnostics continue to exclude these journey details.
+- Legacy observation-only records remain readable for the same matching booking;
+  outage intent recovery begins after a successful review writes the new schema.
+- This does not implement early-termination recognition, replacement-train advice,
+  continuous delayed-service tracking, or HA Repairs.
+
 ## 0.2.6
 
 ### Documentation

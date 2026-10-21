@@ -37,10 +37,10 @@ disruption advice, next-train alerts, and trustworthy arrival evidence.
 
 - [x] retain successful pre-departure rail evidence between calendar and route
   refreshes without duplicating notifications
-- [ ] persist the latest actionable journey and rail observation across a Home
-  Assistant restart, with schema versioning and bounded expiry
-- [ ] follow delayed services after scheduled departure at bounded intervals
-  until departure, cancellation, or the calendar journey ends
+- [x] persist minimal booked intent and the latest observation with schema
+  versioning and bounded expiry; recover underway intent during calendar outage
+- [x] add bounded delayed-service follow-ups at +30/+45/+60 while the booking is
+  current; disappearance is not confirmed departure and tracking is not continuous
 - [ ] expose sustained calendar, routing, and rail-provider failures through
   Home Assistant Repairs rather than relying only on log warnings
 - [ ] validate direct outbound and return journeys during one real travel day

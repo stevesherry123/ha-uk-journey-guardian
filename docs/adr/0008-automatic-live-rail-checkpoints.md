@@ -36,6 +36,8 @@ and could repeat work after Home Assistant restarts or calendar synchronization.
   resolutions. Cache reuse, provider budget, lookahead and journey lifecycle may
   reduce actual requests. Separate station-access and arrival collectors have
   their own bounded work; twelve is not a whole-integration request ceiling.
+  Since v0.2.7, a reported delay can add +30/+45/+60-minute follow-ups while
+  the booking remains current; calendar outages pause automatic rail checks.
 - Late calendar synchronization can still obtain a useful recent checkpoint but
   cannot trigger a cascade of historical calls.
 - A transient failure is not retried at the same checkpoint. The next planned

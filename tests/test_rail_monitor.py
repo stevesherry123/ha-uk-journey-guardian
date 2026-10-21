@@ -8,6 +8,7 @@ from custom_components.journey_guardian.models import (
     BudgetSnapshot,
     JourneyEvent,
     JourneySnapshot,
+    RailObservation,
 )
 from custom_components.journey_guardian.rail_monitor import AutomaticRailMonitor
 
@@ -203,4 +204,47 @@ async def test_monitor_rechecks_after_departure_when_service_was_on_time(hass) -
         urgent=True,
     )
     assert coordinator.next_live_check_at == departure + timedelta(minutes=15)
+    monitor.stop()
+
+
+async def test_delayed_service_gets_bounded_followups_without_polling_on_time(hass):
+    departure = NOW - timedelta(minutes=20)
+    coordinator = _coordinator(departure)
+    coordinator.data = replace(
+        coordinator.data, status="delayed",
+        rail_observation=RailObservation(
+            "observed", "railinfo", "provider_normalized", NOW,
+            departure, NOW + timedelta(minutes=30), 50, False, 1, True,
+        ),
+    )
+    ledger = Mock(async_claim=AsyncMock(return_value=False))
+    monitor = AutomaticRailMonitor(hass, coordinator, ledger, enabled=True)
+    with patch(
+        "custom_components.journey_guardian.rail_monitor.async_track_point_in_utc_time"
+    ) as track, patch(
+        "custom_components.journey_guardian.rail_monitor.dt_util.now",
+        return_value=NOW,
+    ):
+        monitor.start()
+        await hass.async_block_till_done()
+        assert [call.args[2] for call in track.call_args_list] == [
+            departure + timedelta(minutes=offset) for offset in (30, 45, 60)
+        ]
+        track.reset_mock()
+        coordinator.data = replace(coordinator.data, rail_observation=None)
+        monitor._handle_coordinator_update()
+        await hass.async_block_till_done()
+        track.assert_not_called()
+    monitor.stop()
+
+
+async def test_recovered_calendar_outage_never_schedules_or_spends(hass):
+    coordinator = _coordinator(NOW - timedelta(minutes=20))
+    coordinator.data = replace(coordinator.data, error="calendar_unavailable")
+    ledger = Mock(async_claim=AsyncMock())
+    monitor = AutomaticRailMonitor(hass, coordinator, ledger, enabled=True)
+    monitor.start()
+    await monitor._async_run_checkpoint(coordinator.data.next_journey.start, -30)
+    ledger.async_claim.assert_not_awaited()
+    coordinator.async_review_live_rail.assert_not_awaited()
     monitor.stop()

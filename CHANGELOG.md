@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.8
+
+### Documentation
+
+- Record HACS catalogue approval on 21 October 2026 and address the reviewer's
+  request: lead with searching for UK Journey Guardian in HACS, keeping custom
+  repository installation as a fallback.
+- Update the first-install guide, readiness notes and distribution backlog.
+- Add a regression check for catalogue-first installation wording.
+
+No runtime behaviour changes from v0.2.7. This stable release does not include
+the read-only 0.3 booking-overview preview.
+
 ## 0.2.7
 
 ### Added

@@ -105,6 +105,9 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
         journey = self.coordinator.data.next_journey
         observation = self.coordinator.data.rail_observation
         attributes = {
+            "last_successful_calendar_review_at": _datetime_attribute(
+                self.coordinator.last_successful_calendar_review_at
+            ),
             "checked_at": self.coordinator.data.checked_at.isoformat(),
             "simulation_active": self.coordinator.data.simulation_active,
             "journey_end": (

@@ -41,8 +41,8 @@ disruption advice, next-train alerts, and trustworthy arrival evidence.
   versioning and bounded expiry; recover underway intent during calendar outage
 - [x] add bounded delayed-service follow-ups at +30/+45/+60 while the booking is
   current; disappearance is not confirmed departure and tracking is not continuous
-- [ ] expose sustained calendar, routing, and rail-provider failures through
-  Home Assistant Repairs rather than relying only on log warnings
+- [x] expose repeated sustained calendar, routing and live-rail failures through
+  explanatory Home Assistant Repairs notices, without extra provider calls
 - [ ] validate direct outbound and return journeys during one real travel day
   before adding interchange monitoring or additional notification adapters
 
@@ -118,7 +118,8 @@ accepted replacement decision. Route names and private entity IDs are omitted.
 - [x] separate raw provider observations from derived journey decisions
 - [x] distinguish scheduled, predicted, cancelled, and inferred values
 - [ ] add provider confirmation semantics without inferring them from predictions
-- [ ] surface actionable configuration/provider faults through Home Assistant Repairs
+- [x] surface sustained operational failures through Home Assistant Repairs;
+  dedicated credential reauthentication and guided fixes remain separate work
 - [ ] version persisted journey state and test idempotent restart/reload recovery
 - [x] reject or normalize malformed, duplicate, corrected, and unsupported rail
   records before they reach the decision layer
@@ -270,6 +271,9 @@ privacy, and never submit a financial claim without explicit user approval.
   real journeys before offering eligibility advice
 
 ## Distribution
+
+- [x] publish reproducible runtime-only HACS ZIP assets from v0.2.9, with packaging
+  regression tests and no installation telemetry
 
 Current documentation and remaining public acceptance work are summarized in
 [Public-readiness review](docs/PUBLIC_READINESS.md). Older items below are a

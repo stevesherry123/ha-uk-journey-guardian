@@ -436,3 +436,40 @@ async def test_station_access_test_forces_provider_refresh(hass) -> None:
     engine.async_review.assert_awaited_once_with(force_station_access=True)
     assert coordinator.last_station_access_test_at == CHECKED_AT
     assert coordinator.data == snapshot
+
+
+async def test_sustained_calendar_repair_uses_real_review_results(hass):
+    from homeassistant.helpers import issue_registry as ir
+
+    engine = Mock()
+    coordinator = JourneyGuardianCoordinator(
+        hass, MockConfigEntry(domain=DOMAIN), engine
+    )
+    for minute in (0, 15, 30):
+        engine.async_review = AsyncMock(return_value=replace(
+            _idle_snapshot(), checked_at=CHECKED_AT + timedelta(minutes=minute),
+            error="calendar_unavailable", status="error",
+        ))
+        await coordinator._async_update_data()
+    assert (DOMAIN, "sustained_calendar") in ir.async_get(hass).issues
+    engine.async_review = AsyncMock(return_value=replace(
+        _idle_snapshot(), checked_at=CHECKED_AT + timedelta(minutes=31)
+    ))
+    await coordinator._async_update_data()
+    assert (DOMAIN, "sustained_calendar") not in ir.async_get(hass).issues
+    assert coordinator.last_successful_calendar_review_at == (
+        CHECKED_AT + timedelta(minutes=31)
+    )
+
+
+async def test_upstream_refresh_error_does_not_count_each_cached_read_as_retry(hass):
+    coordinator = JourneyGuardianCoordinator(
+        hass, MockConfigEntry(domain=DOMAIN), Mock()
+    )
+    coordinator.last_calendar_source_refresh_error = "HomeAssistantError"
+    coordinator._last_calendar_source_refresh_attempt_at = CHECKED_AT
+    for minute in (0, 15, 30, 45):
+        coordinator._update_health_issues(replace(
+            _idle_snapshot(), checked_at=CHECKED_AT + timedelta(minutes=minute)
+        ))
+    assert coordinator.health_issues._counts["calendar"] == 1

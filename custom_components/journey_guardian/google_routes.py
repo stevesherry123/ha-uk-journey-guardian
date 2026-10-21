@@ -61,6 +61,14 @@ class GoogleRoutesClient:
         """Return a normalized duration without exposing provider responses."""
         if not self.configured or mode not in MODE_MAP:
             raise GoogleRoutesError("not_configured")
+        if (
+            not math.isfinite(latitude)
+            or not math.isfinite(longitude)
+            or not -90 <= latitude <= 90
+            or not -180 <= longitude <= 180
+            or departure_time.utcoffset() is None
+        ):
+            raise GoogleRoutesError("invalid_request")
         now = dt_util.now()
         cache_key = (
             round(latitude, 4),
@@ -84,16 +92,14 @@ class GoogleRoutesClient:
             },
             "destination": {"address": destination},
             "travelMode": MODE_MAP[mode],
-            "departureTime": departure_time.astimezone(UTC).isoformat().replace(
-                "+00:00", "Z"
-            ),
+            "departureTime": departure_time.astimezone(UTC)
+            .isoformat()
+            .replace("+00:00", "Z"),
         }
         if mode == "driving":
             request["routingPreference"] = "TRAFFIC_AWARE"
         elif mode == "transit":
-            request["transitPreferences"] = {
-                "routingPreference": "FEWER_TRANSFERS"
-            }
+            request["transitPreferences"] = {"routingPreference": "FEWER_TRANSFERS"}
         try:
             async with self._session.post(
                 ROUTES_URL,
@@ -105,11 +111,24 @@ class GoogleRoutesClient:
                 timeout=15,
             ) as response:
                 if response.status != 200:
-                    raise GoogleRoutesError("provider_unavailable")
+                    category = {
+                        400: "invalid_request",
+                        401: "authentication_failed",
+                        403: "permission_denied",
+                        404: "endpoint_unavailable",
+                        429: "quota_exceeded",
+                    }.get(response.status, "provider_unavailable")
+                    raise GoogleRoutesError(category)
                 payload = await response.json()
-        except (ClientError, TimeoutError, ValueError) as err:
+        except TimeoutError as err:
+            raise GoogleRoutesError("timeout") from err
+        except ClientError as err:
             raise GoogleRoutesError("provider_unavailable") from err
+        except ValueError as err:
+            raise GoogleRoutesError("invalid_response") from err
 
+        if not isinstance(payload, dict):
+            raise GoogleRoutesError("invalid_response")
         routes = payload.get("routes")
         if not isinstance(routes, list) or not routes:
             raise GoogleRoutesError("route_unavailable")
@@ -120,13 +139,18 @@ class GoogleRoutesClient:
         if not isinstance(duration, str) or not duration.endswith("s"):
             raise GoogleRoutesError("invalid_response")
         try:
-            duration_minutes = max(1, math.ceil(float(duration[:-1]) / 60))
-        except ValueError as err:
+            seconds = float(duration[:-1])
+            if not math.isfinite(seconds) or not 0 < seconds <= 86400:
+                raise ValueError("invalid_duration")
+            duration_minutes = max(1, math.ceil(seconds / 60))
+        except (ValueError, OverflowError) as err:
             raise GoogleRoutesError("invalid_response") from err
         distance = route.get("distanceMeters")
         estimate = StationAccessEstimate(
             duration_minutes=duration_minutes,
-            distance_meters=distance if isinstance(distance, int) else None,
+            distance_meters=(
+                distance if type(distance) is int and distance >= 0 else None
+            ),
             mode=mode,
             observed_at=now,
         )

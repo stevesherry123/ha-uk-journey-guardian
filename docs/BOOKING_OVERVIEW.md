@@ -2,7 +2,7 @@
 
 Introduced in **0.3.0-beta.1** as read-only groundwork. It includes v0.2.7 recovery
 and follow-up fixes but is not the completed 0.3 disruption workflow. For a stable
-maintenance update, choose v0.2.8. Installing a prerelease remains a deliberate
+maintenance update, choose v0.2.10. Installing a prerelease remains a deliberate
 HACS version selection and requires an HA restart; no alarm settings change.
 
 On the integration's **Status** entity, open its attributes/details:

@@ -1,6 +1,6 @@
 # HACS release packages
 
-From v0.2.9, release workflows attach `journey_guardian.zip`. The HACS manifest
+From v0.2.10, release workflows attach `journey_guardian.zip`. The HACS manifest
 selects that asset with `zip_release` and `filename`; existing users update in
 place without removing the integration or changing configuration.
 

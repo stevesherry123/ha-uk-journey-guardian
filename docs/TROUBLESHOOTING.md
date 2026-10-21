@@ -24,7 +24,7 @@ provider calls.
 
 ### Sustained failures in Repairs
 
-From v0.2.9, calendar/source-refresh, routing and live-rail failures can create
+From v0.2.10, calendar/source-refresh, routing and live-rail failures can create
 an explanatory notice in **Settings > System > Repairs** after at least three
 distinct failed checks and a 30-minute failure window. This makes no extra
 provider requests. Repeated reads of one retained rail/source error do not count

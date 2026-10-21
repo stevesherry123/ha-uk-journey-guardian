@@ -277,7 +277,7 @@ privacy, and never submit a financial claim without explicit user approval.
 
 ## Distribution
 
-- [x] publish reproducible runtime-only HACS ZIP assets from v0.2.9, with packaging
+- [x] publish reproducible runtime-only HACS ZIP assets from v0.2.10, with packaging
   regression tests and no installation telemetry
 
 Current documentation and remaining public acceptance work are summarized in

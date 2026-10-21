@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.0-beta.3
+
+- Include the stable v0.2.10 packaging, safe route-error categories and sustained
+  failure Repairs notices alongside the existing read-only booking overview.
+
+## 0.2.10 (Stable Line)
+
+The v0.2.9 tag was blocked before publication by a packaging-test import issue;
+the test now works without a custom Python path.
+
+- Publish reproducible runtime-only HACS ZIP assets with no install telemetry.
+- Surface repeated sustained calendar/source, routing and live-rail failures
+  through explanatory Repairs notices without extra provider requests.
+- Distinguish Google Routes request/access/quota/timeout failures safely and
+  reject malformed payloads, invalid coordinates and non-finite durations.
+- Alarm settings, configured fallback durations and rail checkpoint timing are
+  unchanged. Google account access or billing settings are not modified.
+
 ## 0.3.0-beta.2
 
 - Apply the HACS review's catalogue-first installation guidance to the preview

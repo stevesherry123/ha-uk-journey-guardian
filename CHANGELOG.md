@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.3.0-beta.7
+
+- Include stable v0.2.13 ordered routing failover alongside the retained-booking
+  preview. Stable remains the recommended installation for normal journeys.
+
+## 0.2.13 (Stable Line)
 
 - Try the preferred Waze sensor, then configured Google driving for the same
   leg, then the configured constant if no usable estimate is available.

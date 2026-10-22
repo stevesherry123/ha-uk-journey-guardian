@@ -12,9 +12,10 @@ NTH=walking
 
 The first example binds an existing HA Waze Travel Time sensor to trains leaving
 the explicitly configured origin. It does not use that sensor for a train leaving
-another station, including the return leg. This is a fixed route: configure the
-Waze sensor with the intended origin and station destination beforehand. It does
-not become a route from the person's changing GPS position after leaving home.
+another station, including the return leg. Configure the Waze sensor with the
+intended origin and station destination beforehand. The origin can be a fixed
+location or a person/device tracker: Journey Guardian reads the resulting
+duration and does not rewrite the native Waze route or its tracking behaviour.
 
 Use only the sensor entity ID, not its coordinates, route description or URL.
 The sensor must report positive, finite minutes, up to 240, and have reported in

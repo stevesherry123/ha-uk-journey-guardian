@@ -96,6 +96,9 @@ traffic changes can move the actionable leave time without continuous polling.
 
 ### Station access profiles
 
+From v0.2.12 the same field can explicitly select an existing local Waze duration
+sensor for a station's access leg. See [routing profiles](docs/STATION_ACCESS_ROUTING.md).
+
 For regular exceptions, integration options accept one station CRS code and mode
 per line. A matching profile takes priority over the default mode; stations
 without a profile keep the default policy. For example:
@@ -110,6 +113,12 @@ Valid modes are `driving`, `walking`, `bicycling`, and `transit`. If a calendar
 station cannot be identified from its configured or explicit calendar CRS, the
 profile is not guessed: Journey Guardian uses the default mode and its
 conservative fallback if live routing is unavailable.
+
+For a fixed Waze route instead of Google, use
+`EXC|Example Central=waze:sensor.example_route`. The optional exact station-name
+alias works before a CRS is available. Waze minutes are bounded by the existing
+minimum allowance; stale/unavailable sensors use the explicit fallback, never a
+silent Google request. Other station profiles are unchanged.
 
 ## Calendar format
 

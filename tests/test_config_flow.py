@@ -162,7 +162,9 @@ async def test_options_flow_updates_timing_and_reloads(hass) -> None:
         CONF_STATION_ACCESS_FALLBACK_MINUTES: 75,
         CONF_STATION_ACCESS_MINIMUM_MINUTES: 30,
         CONF_STATION_ACCESS_MODE: "driving",
-        CONF_STATION_ACCESS_PROFILES: "",
+        CONF_STATION_ACCESS_PROFILES: (
+            "EXC|Example Central=waze:sensor.example_route\nSMP=transit"
+        ),
         CONF_AUTOMATIC_LIVE_RAIL_ENABLED: True,
         CONF_LIVE_NOTIFICATIONS_ENABLED: False,
         CONF_LIVE_RAIL_PROVIDER: "transportapi",

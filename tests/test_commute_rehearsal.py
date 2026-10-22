@@ -810,3 +810,26 @@ async def test_unavailable_calendar_then_recovery_does_not_look_like_empty_day(
     assert data.status == "planned"
     assert data.next_journey == original
     assert len(h.requests) == provider_calls
+
+
+async def test_existing_route_profile_uses_waze_sensor_through_runtime_reload(
+    rehearsal,
+):
+    h = rehearsal
+    await h.load()
+    sensor = entity("sensor", "fixed_station_drive")
+    h.hass.states.async_set(sensor, "20", {"unit_of_measurement": "min"})
+    h.hass.config_entries.async_update_entry(h.entry, options={
+        "station_access_profiles": f"EXC|{NAMES[0]}=waze:{sensor}\nSMP=transit",
+        "station_access_minimum_minutes": 30,
+    })
+    await h.reload()
+    timing = h.runtime.coordinator.data.timing
+    assert timing.station_access_source == "waze_sensor"
+    assert timing.station_access_provider_minutes == 20
+    assert timing.station_access_minutes == 30
+    assert timing.leave_home_at == clock("08:28")
+    assert not h.requests
+    await h.reload()
+    assert h.runtime.coordinator.data.timing.station_access_source == "waze_sensor"
+    assert not h.requests

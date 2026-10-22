@@ -248,7 +248,7 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         timing = snapshot.timing
         if timing is not None and (
             timing.station_access_error is not None
-            or timing.station_access_source == "google_routes"
+            or timing.station_access_source in {"google_routes", "waze_sensor"}
         ):
             self.health_issues.observe(
                 "routing", failed=timing.station_access_error is not None,

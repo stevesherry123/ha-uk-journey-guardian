@@ -100,6 +100,7 @@ async def test_diagnostics_remove_journey_and_configuration_identifiers(hass) ->
             "home_wake_awake_entity": "private-awake-entity",
             "transportapi_app_key": "private-transport-key",
             "google_routes_api_key": "private-routes-key",
+            "station_access_profiles": "EXC|Private origin=waze:sensor.private_route",
         },
     }
 
@@ -122,6 +123,7 @@ async def test_diagnostics_remove_journey_and_configuration_identifiers(hass) ->
         "private-awake-entity",
         "private-transport-key",
         "private-routes-key",
+        "sensor.private_route",
         "private-service-identity",
         "private-fingerprint",
         "Private calendar title",

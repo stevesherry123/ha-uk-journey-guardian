@@ -320,6 +320,7 @@ class StationAccessHealthSensor(JourneyGuardianEntity, SensorEntity):
                 "source": None,
                 "classification": None,
                 "error": None,
+                "fallback_reason": None,
                 "checked_at": None,
                 "last_forced_check_at": _datetime_attribute(
                     self.coordinator.last_station_access_test_at
@@ -336,6 +337,7 @@ class StationAccessHealthSensor(JourneyGuardianEntity, SensorEntity):
             "source": timing.station_access_source,
             "classification": timing.station_access_classification,
             "error": timing.station_access_error,
+            "fallback_reason": timing.station_access_fallback_reason,
             "checked_at": _datetime_attribute(
                 timing.station_access_checked_at
             ),

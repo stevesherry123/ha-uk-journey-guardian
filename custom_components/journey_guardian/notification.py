@@ -567,19 +567,28 @@ def _notification_message(
         return "Rail data is unavailable. Conservative calendar timing remains active."
     if timing is None:
         return "Journey timing requires attention."
+    routing_note = ""
+    if not snapshot.simulation_active:
+        if timing.station_access_source == "configured_fallback":
+            routing_note = (
+                " Worst-case planning allowance; live routing unavailable."
+            )
+        elif timing.station_access_fallback_reason:
+            routing_note = " Google driving estimate; Waze unavailable."
     if kind == "wake_alarm":
         leave = dt_util.as_local(timing.leave_home_at).strftime("%H:%M")
         origin = snapshot.next_journey.origin_name
         return (
             f"Wake up now. It is time to get out of bed. Your {departure} "
             f"train leaves from {origin}. You need to leave home at {leave}."
+            f"{routing_note}"
         )
     if kind.startswith("wake_"):
         leave = dt_util.as_local(timing.leave_home_at).strftime("%H:%M")
         reminder_number = int(kind.rsplit("_", 1)[1])
         return (
             f"Wake-up reminder {reminder_number}/3. Start getting ready. "
-            f"Leave at {leave} for the {departure} departure."
+            f"Leave at {leave} for the {departure} departure.{routing_note}"
         )
     station = dt_util.as_local(timing.station_arrival_at).strftime("%H:%M")
     origin = snapshot.next_journey.origin_name
@@ -602,7 +611,7 @@ def _notification_message(
     )
     if effective_mode in {"walking", "bicycling"}:
         message += " Route guidance may not include clear pedestrian or cycle paths."
-    return message
+    return message + routing_note
 
 
 def _should_notify_rail(snapshot: JourneySnapshot) -> bool:

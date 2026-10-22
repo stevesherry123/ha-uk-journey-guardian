@@ -4,6 +4,8 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
+
 from custom_components.journey_guardian.models import (
     BudgetSnapshot,
     JourneyEvent,
@@ -31,6 +33,40 @@ TIMING = JourneyTiming(
     source="simulation",
     classification="simulated_scheduled",
 )
+
+
+@pytest.mark.parametrize("kind", ["wake_alarm", "wake_1", "leave_now"])
+def test_routing_provenance_in_operational_notifications(kind):
+    snapshot = _snapshot(simulation=False)
+    snapshot = replace(snapshot, timing=replace(
+        TIMING, station_access_source="google_routes",
+        station_access_fallback_reason="waze_sensor_unavailable",
+        station_access_mode="driving",
+    ))
+    assert "Google driving estimate; Waze unavailable" in _notification_message(
+        snapshot, kind
+    )
+    snapshot = replace(snapshot, timing=TIMING)
+    assert "Worst-case planning allowance" in _notification_message(snapshot, kind)
+
+
+async def test_provider_change_does_not_repeat_delivered_departure_notice():
+    ledger = Mock()
+    ledger.async_claim = AsyncMock(side_effect=(True, False))
+    scheduler = JourneyNotificationScheduler(
+        Mock(), Mock(), ledger, live_notifications_enabled=True
+    )
+    snapshot = _snapshot(simulation=False)
+    with patch(
+        "custom_components.journey_guardian.notification."
+        "persistent_notification.async_create"
+    ) as create:
+        await scheduler._async_maybe_notify(snapshot)
+        await scheduler._async_maybe_notify(replace(snapshot, timing=replace(
+            TIMING, station_access_source="google_routes",
+            station_access_fallback_reason="waze_sensor_unavailable",
+        )))
+    create.assert_called_once()
 
 
 def _snapshot(

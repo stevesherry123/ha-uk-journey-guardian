@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Try the preferred Waze sensor, then configured Google driving for the same
+  leg, then the configured constant if no usable estimate is available.
+- Expose fallback reasons separately from terminal routing errors; successful
+  Google recovery remains working or cached and clears routing Repairs.
+- Explain Google recovery and worst-case constant allowances in operational
+  notifications. The selected allowance drives wake-up and all other timings.
+- Reject unusable Google origin coordinates before requesting a route; preserve
+  existing minimum allowances, provider limits and notification deduplication.
+
 ## 0.3.0-beta.6
 
 - Include stable v0.2.12 explicit Waze sensor profiles and deterministic station

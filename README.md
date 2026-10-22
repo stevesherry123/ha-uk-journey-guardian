@@ -119,11 +119,14 @@ station cannot be identified from its configured or explicit calendar CRS, the
 profile is not guessed: Journey Guardian uses the default mode and its
 conservative fallback if live routing is unavailable.
 
-For a fixed Waze route instead of Google, use
+For an existing Waze sensor as the preferred source, use
 `EXC|Example Central=waze:sensor.example_route`. The optional exact station-name
 alias works before a CRS is available. Waze minutes are bounded by the existing
-minimum allowance; stale/unavailable sensors use the explicit fallback, never a
-silent Google request. Other station profiles are unchanged.
+minimum allowance. If Waze is stale or unavailable, try configured Google driving
+for the same leg, then the constant worst-case allowance if neither works.
+The selected value drives all timings and notifications, including wake-up.
+Routing diagnostics explain the selected source and fallback reason.
+Other station profiles are unchanged.
 
 ## Calendar format
 

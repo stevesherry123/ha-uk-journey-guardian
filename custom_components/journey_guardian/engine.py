@@ -33,9 +33,15 @@ from .rail import RailDataError, normalize_station_board
 from .railinfo import RailinfoClient
 from .simulation import JourneySimulation
 from .station import StationResolution, StationResolutionError, resolve_station
-from .station_access_profiles import mode_for_journey, parse_station_access_profiles
+from .station_access_profiles import (
+    WAZE_SENSOR,
+    mode_for_journey,
+    parse_station_access_profiles,
+    waze_sensor_for_journey,
+)
 from .timing import calculate_fallback_timing
 from .transportapi import TransportAPIClient
+from .waze_sensor import WazeSensorError, async_waze_estimate
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -184,8 +190,10 @@ class JourneyGuardianEngine:
     def station_access_configured(self) -> bool:
         """Return whether live station-access routing is available."""
         return bool(
-            self._google_routes_client is not None
-            and self._google_routes_client.configured
+            (self._google_routes_client is not None
+             and self._google_routes_client.configured)
+            or any(WAZE_SENSOR.fullmatch(value)
+                   for value in self._station_access_profiles.values())
         )
 
     async def async_review_live_rail(
@@ -349,7 +357,16 @@ class JourneyGuardianEngine:
             if self._person_entity
             else None
         )
-        mode = mode_for_journey(journey, self._station_access_profiles)
+        profile_journey = journey
+        cached = self._station_resolutions.get(_station_cache_key(
+            journey.origin_name, journey.origin_code, journey.location
+        ))
+        if cached is not None:
+            profile_journey = replace(journey, origin_code=cached.code)
+        mode = mode_for_journey(profile_journey, self._station_access_profiles)
+        waze_sensor = waze_sensor_for_journey(
+            profile_journey, self._station_access_profiles
+        )
         if mode is None:
             mode = self._station_access_mode
         if mode == "auto":
@@ -372,6 +389,32 @@ class JourneyGuardianEngine:
             station_access_source="configured_fallback",
             station_access_classification="inferred",
         )
+        if waze_sensor is not None:
+            if not allow_provider:
+                return fallback
+            try:
+                estimate = await async_waze_estimate(
+                    self._hass, waze_sensor, now=dt_util.now(),
+                    force_refresh=force_refresh,
+                )
+            except WazeSensorError as err:
+                return replace(fallback, station_access_error=f"waze_{err}")
+            applied = max(
+                estimate.duration_minutes, self._station_access_minimum_minutes
+            )
+            return calculate_fallback_timing(
+                journey,
+                preparation_minutes=self._preparation_buffer_minutes,
+                early_warning_minutes=self._early_warning_minutes,
+                station_buffer_minutes=self._station_buffer_minutes,
+                station_access_minutes=applied,
+                source="waze_sensor", classification="live_driving_minimum"
+                if applied > estimate.duration_minutes else "live_driving",
+                station_access_mode="driving", station_access_source="waze_sensor",
+                station_access_classification="sensor_observation",
+                station_access_checked_at=estimate.observed_at,
+                station_access_provider_minutes=estimate.duration_minutes,
+            )
         client = self._google_routes_client
         if not allow_provider or client is None or not client.configured:
             return fallback
@@ -499,15 +542,7 @@ class JourneyGuardianEngine:
         client: TransportAPIClient | RailinfoClient | None = None,
     ) -> StationResolution:
         """Resolve explicitly or with one cached manual Places lookup."""
-        cache_key = hashlib.sha256(
-            "|".join(
-                (
-                    code,
-                    name.casefold().strip(),
-                    location.casefold().strip(),
-                )
-            ).encode()
-        ).hexdigest()
+        cache_key = _station_cache_key(name, code, location)
         if cached := self._station_resolutions.get(cache_key):
             return cached
         try:
@@ -576,3 +611,9 @@ def _station_destination(journey: JourneyEvent) -> str:
     if journey.location.strip():
         return journey.location.rsplit(";", 1)[-1].strip()
     return f"{journey.origin_name} railway station, UK"
+
+
+def _station_cache_key(name: str, code: str, location: str) -> str:
+    return hashlib.sha256(
+        "|".join((code, name.casefold().strip(), location.casefold().strip())).encode()
+    ).hexdigest()

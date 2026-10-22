@@ -302,7 +302,7 @@ class StationAccessHealthSensor(JourneyGuardianEntity, SensorEntity):
             return "not_checked"
         if timing.station_access_error:
             return "error"
-        if timing.station_access_source != "google_routes":
+        if timing.station_access_source not in {"google_routes", "waze_sensor"}:
             return "fallback"
         if timing.station_access_classification.startswith("cached_"):
             return "cached"

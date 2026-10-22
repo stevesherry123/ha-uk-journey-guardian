@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0-beta.6
+
+- Include stable v0.2.12 explicit Waze sensor profiles and deterministic station
+  alias matching alongside the existing retained-booking preview.
+
+## 0.2.12 (Stable Line)
+
+- Connect explicitly selected existing Waze duration sensors through the existing
+  station-access profiles field; preserve legacy mode-only entries.
+- Add exact calendar-name aliases and reuse resolved CRS identities so named
+  calendar origins do not silently miss configured per-station choices.
+- Keep provider choice per origin: Waze errors use a labelled fallback, never a
+  silent Google switch. Validate minutes, freshness and restored/unavailable
+  states; keep sensor IDs and private route attributes out of diagnostics.
+- Apply existing minimum door-to-station allowance and all preparation/station
+  buffers unchanged. Native sensor refreshes use HA, not a new Waze API client.
+- Show Waze success as working and clear sustained routing Repairs on success.
+- Add isolated HA profile/reload, source-selection and sensor-validation tests.
+
 ## 0.3.0-beta.5
 
 - Include stable v0.2.11 calendar availability, response validation and bounded

@@ -3,6 +3,7 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.journey_guardian.const import DOMAIN
@@ -64,7 +65,8 @@ def test_timing_sensor_exposes_provenance() -> None:
     }
 
 
-def test_station_access_health_exposes_live_result() -> None:
+@pytest.mark.parametrize("routing_source", ["google_routes", "waze_sensor"])
+def test_station_access_health_exposes_live_result(routing_source) -> None:
     """Routing health makes a successful provider call obvious."""
     checked_at = datetime(2026, 9, 8, 20, 1, tzinfo=UTC)
     timing = JourneyTiming(
@@ -75,10 +77,10 @@ def test_station_access_health_exposes_live_result() -> None:
         early_warning_minutes=10,
         station_buffer_minutes=15,
         station_access_minutes=25,
-        source="google_routes",
+        source=routing_source,
         classification="live_driving",
         station_access_mode="driving",
-        station_access_source="google_routes",
+        station_access_source=routing_source,
         station_access_classification="live_driving",
         station_access_distance_meters=22360,
         station_access_checked_at=checked_at,

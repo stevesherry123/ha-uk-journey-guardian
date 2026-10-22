@@ -121,6 +121,12 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
                         self.coordinator, "last_notification_at", None
                     ), datetime) else None
                 ),
+                next_live_check_at=getattr(
+                    self.coordinator, "next_live_check_at", None
+                ),
+                next_station_access_check_at=getattr(
+                    self.coordinator, "next_station_access_check_at", None
+                ),
             ),
             **self.coordinator.travel_plan.attributes(
                 self.coordinator.data.checked_at,

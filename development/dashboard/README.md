@@ -14,6 +14,10 @@ the owner approves. The existing stable-update activation is unrelated.
 - Latest recorded HA notification only. No full history or receipt confirmation.
 - No network requests, service calls, refresh buttons or notification delivery
   inside the card. Its clock refreshes once per minute and stops when detached.
+- Actual next rail/routing checks from the coordinator, labelled as data checks,
+  not promised notifications. Missing schedule timestamps stay absent.
+- Explicit suppression reasons and planned delivery route without target IDs.
+- Date-aware overnight labels and BST/GMT distinctions across repeated hours.
 
 The backend projection uses existing engine timestamps, scheduler reminder
 offsets and wake settings. Calendar text is rendered through `textContent`, never
@@ -47,10 +51,11 @@ dashboard data, never a guessed plan. No automatic dashboard/resource creation.
 3. Decide whether the card should ship as a separate frontend package or gain
    explicit HA static-resource registration. Currently the release ZIP does not
    install files from this development directory.
-4. Add fuller notification eligibility (awake/completed alarm state, suppression
-   reasons) and rail checkpoint visibility using shared scheduler contracts.
-5. Add timezone/DST and midnight labels, retained journey validation, and a real
-   disposable-HA acceptance run before calling this production-ready.
+4. Extend beyond the next scheduled check only when the full shared scheduler
+   contract can be exposed without inventing alerts or quota reservations.
+5. Complete retained journey validation and a real disposable-HA acceptance run
+   before calling this production-ready. Clock-change and overnight formatting
+   have automated coverage, but real device notification receipt remains unknown.
 
 The projection contains private itinerary information for the local dashboard,
 as existing status attributes already do. Do not attach its contents to issues.

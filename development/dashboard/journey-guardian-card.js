@@ -1,6 +1,17 @@
 /* Development-only read-only Lovelace card. No services or network requests. */
 export function validTime(value) {
-  return typeof value === "string" && Number.isFinite(Date.parse(value));
+  return typeof value === "string" && /(?:Z|[+-]\d{2}:\d{2})$/.test(value) &&
+    Number.isFinite(Date.parse(value));
+}
+
+export function formatTime(value, timezone = "Europe/London", locale = "en-GB") {
+  if (!validTime(value)) return "Unknown";
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      hour: "2-digit", minute: "2-digit", hour12: false,
+      timeZone: timezone, timeZoneName: "short"
+    }).format(new Date(value));
+  } catch { return "Unknown"; }
 }
 
 export function readDashboard(hass, config) {
@@ -71,9 +82,7 @@ export class JourneyGuardianCard extends BaseElement {
       return;
     }
     const timezone = this._hass?.config?.time_zone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const format = value => validTime(value) ? new Intl.DateTimeFormat(
-      this._hass?.locale?.language || "en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timezone }
-    ).format(new Date(value)) : "Unknown";
+    const format = value => formatTime(value, timezone, this._hass?.locale?.language || "en-GB");
     const day = value => validTime(value) ? new Intl.DateTimeFormat(
       this._hass?.locale?.language || "en-GB", { day: "numeric", month: "short", timeZone: timezone }
     ).format(new Date(value)) : "Unknown date";
@@ -94,7 +103,9 @@ export class JourneyGuardianCard extends BaseElement {
       add("h2", "Travel timeline");
       const timeline = add("div", "", root, "timeline");
       timeline.setAttribute("role", "img");
-      timeline.setAttribute("aria-label", "Calculated travel stages. Train arrival is booked, not confirmed.");
+      timeline.setAttribute("aria-label", "Calculated stages. Arrival is booked, not confirmed. " + rows.map(row =>
+        `${row.label}: ${day(row.start)} ${format(row.start)} to ${day(row.end)} ${format(row.end)}`
+      ).join(". "));
       const start = Math.min(...rows.map(row => Date.parse(row.start)));
       const end = Math.max(...rows.map(row => Date.parse(row.end)));
       const percent = value => Math.max(0, Math.min(100, (value - start) / (end - start) * 100));
@@ -113,7 +124,9 @@ export class JourneyGuardianCard extends BaseElement {
       }
       const axis = add("div", "", timeline, "axis");
       add("span", format(new Date(start).toISOString()), axis);
-      add("span", `Now ${format(new Date().toISOString())}`, axis);
+      if (Date.now() >= start && Date.now() <= end) {
+        add("span", `Now ${format(new Date().toISOString())}`, axis);
+      }
       add("span", format(new Date(end).toISOString()), axis);
     } else add("p", "Travel timing is not available.", root, "notice");
     if (data.routing) {
@@ -127,6 +140,7 @@ export class JourneyGuardianCard extends BaseElement {
     }
     const details = add("details", ""); details.open = expanded;
     add("summary", "Expected notifications", details);
+    add("p", data.planned_delivery === "announcement_engine" ? "Configured announcement engine; phone/watch receipt unconfirmed." : "HA persistent notifications; no phone/watch delivery route confirmed.", details, "secondary");
     const events = add("ul", "", details, "rows");
     for (const event of (data.notifications || []).slice(0, 8)) {
       const item = add("li", "", events);
@@ -135,12 +149,25 @@ export class JourneyGuardianCard extends BaseElement {
       const content = add("div", "", item);
       add("div", event.label, content);
       add("div", `${event.eligibility}${validTime(event.due_at) && Date.parse(event.due_at) <= Date.now() ? " / time passed; delivery unknown" : ""}`, content, "secondary");
+      if (event.eligibility_reason) add("div", event.eligibility_reason, content, "secondary");
       if (event.kind === "wake_alarm") add("div", `Every ${event.repeat_seconds ?? "?"} seconds, up to ${event.maximum_minutes ?? "?"} minutes`, content, "secondary");
       add("div", event.condition, content, "secondary");
       if (event.message) add("p", event.message, content, "secondary");
     }
     const record = data.latest_notification_record;
     add("p", record ? `Latest HA record: ${record.kind.replaceAll("_", " ")} at ${format(record.recorded_at)}. Device receipt unconfirmed.` : "No delivery record available. Device receipt unconfirmed.", root, "evidence secondary");
+    const checks = (Array.isArray(data.checks) ? data.checks : []).filter(check => validTime(check.due_at) && Date.parse(check.due_at) > Date.now()).slice(0, 2);
+    if (checks.length) {
+      add("h2", "Next scheduled checks");
+      const list = add("ul", "", root, "rows");
+      for (const check of checks) {
+        const item = add("li", "", list);
+        add("time", format(check.due_at), item);
+        const content = add("div", "", item);
+        add("div", check.label, content);
+        add("div", "Data check, not a promised notification", content, "secondary");
+      }
+    }
     const bookings = (data.bookings || []).filter(leg => leg.booked_departure !== journey.booked_departure).slice(0, 3);
     if (bookings.length) {
       add("h2", "Other booked legs");

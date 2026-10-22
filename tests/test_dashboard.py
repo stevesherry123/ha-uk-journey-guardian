@@ -129,3 +129,48 @@ def test_awake_evidence_suppresses_wake_preview_but_not_departure():
     assert result["notifications"][0]["eligibility"] == "suppressed"
     assert result["notifications"][1]["eligibility"] == "conditional"
     assert "Wake up now" in result["notifications"][0]["message"]
+    assert result["notifications"][0]["eligibility_reason"] == "Awake evidence recorded"
+
+
+def test_checks_use_only_actual_future_coordinator_timestamps():
+    result = dashboard_projection(
+        snapshot(), next_live_check_at=NOW + timedelta(minutes=15),
+        next_station_access_check_at=NOW + timedelta(minutes=5),
+    )
+    assert [check["kind"] for check in result["checks"]] == ["station_access", "rail"]
+    assert not any(check["notification_promised"] for check in result["checks"])
+    assert dashboard_projection(snapshot())["checks"] == []
+    result = dashboard_projection(
+        snapshot(), next_live_check_at=NOW - timedelta(minutes=1),
+        next_station_access_check_at=NOW.replace(tzinfo=None),
+    )
+    assert result["checks"] == []
+
+
+def test_persistent_and_simulated_delivery_do_not_claim_a_watch_target():
+    assert dashboard_projection(snapshot())["planned_delivery"] == (
+        "ha_persistent_notification"
+    )
+    context = {"announcement_engine_configured": True}
+    assert dashboard_projection(snapshot(), notification_context=context)[
+        "planned_delivery"
+    ] == "announcement_engine"
+    assert dashboard_projection(
+        replace(snapshot(), simulation_active=True), notification_context=context
+    )["planned_delivery"] == "ha_persistent_notification"
+
+
+def test_naive_notification_record_cannot_look_like_delivery_evidence():
+    assert dashboard_projection(
+        snapshot(), last_notification="leave_now",
+        last_notification_at=NOW.replace(tzinfo=None),
+    )["latest_notification_record"] is None
+
+
+def test_check_order_uses_instants_across_repeated_clock_hour():
+    result = dashboard_projection(
+        snapshot(),
+        next_live_check_at=datetime.fromisoformat("2026-10-25T01:50:00+01:00"),
+        next_station_access_check_at=datetime.fromisoformat("2026-10-25T01:10:00+00:00"),
+    )
+    assert [check["kind"] for check in result["checks"]] == ["rail", "station_access"]

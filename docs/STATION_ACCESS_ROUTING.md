@@ -34,8 +34,12 @@ Journey Guardian reads the existing local sensor during normal calendar reviews.
 **Test station route now** and the bounded automatic access checkpoints ask HA to
 refresh that selected sensor first. Its native integration controls Waze requests;
 Journey Guardian does not add a second Waze client or use rail API quota. If the
-selected sensor fails, a `waze_` error explains the fallback and Google is not
-contacted for that profile.
+selected sensor fails, Journey Guardian tries configured Google driving routing
+for the same leg. The routing sensor records the Waze failure as `fallback_reason`;
+a successful Google estimate is working, not a terminal routing error. If Google
+is also unavailable, the configured constant is the worst-case planning allowance.
+That selected allowance drives every calculation and notification, including the
+wake-up alarm. Later checks try the preferred Waze sensor first again.
 
 The existing **Minimum station access allowance** still applies. For example,
 a 20-minute Waze reading with a 30-minute minimum uses 30 minutes. Preparation,

@@ -1,4 +1,4 @@
-"""Explicit Waze profiles must not leak onto another leg or silently use Google."""
+"""Preferred Waze routes fail over to same-mode Google before the constant."""
 
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -8,7 +8,10 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.journey_guardian.engine import JourneyGuardianEngine
-from custom_components.journey_guardian.google_routes import StationAccessEstimate
+from custom_components.journey_guardian.google_routes import (
+    GoogleRoutesError,
+    StationAccessEstimate,
+)
 from custom_components.journey_guardian.models import JourneyEvent
 from custom_components.journey_guardian.station_access_profiles import (
     StationAccessProfileError,
@@ -152,14 +155,136 @@ async def test_fixed_route_does_not_switch_to_google_when_person_leaves_home(
     google.async_route.assert_not_awaited()
 
 
-async def test_missing_sensor_keeps_explicit_safe_fallback(hass, freezer):
+async def test_missing_sensor_uses_google_before_constant(hass, freezer):
     source(hass, freezer)
     hass.states.async_remove(SENSOR)
     instance, google = engine(hass)
     timing = await instance._async_calculate_timing(journey())
-    assert timing.station_access_error == "waze_sensor_missing"
+    assert timing.station_access_error is None
+    assert timing.station_access_source == "google_routes"
+    assert timing.station_access_fallback_reason == "waze_sensor_missing"
+    assert timing.station_access_minutes == 30
+    assert google.async_route.await_args.kwargs["mode"] == "driving"
+
+
+@pytest.mark.parametrize("failure", [
+    "sensor_missing", "sensor_unavailable", "sensor_invalid", "sensor_stale",
+    "refresh_failed",
+])
+async def test_each_waze_failure_tries_google_and_recovers(hass, freezer, failure):
+    from unittest.mock import patch
+
+    source(hass, freezer)
+    instance, google = engine(hass)
+    google.async_route.return_value = StationAccessEstimate(40, None, "driving", NOW)
+    with patch(
+        "custom_components.journey_guardian.engine.async_waze_estimate",
+        side_effect=WazeSensorError(failure),
+    ) as waze:
+        timing = await instance._async_calculate_timing(journey(), force_refresh=True)
+    waze.assert_awaited_once()
+    google.async_route.assert_awaited_once()
+    assert google.async_route.await_args.kwargs["force_refresh"] is True
+    assert timing.station_access_source == "google_routes"
+    assert timing.station_access_error is None
+    assert timing.station_access_fallback_reason == f"waze_{failure}"
+    assert timing.station_access_minutes == 40
+    recovered = await instance._async_calculate_timing(journey())
+    assert recovered.station_access_source == "waze_sensor"
+    assert recovered.station_access_fallback_reason is None
+
+
+@pytest.mark.parametrize("failure", ["timeout", "permission_denied", "quota_exceeded"])
+async def test_both_failures_use_constant_for_every_time(hass, freezer, failure):
+    source(hass, freezer, "unavailable")
+    instance, google = engine(
+        hass, preparation_buffer_minutes=30, early_warning_minutes=15,
+        station_buffer_minutes=25,
+    )
+    google.async_route.side_effect = GoogleRoutesError(failure)
+    timing = await instance._async_calculate_timing(journey())
+    assert timing.station_access_source == "configured_fallback"
+    assert timing.station_access_minutes == 60
+    assert timing.station_access_error == f"google_routes_{failure}"
+    assert timing.station_access_fallback_reason == (
+        f"waze_sensor_unavailable;google_routes_{failure}"
+    )
+    assert timing.station_arrival_at == journey().start - timedelta(minutes=25)
+    assert timing.leave_home_at == journey().start - timedelta(minutes=85)
+    assert timing.prepare_at == journey().start - timedelta(minutes=130)
+
+
+@pytest.mark.parametrize(
+    "coordinates", [None, (float("nan"), 34), (91, 34), (True, 34)]
+)
+async def test_unusable_google_origin_keeps_constant(hass, freezer, coordinates):
+    source(hass, freezer, "unavailable")
+    attrs = {} if coordinates is None else dict(zip(
+        ("latitude", "longitude"), coordinates, strict=True
+    ))
+    hass.states.async_set(PERSON, "home", attrs)
+    instance, google = engine(hass)
+    timing = await instance._async_calculate_timing(journey())
+    assert timing.station_access_minutes == 60
+    assert timing.station_access_source == "configured_fallback"
+    google.async_route.assert_not_awaited()
+
+
+async def test_disabled_providers_never_call_google(hass, freezer):
+    source(hass, freezer, "unavailable")
+    instance, google = engine(hass)
+    timing = await instance._async_calculate_timing(journey(), allow_provider=False)
     assert timing.station_access_minutes == 60
     google.async_route.assert_not_awaited()
+
+
+async def test_unconfigured_google_after_waze_failure_uses_constant(hass, freezer):
+    source(hass, freezer, "unavailable")
+    instance, google = engine(hass)
+    google.configured = False
+    timing = await instance._async_calculate_timing(journey())
+    assert timing.station_access_minutes == 60
+    assert timing.station_access_fallback_reason.endswith(
+        "google_routes_not_configured"
+    )
+    google.async_route.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "waze_value,google_minutes,selected,prepare,leave",
+    [
+        ("20", 10, "waze_sensor", "03:44", "04:29"),
+        ("40", 10, "waze_sensor", "03:34", "04:19"),
+        ("unavailable", 40, "google_routes", "03:34", "04:19"),
+        ("unavailable", None, "configured_fallback", "03:14", "03:59"),
+    ],
+)
+async def test_agreed_timeline_matrix(
+    hass, freezer, waze_value, google_minutes, selected, prepare, leave
+):
+    source(hass, freezer, waze_value)
+    instance, google = engine(
+        hass, preparation_buffer_minutes=30, early_warning_minutes=15,
+        station_buffer_minutes=25,
+    )
+    if google_minutes is None:
+        google.async_route.side_effect = GoogleRoutesError("quota_exceeded")
+    else:
+        google.async_route.return_value = StationAccessEstimate(
+            google_minutes, None, "driving", NOW, cache_hit=True
+        )
+    event = replace(journey(), start=NOW.replace(hour=5, minute=24))
+    timing = await instance._async_calculate_timing(event)
+    assert timing.station_access_source == selected
+    # UTC assertions correspond to BST times in the agreed examples.
+    assert timing.prepare_at.strftime("%H:%M") == prepare
+    assert timing.leave_home_at.strftime("%H:%M") == leave
+    assert timing.station_arrival_at.strftime("%H:%M") == "04:59"
+    if selected == "google_routes":
+        assert timing.station_access_classification == "cached_driving"
+        assert timing.station_access_error is None
+    if selected == "waze_sensor":
+        google.async_route.assert_not_awaited()
 
 
 @pytest.mark.parametrize(

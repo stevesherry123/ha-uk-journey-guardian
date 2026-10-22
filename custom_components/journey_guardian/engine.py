@@ -392,34 +392,29 @@ class JourneyGuardianEngine:
                     force_refresh=force_refresh,
                 )
             except WazeSensorError as err:
-                return replace(fallback, station_access_error=f"waze_{err}")
-            applied = max(
-                estimate.duration_minutes, self._station_access_minimum_minutes
-            )
-            return calculate_fallback_timing(
-                journey,
-                preparation_minutes=self._preparation_buffer_minutes,
-                early_warning_minutes=self._early_warning_minutes,
-                station_buffer_minutes=self._station_buffer_minutes,
-                station_access_minutes=applied,
-                source="waze_sensor", classification="live_driving_minimum"
-                if applied > estimate.duration_minutes else "live_driving",
-                station_access_mode="driving", station_access_source="waze_sensor",
-                station_access_classification="sensor_observation",
-                station_access_checked_at=estimate.observed_at,
-                station_access_provider_minutes=estimate.duration_minutes,
-            )
+                fallback = replace(
+                    fallback,
+                    station_access_error=f"waze_{err}",
+                    station_access_fallback_reason=f"waze_{err}",
+                )
+            else:
+                return self._waze_timing(journey, estimate)
         client = self._google_routes_client
-        if not allow_provider or client is None or not client.configured:
+        if not allow_provider:
             return fallback
+        if client is None or not client.configured:
+            return _routing_fallback(fallback, "google_routes_not_configured")
         if person_state is None or mode == "unknown":
-            return fallback
+            return _routing_fallback(fallback, "google_routes_origin_unavailable")
         latitude = person_state.attributes.get("latitude")
         longitude = person_state.attributes.get("longitude")
-        if not isinstance(latitude, int | float) or not isinstance(
-            longitude, int | float
+        if (
+            type(latitude) not in {int, float}
+            or type(longitude) not in {int, float}
+            or not -90 <= latitude <= 90
+            or not -180 <= longitude <= 180
         ):
-            return fallback
+            return _routing_fallback(fallback, "google_routes_origin_unavailable")
         destination = _station_destination(journey)
         departure_time = max(
             fallback.leave_home_at,
@@ -442,10 +437,7 @@ class JourneyGuardianEngine:
                 self._route_warning_keys.add(warning_key)
                 if len(self._route_warning_keys) > 20:
                     self._route_warning_keys.pop()
-            return replace(
-                fallback,
-                station_access_error=f"google_routes_{category}",
-            )
+            return _routing_fallback(fallback, f"google_routes_{category}")
         provider_minutes = estimate.duration_minutes
         applied_minutes = max(
             provider_minutes, self._station_access_minimum_minutes
@@ -469,6 +461,28 @@ class JourneyGuardianEngine:
             station_access_distance_meters=estimate.distance_meters,
             station_access_checked_at=estimate.observed_at,
             station_access_provider_minutes=provider_minutes,
+            station_access_fallback_reason=fallback.station_access_fallback_reason,
+        )
+
+    def _waze_timing(self, journey, estimate) -> JourneyTiming:
+        """Apply the common minimum and buffers to the preferred estimate."""
+        applied = max(
+            estimate.duration_minutes, self._station_access_minimum_minutes
+        )
+        return calculate_fallback_timing(
+            journey,
+            preparation_minutes=self._preparation_buffer_minutes,
+            early_warning_minutes=self._early_warning_minutes,
+            station_buffer_minutes=self._station_buffer_minutes,
+            station_access_minutes=applied,
+            source="waze_sensor",
+            classification="live_driving_minimum"
+            if applied > estimate.duration_minutes else "live_driving",
+            station_access_mode="driving",
+            station_access_source="waze_sensor",
+            station_access_classification="sensor_observation",
+            station_access_checked_at=estimate.observed_at,
+            station_access_provider_minutes=estimate.duration_minutes,
         )
 
     async def _async_record_live_check(
@@ -605,6 +619,18 @@ def _station_destination(journey: JourneyEvent) -> str:
     if journey.location.strip():
         return journey.location.rsplit(";", 1)[-1].strip()
     return f"{journey.origin_name} railway station, UK"
+
+
+def _routing_fallback(timing: JourneyTiming, reason: str) -> JourneyTiming:
+    """Retain ordered acquisition failures without marking recovered routes bad."""
+    previous = timing.station_access_fallback_reason
+    return replace(
+        timing,
+        station_access_error=reason if previous or reason not in {
+            "google_routes_not_configured", "google_routes_origin_unavailable"
+        } else None,
+        station_access_fallback_reason=f"{previous};{reason}" if previous else reason,
+    )
 
 
 def _station_cache_key(name: str, code: str, location: str) -> str:

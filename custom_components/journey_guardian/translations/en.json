@@ -121,7 +121,7 @@
           "station_access_fallback_minutes": "Minutes allowed to reach the station until live routing is available. Timing is labelled inferred.",
           "station_access_minimum_minutes": "Minimum door-to-station allowance retained when live routing reports a shorter trip. Include parking, walking, and other fixed overhead.",
           "station_access_mode": "Choose the default for stations without a profile. Use profiles for regular exceptions such as EXC=driving.",
-          "station_access_profiles": "One CRS=mode per line, such as SMP=transit. For an existing Waze sensor: EXC|Example Central=waze:sensor.example_route. The optional exact station name matches calendars without CRS codes. A Waze profile never silently switches to Google.",
+          "station_access_profiles": "One CRS=mode per line, such as SMP=transit. For an existing Waze sensor: EXC|Example Central=waze:sensor.example_route. The optional exact station name matches calendars without CRS codes. If Waze fails, try Google driving, then the configured worst-case allowance for all timings and notifications.",
           "automatic_live_rail_enabled": "Runs restart-safe, quota-controlled checks from 150 minutes to 1 minute before departure, plus one 15-minute post-departure check.",
           "live_notifications_enabled": "Off keeps real calendar journeys in shadow mode while allowing simulation notifications.",
           "delay_repay_threshold_minutes": "Confirmed destination delay required before the nightly review raises a possible compensation claim.",

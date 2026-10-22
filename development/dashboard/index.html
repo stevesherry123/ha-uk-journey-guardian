@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Journey Guardian development preview</title>
+<style>body{margin:0;background:#f1f4f4;color:#202322;font:14px/1.5 system-ui;letter-spacing:0}main{max-width:850px;margin:24px auto;padding:0 16px}header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px}h1{font-size:17px;margin:0}select{padding:8px;font:inherit;border:1px solid #bac3c5;border-radius:4px;background:#fff}label{display:flex;align-items:center;gap:8px}.note{color:#5d6568;margin:8px 0 16px}</style></head>
+<body><main><header><h1>Journey Guardian / development</h1><label>Scenario <select id="scenario"><option value="normal">Waze preferred</option><option value="google">Google recovery</option><option value="constant">Both providers unavailable</option><option value="disabled">Notifications disabled</option><option value="empty">No journey</option><option value="unavailable">HA unavailable</option></select></label></header><p class="note">Fictional data. Read-only preview, not connected to Home Assistant.</p><journey-guardian-card></journey-guardian-card></main>
+<script type="module">
+import './journey-guardian-card.js';
+const card = document.querySelector('journey-guardian-card');
+card.setConfig({entity:'sensor.example_journey_status'});
+const now = Date.now();
+const at = minutes => new Date(now + minutes * 60000).toISOString();
+function update(){
+  const scenario = document.getElementById('scenario').value;
+  const allowance = scenario === 'constant' ? 60 : scenario === 'google' ? 40 : 30;
+  const leave = 65 - allowance;
+  const prepare = leave - 45;
+  const dashboard = {schema_version:1,checked_at:at(0),healthy:true,simulation:false,phase:'prepare_now',journey:{origin:'Example Central',destination:'Sample Harbour',booked_departure:at(90),departure:at(90),booked_arrival:at(220),cancelled:false},routing:{source:scenario==='constant'?'configured_fallback':scenario==='google'?'google_routes':'waze_sensor',mode:'driving',provider_minutes:scenario==='constant'?null:scenario==='google'?40:20,applied_minutes:allowance,fallback_reason:scenario==='google'?'waze_sensor_unavailable':scenario==='constant'?'waze_sensor_unavailable;google_routes_quota_exceeded':null},segments:[{label:'Preparation',start:at(prepare),end:at(leave)},{label:'Station access',start:at(leave),end:at(65)},{label:'At station',start:at(65),end:at(90)},{label:'Booked train',start:at(90),end:at(220)}],notifications:[{kind:'wake_alarm',label:'Home wake-up',due_at:at(prepare),eligibility:scenario==='disabled'?'disabled':'conditional',elapsed:prepare<=0,repeat_seconds:6,maximum_minutes:15,condition:'While home, until awake evidence, safety limit or leave time'},{kind:'leave_now',label:'Leave for station',due_at:at(leave),eligibility:scenario==='disabled'?'disabled':'conditional',elapsed:leave<=0,condition:'Subject to live state and deduplication'}],latest_notification_record:null,bookings:[{origin:'Sample Harbour',destination:'Example Central',booked_departure:at(600),booked_arrival:at(730)}],bookings_truncated:false};
+  if(scenario==='empty')dashboard.journey=null;
+  card.hass={states:{'sensor.example_journey_status':{state:scenario==='unavailable'?'unavailable':'planned',attributes:{dashboard}}},config:{time_zone:'Europe/London'},locale:{language:'en-GB'}};
+}
+document.getElementById('scenario').addEventListener('change',update);update();
+</script></body></html>

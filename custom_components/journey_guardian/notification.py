@@ -357,6 +357,14 @@ class JourneyNotificationScheduler:
             "last_stop_reason": self._home_wake_last_stop_reason,
         }
 
+    def dashboard_context(self) -> dict[str, Any]:
+        """Expose eligibility without scheduling or revealing target entities."""
+        return {
+            **self.diagnostics(),
+            "live_enabled": self._live_notifications_enabled,
+            "person_home": self._person_is_home(),
+        }
+
     def _record_awake_evidence(self, snapshot: JourneySnapshot) -> None:
         """Remember momentary awake evidence for the current departure."""
         journey = snapshot.next_journey

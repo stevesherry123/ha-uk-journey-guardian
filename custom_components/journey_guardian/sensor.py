@@ -12,6 +12,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .booking_overview import render_bookings
 from .const import CONF_PERSON_ENTITY, CONF_PROGRESS_ALTERNATIVES, CONF_PROGRESS_ZONES
+from .dashboard import dashboard_projection
 from .entity import JourneyGuardianEntity
 from .progress_sensor import JourneyProgressSensor
 
@@ -106,6 +107,21 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
         journey = self.coordinator.data.next_journey
         observation = self.coordinator.data.rail_observation
         attributes = {
+            "dashboard": dashboard_projection(
+                self.coordinator.data,
+                notification_context=(
+                    self._notification_scheduler.dashboard_context()
+                    if self._notification_scheduler is not None else None
+                ),
+                last_notification=getattr(self.coordinator, "last_notification", None)
+                if isinstance(getattr(self.coordinator, "last_notification", None), str)
+                else None,
+                last_notification_at=(
+                    value if isinstance(value := getattr(
+                        self.coordinator, "last_notification_at", None
+                    ), datetime) else None
+                ),
+            ),
             **self.coordinator.travel_plan.attributes(
                 self.coordinator.data.checked_at,
                 simulation=self.coordinator.data.simulation_active,

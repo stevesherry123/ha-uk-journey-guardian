@@ -7,6 +7,17 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 
 
+def test_python_packaging_excludes_development_preview_and_keeps_card_assets():
+    with (ROOT / "pyproject.toml").open("rb") as handle:
+        config = tomllib.load(handle)["tool"]["setuptools"]
+    assert config["packages"]["find"]["include"] == [
+        "custom_components", "custom_components.*"
+    ]
+    assert "frontend/*.js" in config["package-data"][
+        "custom_components.journey_guardian"
+    ]
+
+
 def test_json_metadata_is_valid() -> None:
     paths = [
         ROOT / "hacs.json",

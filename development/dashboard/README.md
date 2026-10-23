@@ -1,7 +1,7 @@
 # Travel Dashboard Development
 
 Branch: `development/travel-dashboard`. Not merged to main or stable. The owner
-authorised a live-data HA review on 23 October: v0.3.0-beta.8 is an opt-in
+authorised a live-data HA review on 23 October: v0.3.0-beta.9 is an opt-in
 prerelease from this branch. This does not authorise merging it into main.
 
 ## First Slice
@@ -38,9 +38,9 @@ Run `node --test card.test.js` for the browser-independent contract tests and
 
 The release ZIP includes the canonical card in the integration's `frontend`
 directory. The preview module re-exports it, so preview and installed code match.
-Select v0.3.0-beta.8 in HACS (beta versions may need to be shown) and restart HA
+Select v0.3.0-beta.9 in HACS (beta versions may need to be shown) and restart HA
 only outside active journeys/alarms and executing scripts/automations.
-Add `/journey_guardian/journey-guardian-card.js?v=0.3.0-beta.8` as a JavaScript
+Add `/journey_guardian/journey-guardian-card.js?v=0.3.0-beta.9` as a JavaScript
 module resource. Create a separate review dashboard using `dashboard.yaml`,
 replacing the fictional sensor ID with the actual status entity. Do not replace
 existing dashboards. Only the JavaScript asset is public; entity data continues

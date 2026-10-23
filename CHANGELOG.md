@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.3.0-beta.8 (Dashboard Review Branch)
+## 0.3.0-beta.9 (Dashboard Review Branch)
+
+- Limit Python package discovery to the integration namespace. The beta.8
+  build was blocked before publication because the preview folder was treated
+  as another top-level Python package; include card assets explicitly.
+
+## 0.3.0-beta.8 (Unpublished Build)
 
 - Development-branch prerelease only; not merged to main or the stable line.
 - Add a read-only dashboard projection, conditional notification timeline and

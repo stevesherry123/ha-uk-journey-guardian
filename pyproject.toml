@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ha-uk-journey-guardian"
-version = "0.3.0-beta.8"
+version = "0.3.0-beta.9"
 description = "UK-focused Home Assistant journey monitoring and departure decisions"
 requires-python = ">=3.14.2"
 license = { text = "MIT" }
@@ -19,6 +19,14 @@ test = [
 addopts = "-q"
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["custom_components", "custom_components.*"]
+
+[tool.setuptools.package-data]
+"custom_components.journey_guardian" = [
+  "*.json", "*.yaml", "translations/*.json", "brand/*.png", "frontend/*.js",
+]
 
 [tool.ruff]
 target-version = "py314"

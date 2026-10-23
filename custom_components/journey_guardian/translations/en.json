@@ -78,6 +78,7 @@
   },
   "options": {
     "error": {
+      "invalid_airport_timezones": "Enter unique IATA=IANA time zones, one per line, for example LHR=Europe/London. Leave blank to display UTC.",
       "invalid_progress_zones": "Enter 2 to 100 unique zone entity IDs, one per line, or leave blank to disable progress.",
       "invalid_progress_alternatives": "Enter up to four paths, one per line: base start > extra station > base end. Anchors must follow base order; extra stations must be unique. Maximum 100 stations in total."
     },
@@ -86,6 +87,8 @@
         "title": "Journey settings",
         "description": "Edit conservative timing, notifications, and the live rail provider.",
         "data": {
+          "flight_preview_enabled": "Enable experimental read-only flight preview",
+          "airport_timezones": "Airport time zones (IATA=IANA, one per line)",
           "progress_zones": "Ordered station zones",
           "progress_alternatives": "Alternative station paths",
           "preparation_buffer_minutes": "Preparation buffer",
@@ -112,6 +115,8 @@
           "google_routes_api_key": "Google Routes API key"
         },
         "data_description": {
+          "flight_preview_enabled": "Experimental calendar-only flight sensor. No flight alerts, live tracking, airport routing or wake alarms. Rail behaviour is unchanged.",
+          "airport_timezones": "One airport=IANA zone per line, for example LHR=Europe/London. These are display zones, not routing profiles. Unknown airports show UTC; calendar instants must include an offset.",
           "preparation_buffer_minutes": "Minutes allowed to get ready before leaving for the station.",
           "progress_zones": "Optional: one zone entity ID per line in route order (2 to 100 unique stations). Blank disables GPS progress. Zone names must match calendar endpoints; a leading zzz prefix followed by a space is ignored. Return legs reverse the route automatically.",
           "progress_alternatives": "Optional: one path per line, separated by >. Start and finish each path with stations on the ordered base route; place diversion stations between them. Fresh GPS selects a path, never a timetable assumption.",
@@ -142,6 +147,7 @@
   },
   "entity": {
     "sensor": {
+      "flight_preview": {"name": "Flight preview"},
       "station_progress": {"name": "Station progress"},
       "status": {"name": "Status"},
       "operational_phase": {"name": "Operational phase"},

@@ -12,6 +12,7 @@ from homeassistant.helpers import selector
 
 from .const import (
     CALENDAR_REFRESH_INTERVAL_OPTIONS,
+    CONF_AIRPORT_TIMEZONES,
     CONF_ANNOUNCEMENT_SCRIPT_ENTITY,
     CONF_ANNOUNCEMENT_TEXT_ENTITY,
     CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
@@ -21,6 +22,7 @@ from .const import (
     CONF_DELAY_REPAY_THRESHOLD_MINUTES,
     CONF_DESTINATION_ZONES,
     CONF_EARLY_WARNING_MINUTES,
+    CONF_FLIGHT_PREVIEW_ENABLED,
     CONF_GOOGLE_ROUTES_API_KEY,
     CONF_HOME_WAKE_AWAKE_ENTITY,
     CONF_HOME_WAKE_AWAKE_STATE,
@@ -62,6 +64,7 @@ from .const import (
     DEFAULT_URGENT_API_RESERVE,
     DOMAIN,
 )
+from .flight import airport_timezones
 from .progress import parse_progress_alternatives, parse_progress_zones
 from .station_access_profiles import (
     StationAccessProfileError,
@@ -238,6 +241,10 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
         errors = {}
         if user_input is not None:
             try:
+                airport_timezones(user_input.get(CONF_AIRPORT_TIMEZONES, ""))
+            except ValueError:
+                errors[CONF_AIRPORT_TIMEZONES] = "invalid_airport_timezones"
+            try:
                 base = parse_progress_zones(user_input.get(CONF_PROGRESS_ZONES))
                 try:
                     parse_progress_alternatives(
@@ -271,6 +278,16 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
             step_id="init",
             data_schema=vol.Schema(
                 {
+                    vol.Optional(
+                        CONF_FLIGHT_PREVIEW_ENABLED,
+                        default=current.get(CONF_FLIGHT_PREVIEW_ENABLED, False),
+                    ): selector.BooleanSelector(),
+                    vol.Optional(
+                        CONF_AIRPORT_TIMEZONES,
+                        default=current.get(CONF_AIRPORT_TIMEZONES, ""),
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(multiline=True)
+                    ),
                     vol.Required(
                         CONF_CALENDAR_REFRESH_INTERVAL_MINUTES,
                         default=current.get(

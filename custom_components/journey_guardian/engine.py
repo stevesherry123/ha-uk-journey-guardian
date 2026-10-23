@@ -24,6 +24,7 @@ from .const import (
     DEFAULT_STATION_ACCESS_MINIMUM_MINUTES,
     DEFAULT_STATION_BUFFER_MINUTES,
 )
+from .flight_calendar import FlightCalendarPreview
 from .google_routes import GoogleRoutesClient, GoogleRoutesError
 from .journey import select_next_journey
 from .models import JourneyEvent, JourneySnapshot, JourneyTiming
@@ -72,6 +73,7 @@ class JourneyGuardianEngine:
         station_access_mode: str = "auto",
         station_access_profiles: object = None,
         google_routes_client: GoogleRoutesClient | None = None,
+        flight_calendar: FlightCalendarPreview | None = None,
     ) -> None:
         """Initialize the engine."""
         self._hass = hass
@@ -93,6 +95,7 @@ class JourneyGuardianEngine:
             station_access_profiles
         )
         self._google_routes_client = google_routes_client
+        self._flight_calendar = flight_calendar
         self._station_resolutions: dict[str, StationResolution] = {}
         self._last_live_rail_error: str | None = None
         self._route_warning_keys: set[str] = set()
@@ -125,6 +128,16 @@ class JourneyGuardianEngine:
             return self._calendar_unavailable_snapshot(checked_at)
         try:
             events = await self._async_calendar_events(checked_at)
+            flight_preview = None
+            if self._flight_calendar is not None:
+                try:
+                    flight_preview = await self._flight_calendar.async_review(
+                        events, checked_at
+                    )
+                except Exception as err:
+                    # The optional preview must never stop a rail review.
+                    _LOGGER.warning("Flight preview failed with %s", type(err).__name__)
+                    flight_preview = {"schema_version": 1, "state": "unavailable"}
             next_journey = select_next_journey(events, checked_at)
             booked_legs, booked_leg_count = upcoming_bookings(events, checked_at)
             if next_journey is None:
@@ -157,6 +170,7 @@ class JourneyGuardianEngine:
                 last_live_rail_error=self._last_live_rail_error,
                 booked_legs=booked_legs,
                 booked_leg_count=booked_leg_count,
+                flight_preview=flight_preview,
             )
         except Exception as err:  # Home Assistant service errors vary by provider
             # Exception messages from calendars and future provider clients may

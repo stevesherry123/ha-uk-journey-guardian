@@ -17,6 +17,8 @@ EXCLUDED_PARTS = {
 }
 TEXT_SUFFIXES = {
     "",
+    ".html",
+    ".js",
     ".json",
     ".md",
     ".py",

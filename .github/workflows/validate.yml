@@ -37,6 +37,9 @@ jobs:
       - name: Test
         run: pytest
 
+      - name: Test read-only dashboard contracts
+        run: node --test development/dashboard/*.test.js
+
       - name: Rehearse the HA commute without network access
         run: pytest tests/test_commute_rehearsal.py --disable-socket --allow-unix-socket --timeout=30
 

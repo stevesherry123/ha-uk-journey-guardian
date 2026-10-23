@@ -11,7 +11,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .booking_overview import render_bookings
-from .const import CONF_PERSON_ENTITY, CONF_PROGRESS_ALTERNATIVES, CONF_PROGRESS_ZONES
+from .const import (
+    CONF_FLIGHT_PREVIEW_ENABLED,
+    CONF_PERSON_ENTITY,
+    CONF_PROGRESS_ALTERNATIVES,
+    CONF_PROGRESS_ZONES,
+)
 from .dashboard import dashboard_projection
 from .entity import JourneyGuardianEntity
 from .progress_sensor import JourneyProgressSensor
@@ -31,6 +36,8 @@ async def async_setup_entry(
     coordinator = entry.runtime_data.coordinator
     notification_scheduler = entry.runtime_data.notification_scheduler
     settings = {**entry.data, **entry.options}
+    if settings.get(CONF_FLIGHT_PREVIEW_ENABLED, False):
+        async_add_entities([FlightPreviewSensor(coordinator, entry, "flight_preview")])
     if settings.get(CONF_PROGRESS_ZONES, "").strip():
         async_add_entities([
             JourneyProgressSensor(
@@ -78,6 +85,26 @@ async def async_setup_entry(
             TransportAPICallsSensor(coordinator, entry, "transportapi_calls"),
         ]
     )
+
+
+class FlightPreviewSensor(JourneyGuardianEntity, SensorEntity):
+    """Read-only flight schedule, isolated from the rail state sensor."""
+
+    _attr_translation_key = "flight_preview"
+    _attr_icon = "mdi:airplane-clock"
+
+    @property
+    def native_value(self) -> str:
+        snapshot = self.coordinator.data
+        if snapshot.simulation_active:
+            return "simulation_active"
+        if snapshot.error == "calendar_unavailable":
+            return "calendar_unavailable"
+        return (snapshot.flight_preview or {}).get("state", "unavailable")
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"flight_preview": self.coordinator.data.flight_preview}
 
 
 class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Journey Guardian flight preview</title>
+<style>
+  body{margin:0;background:#f2f4f4;color:#202322;font-family:system-ui;letter-spacing:0}
+  main{max-width:1000px;margin:24px auto;padding:0 16px}h1{font-size:18px}
+</style>
+<main><h1>Synthetic development preview</h1><journey-guardian-flight-card></journey-guardian-flight-card></main>
+<script type="module">
+import '../../custom_components/journey_guardian/frontend/journey-guardian-card.js';
+const base=new Date(); base.setUTCHours(7,0,0,0);
+const at=minutes=>new Date(base.getTime()+minutes*60000).toISOString();
+const card=document.querySelector('journey-guardian-flight-card');
+card.setConfig({entity:'sensor.example_flights'});
+card.hass={config:{time_zone:'Europe/London'},locale:{language:'en-GB'},states:{
+  'sensor.example_flights':{state:'scheduled',attributes:{flight_preview:{
+    schema_version:1,source:'calendar_only',checked_at:new Date().toISOString(),
+    live_tracking:false,alerts_enabled:false,local_timezones_complete:true,
+    legs:[
+      {service:'ZZ1234',operating_service:'Example Air 4321',origin:'AAA',destination:'BBB',
+       departure:at(0),arrival:at(120),duration_minutes:120,phase:'scheduled',
+       origin_timezone:'Europe/London',destination_timezone:'Europe/Madrid',
+       departure_terminal:'2',arrival_terminal:'4S'},
+      {service:'ZZ5678',operating_service:'Example Air 8765',origin:'BBB',destination:'CCC',
+       departure:at(300),arrival:at(840),duration_minutes:540,phase:'scheduled',
+       origin_timezone:'Europe/Madrid',destination_timezone:'America/New_York',
+       departure_terminal:'4',arrival_terminal:'8'}
+    ],connections:[{airport:'BBB',start:at(120),end:at(300),gap_minutes:180,timezone:'Europe/Madrid'}]
+  }}}
+}};
+</script>
+</html>

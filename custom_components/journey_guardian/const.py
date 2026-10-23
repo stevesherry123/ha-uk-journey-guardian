@@ -7,6 +7,8 @@ NAME = "UK Journey Guardian"
 
 CONF_CALENDAR_ENTITY = "calendar_entity"
 CONF_CALENDAR_REFRESH_INTERVAL_MINUTES = "calendar_refresh_interval_minutes"
+CONF_FLIGHT_PREVIEW_ENABLED = "flight_preview_enabled"
+CONF_AIRPORT_TIMEZONES = "airport_timezones"
 CONF_PERSON_ENTITY = "person_entity"
 CONF_PROGRESS_ZONES = "progress_zones"
 CONF_PROGRESS_ALTERNATIVES = "progress_alternatives"

@@ -5,6 +5,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import (
+    CONF_AIRPORT_TIMEZONES,
     CONF_ANNOUNCEMENT_SCRIPT_ENTITY,
     CONF_ANNOUNCEMENT_TEXT_ENTITY,
     CONF_CALENDAR_ENTITY,
@@ -33,6 +34,7 @@ TO_REDACT = {
     CONF_ANNOUNCEMENT_SCRIPT_ENTITY,
     CONF_ANNOUNCEMENT_TEXT_ENTITY,
     CONF_CALENDAR_ENTITY,
+    CONF_AIRPORT_TIMEZONES,
     CONF_PERSON_ENTITY,
     CONF_PROGRESS_ZONES,
     CONF_PROGRESS_ALTERNATIVES,
@@ -90,6 +92,7 @@ async def async_get_config_entry_diagnostics(
                 else None
             ),
             "next_journey": "REDACTED" if snapshot.next_journey else None,
+            "flight_preview": "REDACTED" if snapshot.flight_preview else None,
             "timing": (
                 {
                     "source": snapshot.timing.source,

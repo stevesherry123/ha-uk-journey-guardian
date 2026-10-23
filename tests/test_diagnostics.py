@@ -49,6 +49,7 @@ async def test_diagnostics_remove_journey_and_configuration_identifiers(hass) ->
         next_journey=journey,
         budget=BudgetSnapshot("2026-09-28", 1, 30, 3),
         rail_observation=observation,
+        flight_preview={"legs": [{"service": "private-flight-service"}]},
     )
     runtime = Mock()
     runtime.coordinator.data = snapshot
@@ -101,6 +102,7 @@ async def test_diagnostics_remove_journey_and_configuration_identifiers(hass) ->
             "transportapi_app_key": "private-transport-key",
             "google_routes_api_key": "private-routes-key",
             "station_access_profiles": "EXC|Private origin=waze:sensor.private_route",
+            "airport_timezones": "AAA=Private/Timezone",
         },
     }
 
@@ -108,6 +110,7 @@ async def test_diagnostics_remove_journey_and_configuration_identifiers(hass) ->
     serialized = json.dumps(diagnostics, sort_keys=True)
 
     assert diagnostics["engine"]["next_journey"] == "REDACTED"
+    assert diagnostics["engine"]["flight_preview"] == "REDACTED"
     assert diagnostics["engine"]["rail_observation"]["delay_minutes"] == 12
     assert diagnostics["recent_live_checks"][0]["outcome"] == "success"
     assert diagnostics["home_wake_alarm"]["status"] == "waiting"
@@ -126,6 +129,8 @@ async def test_diagnostics_remove_journey_and_configuration_identifiers(hass) ->
         "sensor.private_route",
         "private-service-identity",
         "private-fingerprint",
+        "private-flight-service",
+        "Private/Timezone",
         "Private calendar title",
         "Private home address",
         "Private origin",

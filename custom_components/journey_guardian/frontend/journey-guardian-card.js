@@ -187,3 +187,104 @@ export class JourneyGuardianCard extends BaseElement {
 if (typeof customElements !== "undefined" && !customElements.get("journey-guardian-card")) {
   customElements.define("journey-guardian-card", JourneyGuardianCard);
 }
+
+export function readFlights(hass, config) {
+  const entity = hass?.states?.[config.entity];
+  if (!entity || ["unknown", "unavailable", "calendar_unavailable", "simulation_active"].includes(entity.state)) return null;
+  const data = entity.attributes?.flight_preview;
+  return data?.schema_version === 1 && data.source === "calendar_only" ? data : null;
+}
+
+export function flightLocalTime(value, timezone, locale = "en-GB") {
+  if (!validTime(value)) return "Unknown";
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+      hour12: false, timeZone: timezone || "UTC", timeZoneName: "short"
+    }).format(new Date(value));
+  } catch { return "Unknown time zone"; }
+}
+
+export class JourneyGuardianFlightCard extends JourneyGuardianCard {
+  render() {
+    if (!this.config || !this.shadowRoot) return;
+    this.shadowRoot.innerHTML = `<style>
+      :host{display:block;font:14px/1.5 var(--paper-font-body1_-_font-family,system-ui);color:var(--primary-text-color,#202322);letter-spacing:0}
+      *{box-sizing:border-box}ha-card{display:block;padding:22px;border:1px solid var(--divider-color,#dadddf);border-radius:8px;background:var(--ha-card-background,var(--card-background-color,#fff))}
+      h1{font-size:18px;margin:0}h2{font-size:15px;margin:20px 0 10px}p{margin:8px 0}header,.heading{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.route{font-size:20px;font-weight:600}
+      .muted{font-size:12px;color:var(--secondary-text-color,#5d6568);overflow-wrap:anywhere}.notice{border-left:3px solid var(--warning-color,#b77a10);padding:8px 12px;background:var(--secondary-background-color,#f3f5f5)}
+      .leg{padding:16px 0;border-top:1px solid var(--divider-color,#dadddf);overflow-wrap:anywhere}.times{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:10px}.times strong{display:block}.times span{font-variant-numeric:tabular-nums}.times time{display:block;font-size:14px}
+      .track{height:12px;position:relative;background:var(--secondary-background-color,#edf1f1);margin:10px 0 4px;border-radius:2px;overflow:hidden}.bar{height:100%;background:var(--primary-color,#008b9a)}.connection .bar{background:var(--warning-color,#b77a10)}.marker{position:absolute;width:2px;top:0;bottom:0;background:var(--primary-text-color,#202322)}
+      .axis{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.connection{padding:10px 0;border-top:1px solid var(--divider-color,#dadddf)}
+      @media(max-width:420px){ha-card{padding:16px}.times{grid-template-columns:minmax(0,1fr)}}
+    </style><ha-card><header><h1>Journey Guardian Flights</h1><ha-icon icon="mdi:airplane-clock"></ha-icon></header><div class="content"></div></ha-card>`;
+    const root = this.shadowRoot.querySelector(".content");
+    const add = (tag, text, parent = root, className = "") => {
+      const element = document.createElement(tag);
+      element.textContent = text ?? "";
+      if (className) element.className = className;
+      parent.append(element); return element;
+    };
+    const data = readFlights(this._hass, this.config);
+    add("p", "Calendar-only preview / no flight alerts or live tracking", root, "notice");
+    if (!data) { add("p", "Flight schedule unavailable."); return; }
+    const locale = this._hass?.locale?.language || "en-GB";
+    const time = (value, zone) => flightLocalTime(value, zone, locale);
+    add("p", `Reviewed ${time(data.checked_at, this._hass?.config?.time_zone)}`, root, "muted");
+    if (Date.now() - Date.parse(data.checked_at) > 20 * 60000) add("p", "Calendar snapshot is over 20 minutes old.", root, "notice");
+    if (data.unsupported_flight_count) add("p", `${data.unsupported_flight_count} flight record(s) could not be read safely. Check the calendar.`, root, "notice");
+    if (data.context_persistence_error) add("p", "Connection context could not be saved or recovered. It may be lost on restart.", root, "notice");
+    if (!data.local_timezones_complete) add("p", "Unconfigured airports show UTC, not airport-local time.", root, "notice");
+    const legs = (data.legs || []).filter(leg => validTime(leg.departure) && validTime(leg.arrival)).slice(0, 12);
+    if (!legs.length) { add("p", "No supported flight in the next 30 hours."); return; }
+    const start = Math.min(...legs.map(leg => Date.parse(leg.departure)));
+    const end = Math.max(...legs.map(leg => Date.parse(leg.arrival)));
+    const percent = value => Math.max(0, Math.min(100, (Date.parse(value) - start) / (end - start) * 100));
+    const bar = (from, to, parent) => {
+      if (!(end > start)) return;
+      const track = add("div", "", parent, "track");
+      track.setAttribute("aria-hidden", "true");
+      const fill = add("div", "", track, "bar");
+      fill.style.marginLeft = `${percent(from)}%`;
+      fill.style.width = `${Math.max(0, percent(to) - percent(from))}%`;
+      if (start <= Date.now() && Date.now() <= end) {
+        const marker = add("div", "", track, "marker");
+        marker.style.left = `${percent(new Date().toISOString())}%`;
+      }
+    };
+    for (const leg of legs) {
+      const section = add("section", "", root, "leg");
+      const heading = add("div", "", section, "heading");
+      add("span", `${leg.origin} to ${leg.destination}`, heading, "route");
+      add("strong", leg.service || "Flight number unavailable", heading);
+      if (leg.operating_service) add("p", `Calendar operating service: ${leg.operating_service}`, section, "muted");
+      const times = add("div", "", section, "times");
+      for (const [label, value, zone, terminal] of [
+        ["Booked departure", leg.departure, leg.origin_timezone, leg.departure_terminal],
+        ["Booked arrival", leg.arrival, leg.destination_timezone, leg.arrival_terminal]
+      ]) {
+        const block = add("div", "", times); add("strong", label, block);
+        const item = add("time", time(value, zone), block); item.dateTime = value;
+        if (terminal) add("span", `Calendar terminal ${terminal}`, block, "muted");
+      }
+      add("p", `${Math.floor(leg.duration_minutes / 60)}h ${leg.duration_minutes % 60}m booked duration / ${leg.phase.replaceAll("_", " ")}`, section, "muted");
+      bar(leg.departure, leg.arrival, section);
+      for (const connection of (data.connections || []).filter(item => item.start === leg.arrival)) {
+        const block = add("div", "", root, "connection");
+        add("strong", `${connection.airport} / ${Math.floor(connection.gap_minutes / 60)}h ${connection.gap_minutes % 60}m scheduled gap`, block);
+        add("p", `${time(connection.start, connection.timezone)} to ${time(connection.end, connection.timezone)}`, block, "muted");
+        add("p", "Possible connection, not a viability assessment. Ticket and baggage arrangements are not read from the calendar.", block, "muted");
+        bar(connection.start, connection.end, block);
+      }
+    }
+    const axis = add("div", "", root, "axis muted");
+    add("span", time(new Date(start).toISOString(), "UTC"), axis);
+    add("span", time(new Date(end).toISOString(), "UTC"), axis);
+    add("p", "Terminals are booking information, not live transfer instructions. Scheduled time passing does not confirm take-off, landing or arrival.", root, "muted");
+    if (data.truncated) add("p", "Additional flights omitted.", root, "notice");
+  }
+}
+
+if (typeof customElements !== "undefined" && !customElements.get("journey-guardian-flight-card")) {
+  customElements.define("journey-guardian-flight-card", JourneyGuardianFlightCard);
+}

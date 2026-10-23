@@ -21,6 +21,7 @@ from .const import (
     ATTR_DEPARTURE_IN_MINUTES,
     ATTR_DURATION_MINUTES,
     ATTR_SCENARIO,
+    CONF_AIRPORT_TIMEZONES,
     CONF_ANNOUNCEMENT_SCRIPT_ENTITY,
     CONF_ANNOUNCEMENT_TEXT_ENTITY,
     CONF_AUTOMATIC_LIVE_RAIL_ENABLED,
@@ -29,6 +30,7 @@ from .const import (
     CONF_DAILY_API_LIMIT,
     CONF_DELAY_REPAY_THRESHOLD_MINUTES,
     CONF_EARLY_WARNING_MINUTES,
+    CONF_FLIGHT_PREVIEW_ENABLED,
     CONF_GOOGLE_ROUTES_API_KEY,
     CONF_HOME_WAKE_AWAKE_ENTITY,
     CONF_HOME_WAKE_AWAKE_STATE,
@@ -78,6 +80,8 @@ from .const import (
 from .coordinator import JourneyGuardianCoordinator
 from .end_of_day import EndOfDayReview
 from .engine import JourneyGuardianEngine
+from .flight import airport_timezones
+from .flight_calendar import FlightCalendarPreview
 from .frontend import async_register_card
 from .google_routes import GoogleRoutesClient
 from .manual_review import ManualTravelReview
@@ -118,6 +122,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await check_history.async_load()
 
     settings = {**entry.data, **entry.options}
+    flight_calendar = None
+    if settings.get(CONF_FLIGHT_PREVIEW_ENABLED, False):
+        flight_calendar = FlightCalendarPreview(
+            hass, entry.entry_id,
+            airport_timezones(settings.get(CONF_AIRPORT_TIMEZONES, "")),
+        )
+        await flight_calendar.async_load()
     simulation = JourneySimulation()
     session = async_get_clientsession(hass)
     transportapi_client = TransportAPIClient(
@@ -166,6 +177,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
         station_access_profiles=settings.get(CONF_STATION_ACCESS_PROFILES),
         google_routes_client=google_routes_client,
+        flight_calendar=flight_calendar,
     )
     coordinator = JourneyGuardianCoordinator(
         hass,

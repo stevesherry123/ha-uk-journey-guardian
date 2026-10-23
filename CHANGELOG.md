@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0-beta.11 (Experimental Flight Preview)
+
+- Add a disabled-by-default, calendar-only flight module with its own sensor
+  and read-only itinerary card. No flight provider calls, alarms or routing.
+- Preserve UTC instants, configure IANA airport display zones, and show booked
+  flight durations and possible connection gaps without claiming viability.
+- Retain bounded earlier connection context privately through reloads. Never
+  copy raw descriptions, booking references or calendar URLs into flight data.
+- Keep beta.10 rail exclusion and Google access safeguards. Flight preview
+  enabled/disabled rehearsals prove zero rail side effects from flight records.
+- Add a flight shadow-testing guide, overnight/DST tests and frontend checks.
+
 ## 0.3.0-beta.10 (Rail Safety And Routing Repairs)
 
 - Exclude explicitly non-rail calendar events at ingestion, before operational

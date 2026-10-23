@@ -65,6 +65,28 @@ USER_INPUT = {
 }
 
 
+async def test_flight_preview_opt_in_and_timezone_validation(hass):
+    entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT)
+    entry.add_to_hass(hass)
+    form = await hass.config_entries.options.async_init(entry.entry_id)
+    values = form["data_schema"]({})
+    assert values["flight_preview_enabled"] is False
+    values.update({"flight_preview_enabled": True, "airport_timezones": "AAA=Bad/Zone"})
+    form = await hass.config_entries.options.async_configure(form["flow_id"], values)
+    assert form["errors"] == {"airport_timezones": "invalid_airport_timezones"}
+    values["airport_timezones"] = "AAA=Europe/London\nBBB=America/New_York"
+    with patch.object(hass.config_entries, "async_reload"):
+        result = await hass.config_entries.options.async_configure(
+            form["flow_id"], values
+        )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options["flight_preview_enabled"] is True
+    assert entry.options["airport_timezones"] == values["airport_timezones"]
+    assert (
+        entry.options[CONF_STATION_ACCESS_MODE] == USER_INPUT[CONF_STATION_ACCESS_MODE]
+    )
+
+
 async def test_user_flow_creates_entry(hass) -> None:
     """A complete valid form creates the single config entry."""
     result = await hass.config_entries.flow.async_init(
@@ -184,7 +206,9 @@ async def test_options_flow_updates_timing_and_reloads(hass) -> None:
         await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert entry.options == updated
+    assert entry.options == {
+        **updated, "flight_preview_enabled": False, "airport_timezones": "",
+    }
     async_reload.assert_awaited_once_with(entry.entry_id)
 
 

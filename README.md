@@ -8,10 +8,12 @@ The current stable release targets Home Assistant 2026.8 or newer.
 Releases include a [runtime-only HACS ZIP](docs/RELEASE_PACKAGING.md) from v0.2.10.
 Existing installations update in place; no uninstall is needed.
 
-The stable maintenance line is **0.2.12**. The **0.3.0-beta.6** prerelease adds a
+The stable maintenance line is **0.2.13**. Development prereleases include
 [read-only upcoming and retained booking views](docs/BOOKING_OVERVIEW.md),
-not completed automatic
-interchange or disruption recovery. Choose prereleases deliberately.
+not completed automatic interchange or disruption recovery. The separate flight
+development branch introduces the opt-in [calendar-only flight preview](docs/FLIGHT_PREVIEW.md)
+in **0.3.0-beta.11**, without flight alerts or live aircraft tracking.
+Choose prereleases deliberately; these features are not on the stable line.
 
 Start with the [setup and first-journey guide](docs/GETTING_STARTED.md).
 For missing journeys, alarms, or provider results, use

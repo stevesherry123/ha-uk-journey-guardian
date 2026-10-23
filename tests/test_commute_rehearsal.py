@@ -209,7 +209,9 @@ class Rehearsal:
             self.hass.states.async_set(AWAKE, "on")
         await asyncio.sleep(0)
 
-    async def load(self, *, home=True, preparation=2, start="08:44", routes=False):
+    async def load(
+        self, *, home=True, preparation=2, start="08:44", routes=False, flights=False,
+    ):
         self.freezer.move_to(clock(start))
         await self.hass.config.async_set_time_zone("Europe/London")
         assert await async_setup_component(self.hass, "persistent_notification", {})
@@ -253,6 +255,7 @@ class Rehearsal:
             domain=DOMAIN,
             data={
                 "calendar_entity": CALENDAR,
+                "flight_preview_enabled": flights,
                 "person_entity": PERSON,
                 "home_zone": "zone.home",
                 "calendar_refresh_interval_minutes": 0,
@@ -409,7 +412,10 @@ async def rehearsal(hass, freezer, request):
                 )
 
 
-async def test_flights_never_reach_routing_rail_alarms_or_arrival_collection(rehearsal):
+@pytest.mark.parametrize("flight_preview", [False, True])
+async def test_flights_never_reach_routing_rail_alarms_or_arrival_collection(
+    rehearsal, flight_preview,
+):
     h = rehearsal
     h.events = [{
         "start": clock("09:00").isoformat(),
@@ -418,7 +424,11 @@ async def test_flights_never_reach_routing_rail_alarms_or_arrival_collection(reh
         "description": "[Flight] AAA to BBB",
         "location": "Example Airport (AAA)",
     }]
-    await h.load(routes=True)
+    await h.load(routes=True, flights=flight_preview)
+    assert bool(h.runtime.coordinator.data.flight_preview) == flight_preview
+    if flight_preview:
+        flight = h.runtime.coordinator.data.flight_preview["legs"][0]
+        assert flight["service"] == "ZZ1234"
     h.hass.states.async_set(AWAKE, "off")
     for point in ("08:50", "08:59", "09:00", "09:15", "10:05"):
         await h.advance(point)
@@ -445,6 +455,50 @@ async def test_flights_never_reach_routing_rail_alarms_or_arrival_collection(reh
     assert not h.pulses
     assert not h.runtime.check_history.records()
     assert "ZZ1234" not in str(report)
+
+
+async def test_flight_connection_shadow_day_survives_reload_without_rail_effects(
+    rehearsal,
+):
+    h = rehearsal
+    first = {
+        "start": clock("09:00").isoformat(), "end": clock("10:00").isoformat(),
+        "summary": "ZZ1234 AAA to BBB", "description": "[Flight] AAA to BBB",
+    }
+    second = {
+        "start": clock("12:00").isoformat(), "end": clock("15:00").isoformat(),
+        "summary": "ZZ5678 BBB to CCC", "description": "[Flight] BBB to CCC",
+    }
+    h.events = [first, second]
+    await h.load(routes=True, flights=True)
+    registry = er.async_get(h.hass)
+    sensor_id = registry.async_get_entity_id(
+        "sensor", DOMAIN, f"{h.entry.entry_id}_flight_preview"
+    )
+    assert h.hass.states.get(sensor_id).state == "scheduled"
+    await h.advance("09:15")
+    await h.review()
+    assert h.hass.states.get(sensor_id).state == "within_scheduled_flight"
+    h.events = [second]
+    await h.advance("10:15")
+    await h.review()
+    assert h.hass.states.get(sensor_id).state == "connection_window"
+    await h.reload()
+    data = h.runtime.coordinator.data.flight_preview
+    assert len(data["legs"]) == 2
+    assert data["connections"][0]["gap_minutes"] == 120
+    assert h.runtime.coordinator.data.next_journey is None
+    h.events = []
+    await h.advance("15:15")
+    await h.review()
+    assert h.hass.states.get(sensor_id).state == "no_flights"
+    h.calendar_error = True
+    await h.runtime.coordinator.async_refresh()
+    await h.hass.async_block_till_done()
+    assert h.hass.states.get(sensor_id).state == "calendar_unavailable"
+    assert not h.requests and not h.deliveries and not h.pulses
+    assert not h.runtime.check_history.records()
+    assert h.runtime.arrival_collector.diagnostics()["pending_count"] == 0
 
 
 @pytest.mark.parametrize("delay", [0, 7, 18])

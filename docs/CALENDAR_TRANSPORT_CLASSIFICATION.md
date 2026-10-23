@@ -44,6 +44,7 @@ non-rail categories, conflicting tags, valid airport-bound rail, the booking
 overview, and old saved flight labels. Fixtures are fictional; do not add real
 itineraries or TripIt links to the repository.
 
-The correction is held on `fix/calendar-transport-classification` for review.
-Until incorporated in a versioned release and installed, existing HA behaviour
-is unchanged. No calendar events or household notification settings are edited.
+The correction originated on `fix/calendar-transport-classification` and is
+included in dashboard prerelease `v0.3.0-beta.10`. Activation requires installing
+that release and restarting HA. No calendar events or household notification
+settings are edited. The flight-analysis branch remains independent.

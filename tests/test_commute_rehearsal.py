@@ -409,6 +409,44 @@ async def rehearsal(hass, freezer, request):
                 )
 
 
+async def test_flights_never_reach_routing_rail_alarms_or_arrival_collection(rehearsal):
+    h = rehearsal
+    h.events = [{
+        "start": clock("09:00").isoformat(),
+        "end": clock("10:00").isoformat(),
+        "summary": "ZZ1234 AAA to BBB",
+        "description": "[Flight] AAA to BBB",
+        "location": "Example Airport (AAA)",
+    }]
+    await h.load(routes=True)
+    h.hass.states.async_set(AWAKE, "off")
+    for point in ("08:50", "08:59", "09:00", "09:15", "10:05"):
+        await h.advance(point)
+        await h.review()
+    await h.reload()
+    await h.runtime.coordinator.async_test_station_access()
+    with pytest.raises(ValueError, match="rail_journey_unavailable"):
+        await h.runtime.coordinator.engine.async_review_live_rail()
+    report = await h.hass.services.async_call(
+        DOMAIN, "travel_review_now", {"notify": False},
+        blocking=True, return_response=True,
+    )
+    await h.hass.async_block_till_done()
+    snapshot = h.runtime.coordinator.data
+    assert snapshot.status == "idle"
+    assert snapshot.next_journey is None
+    assert snapshot.timing is None
+    assert snapshot.booked_legs == ()
+    retained = h.runtime.coordinator.travel_plan.attributes(dt_util.now())
+    assert retained["retained_booked_leg_count"] == 0
+    assert h.runtime.arrival_collector.diagnostics()["pending_count"] == 0
+    assert not h.requests
+    assert not h.deliveries
+    assert not h.pulses
+    assert not h.runtime.check_history.records()
+    assert "ZZ1234" not in str(report)
+
+
 @pytest.mark.parametrize("delay", [0, 7, 18])
 async def test_full_commute_to_nightly_review(rehearsal, delay):
     h = rehearsal

@@ -198,6 +198,10 @@
     }
   },
   "issues": {
+    "google_routes_access": {
+      "title": "Journey Guardian cannot access Google Routes",
+      "description": "Google rejected station routing with an authentication or permission error. In the Google Cloud project owning the configured key, check that Routes API is enabled, existing billing is active, and the key's API and server restrictions allow this Home Assistant instance to use Routes API. Do not remove security restrictions or increase spending limits just to suppress this notice. Journey Guardian continues with its configured routing order, ending at the conservative constant when no live source works. Automatic Google retries pause for one hour; after repairing access, Test station route now can retry immediately for a selected rail journey. Waze success or having no journey does not prove Google recovered. This notice clears after successful Google routing. No raw provider response, key or route is included."
+    },
     "sustained_calendar": {
       "title": "Journey Guardian cannot refresh its calendar",
       "description": "Calendar reviews have failed repeatedly for at least 30 minutes. Check the selected calendar and its upstream source, then use Refresh calendar and timings. Recovered booked intent is not confirmation that the calendar is current. Keep an independent travel alarm. This notice clears after a successful review."

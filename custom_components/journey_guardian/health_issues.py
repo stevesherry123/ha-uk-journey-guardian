@@ -23,6 +23,32 @@ class JourneyHealthIssues:
         self._active: set[str] = set()
 
     @callback
+    def observe_google_access(self, *, error: str | None, source: str) -> None:
+        """Access denial needs account repair, not transient-outage debounce."""
+        issue_id = "google_routes_access"
+        if error in {
+            "google_routes_permission_denied",
+            "google_routes_authentication_failed",
+        }:
+            if issue_id not in self._active:
+                ir.async_create_issue(
+                    self.hass,
+                    DOMAIN,
+                    issue_id,
+                    is_fixable=False,
+                    severity=ir.IssueSeverity.ERROR,
+                    translation_key=issue_id,
+                    learn_more_url=(
+                        "https://github.com/stevesherry123/ha-uk-journey-guardian/"
+                        "blob/main/docs/TROUBLESHOOTING.md"
+                    ),
+                )
+                self._active.add(issue_id)
+        elif source == "google_routes" and error is None:
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+            self._active.discard(issue_id)
+
+    @callback
     def observe(self, kind: str, *, failed: bool, now: datetime, token: str) -> None:
         if kind not in KINDS:
             raise ValueError("unknown_health_kind")
@@ -58,6 +84,7 @@ class JourneyHealthIssues:
 
     @callback
     def stop(self) -> None:
+        # Keep account-access repairs across reloads until Google succeeds.
         for kind in KINDS:
             ir.async_delete_issue(self.hass, DOMAIN, f"sustained_{kind}")
         self._first.clear()

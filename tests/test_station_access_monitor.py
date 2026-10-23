@@ -66,7 +66,7 @@ async def test_reached_checkpoint_forces_fresh_route(hass) -> None:
 
     await monitor._async_checkpoint_reached(NOW, departure)
 
-    coordinator.async_test_station_access.assert_awaited_once_with()
+    coordinator.async_test_station_access.assert_awaited_once_with(automatic=True)
 
 
 async def test_stale_checkpoint_does_not_review_changed_journey(hass) -> None:

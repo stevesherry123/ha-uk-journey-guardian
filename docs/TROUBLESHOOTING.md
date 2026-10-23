@@ -1,5 +1,30 @@
 # Troubleshooting
 
+## Google Routes Rejects Access
+
+`google_routes_permission_denied` (HTTP 403) and
+`google_routes_authentication_failed` (HTTP 401) are account-access failures,
+not evidence that a route takes the fallback number of minutes. From dashboard
+beta.10, Journey Guardian raises an immediate local Repairs error. It retains
+the configured provider order and uses the worst-case constant when no live
+source works. All calculations and notification times use that applied value.
+
+In the Cloud project owning the configured key, verify Routes API is enabled,
+existing billing is active, and the API/application restrictions permit this
+Home Assistant server. Follow Google's [Routes setup guide](https://developers.google.com/maps/documentation/routes/get-api-key).
+Enabling another Maps API does not itself enable Routes API. Do not remove key
+restrictions, rotate credentials automatically, or increase spending limits just
+to clear an error. Those are account-owner decisions, not automatic repairs.
+
+Automatic retries pause for one hour per client runtime after an access denial,
+including scheduled route-cache refreshes. After fixing the account, use
+**Test station route now** with a selected rail journey for an immediate retry.
+A successful Google route clears the access repair; Waze success, no upcoming
+train or a reload does not prove Google access has recovered. No provider error
+body is read or logged, so credentials, project identifiers and route details
+cannot leak through that error message. A cooldown still reports the original
+sanitized access error rather than claiming it made another network attempt.
+
 Keep an independent alarm and consult official travel information if a result is
 uncertain. Do not reset budgets, delete storage, or disable safeguards to force
 provider calls.

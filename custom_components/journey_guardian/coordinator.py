@@ -221,8 +221,12 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         self.async_set_updated_data(snapshot)
         return snapshot
 
-    async def async_test_station_access(self) -> JourneySnapshot:
+    async def async_test_station_access(
+        self, *, automatic: bool = False
+    ) -> JourneySnapshot:
         """Force one station-access request and publish the result."""
+        if not automatic:
+            self.engine.reset_google_access_backoff()
         snapshot = await self._async_review_data(force_station_access=True)
         self.last_station_access_test_at = snapshot.checked_at
         self.async_set_updated_data(snapshot)
@@ -251,6 +255,11 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         if not calendar_failed:
             self.last_successful_calendar_review_at = now
         timing = snapshot.timing
+        if timing is not None:
+            self.health_issues.observe_google_access(
+                error=timing.station_access_error,
+                source=timing.station_access_source,
+            )
         if timing is not None and (
             timing.station_access_error is not None
             or timing.station_access_source in {"google_routes", "waze_sensor"}

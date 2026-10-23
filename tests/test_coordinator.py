@@ -437,6 +437,47 @@ async def test_station_access_test_forces_provider_refresh(hass) -> None:
     engine.async_review.assert_awaited_once_with(force_station_access=True)
     assert coordinator.last_station_access_test_at == CHECKED_AT
     assert coordinator.data == snapshot
+    engine.reset_google_access_backoff.assert_called_once_with()
+
+
+async def test_automatic_station_checkpoint_cannot_reset_access_backoff(hass):
+    snapshot = JourneySnapshot(
+        status="idle", checked_at=CHECKED_AT, next_journey=None, budget=BUDGET
+    )
+    engine = Mock(async_review=AsyncMock(return_value=snapshot))
+    coordinator = JourneyGuardianCoordinator(
+        hass, MockConfigEntry(domain=DOMAIN), engine
+    )
+    await coordinator.async_test_station_access(automatic=True)
+    engine.reset_google_access_backoff.assert_not_called()
+
+
+async def test_google_denial_creates_repair_on_first_coordinator_review(hass):
+    from homeassistant.helpers import issue_registry as ir
+
+    from custom_components.journey_guardian.timing import calculate_fallback_timing
+
+    journey = JourneyEvent(
+        CHECKED_AT + timedelta(hours=2), CHECKED_AT + timedelta(hours=3),
+        "Rail - Example Central to Sample Harbour", "Example Central",
+        "CALENDAR", "Example Central", "Sample Harbour", "calendar_route",
+    )
+    timing = calculate_fallback_timing(
+        journey, preparation_minutes=30, early_warning_minutes=15,
+        station_buffer_minutes=25, station_access_minutes=60,
+    )
+    timing = replace(timing, station_access_error="google_routes_permission_denied")
+    snapshot = replace(_idle_snapshot(), next_journey=journey, timing=timing)
+    engine = Mock(async_review=AsyncMock(return_value=snapshot))
+    coordinator = JourneyGuardianCoordinator(
+        hass, MockConfigEntry(domain=DOMAIN), engine
+    )
+    await coordinator._async_update_data()
+    key = (DOMAIN, "google_routes_access")
+    assert key in ir.async_get(hass).issues
+    engine.async_review.return_value = _idle_snapshot()
+    await coordinator._async_update_data()
+    assert key in ir.async_get(hass).issues
 
 
 async def test_sustained_calendar_repair_uses_real_review_results(hass):

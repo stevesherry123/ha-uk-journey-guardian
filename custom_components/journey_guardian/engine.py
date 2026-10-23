@@ -591,6 +591,11 @@ class JourneyGuardianEngine:
         )
         return client if client is not None and client.configured else None
 
+    def reset_google_access_backoff(self) -> None:
+        """Reserve immediate account-access retries for explicit user tests."""
+        if self._google_routes_client is not None:
+            self._google_routes_client.reset_access_backoff()
+
     async def _async_calendar_events(self, start: Any) -> list[dict[str, Any]]:
         end = start + timedelta(hours=DEFAULT_LOOKAHEAD_HOURS)
         response = await self._hass.services.async_call(

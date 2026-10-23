@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0-beta.10 (Rail Safety And Routing Repairs)
+
+- Exclude explicitly non-rail calendar events at ingestion, before operational
+  selection, timing, routing, rail checks, alarms or the booking overview.
+- Reject flight-number labels from old retained rail plans and restart recovery.
+- Add a network-isolated runtime rehearsal proving flight-only calendars produce
+  no routing, rail requests, alarms, announcements or arrival collection.
+- Raise an immediate Repairs issue for Google authentication/permission failures.
+  Pause automatic Google access retries for one hour, including forced scheduled
+  checkpoints; the explicit station-route test can retry after account repair.
+- Keep the existing routing preference order and worst-case constant calculation.
+  Clear the access repair only after Google succeeds, not after Waze or idle state.
+- Flight travel analysis remains separate development work; no flight monitoring
+  or airport timing policy is introduced. Stable/main remain unchanged.
+
 ## 0.3.0-beta.9 (Dashboard Review Branch)
 
 - Limit Python package discovery to the integration namespace. The beta.8

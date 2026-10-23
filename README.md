@@ -130,6 +130,10 @@ Other station profiles are unchanged.
 
 ## Calendar format
 
+Mixed calendars need transport-type safeguards. See
+[calendar transport classification](docs/CALENDAR_TRANSPORT_CLASSIFICATION.md)
+for non-rail exclusions, untagged-calendar limits, and the separate flight scope.
+
 The preferred and development-tested calendar source is a TripIt calendar feed,
 but any Home Assistant calendar entity can work when it supplies timed events in
 the expected format.

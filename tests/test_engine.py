@@ -467,6 +467,42 @@ async def test_active_calendar_journey_remains_selected() -> None:
     )
 
 
+async def test_flight_only_calendar_cannot_schedule_rail_or_routing() -> None:
+    hass = Mock()
+    hass.services.async_call = AsyncMock(
+        return_value={
+            CALENDAR_ENTITY: {
+                "events": [
+                    {
+                        "start": "2026-08-28T17:30:00+00:00",
+                        "end": "2026-08-28T19:30:00+00:00",
+                        "summary": "ZZ1234 AAA to BBB",
+                        "description": "[Flight] AAA to BBB",
+                        "location": "Example Airport (AAA)",
+                    }
+                ]
+            }
+        }
+    )
+    routes = Mock(configured=True)
+    routes.async_route = AsyncMock()
+    engine = JourneyGuardianEngine(
+        hass,
+        calendar_entity=CALENDAR_ENTITY,
+        budget=_budget(),
+        google_routes_client=routes,
+    )
+    with patch(
+        "custom_components.journey_guardian.engine.dt_util.now", return_value=CHECKED_AT
+    ):
+        snapshot = await engine.async_review()
+    assert snapshot.status == "idle"
+    assert snapshot.next_journey is None
+    assert snapshot.timing is None
+    assert snapshot.booked_legs == ()
+    routes.async_route.assert_not_awaited()
+
+
 async def test_future_calendar_journey_remains_planned() -> None:
     """A journey that has not started remains in the planned state."""
     hass = Mock()

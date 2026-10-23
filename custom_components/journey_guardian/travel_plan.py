@@ -14,6 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.storage import Store
 
+from .journey import is_rail_candidate
 from .models import JourneyEvent, JourneySnapshot
 
 _LOGGER = logging.getLogger(__name__)
@@ -109,6 +110,10 @@ class TravelPlanStore:
                     continue
                 _label(leg.origin)
                 _label(leg.destination)
+                if not is_rail_candidate(
+                    {"summary": f"{leg.origin} to {leg.destination}"}
+                ):
+                    continue
                 start = _instant(leg.departure)
                 end = _instant(leg.arrival) if leg.arrival is not None else None
                 first, last = _instant(leg.first_seen_at), _instant(leg.last_seen_at)

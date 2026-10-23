@@ -100,3 +100,14 @@ def test_station_normalization_does_not_fuzzy_match_different_station_names():
     rendered = render_bookings(legs, NOW)
     assert rendered[1]["relationship_to_previous"] == "possible_connection"
     assert rendered[2]["relationship_to_previous"] == "different_station"
+
+
+def test_non_rail_events_never_appear_as_other_booked_rail_legs():
+    flight = {
+        **event(8, "Example Airport", "Other Airport"),
+        "description": "[Flight] Example Airport to Other Airport",
+    }
+    rail = event(9, "Example Central", "Sample Harbour")
+    legs, count = upcoming_bookings([flight, rail], NOW)
+    assert count == 1
+    assert legs[0].summary == rail["summary"]

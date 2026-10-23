@@ -90,6 +90,13 @@ async def test_four_bookings_survive_each_refresh_and_fresh_instance(hass):
     )
 
 
+async def test_old_flight_is_removed_from_retained_rail_overview_on_restart(hass):
+    plan = store(hass)
+    await plan.async_update(snapshot((leg(8, "ZZ1234 AAA", "BBB"),)))
+    restored = await restart(hass, plan)
+    assert restored.attributes(NOW)["retained_booked_leg_count"] == 0
+
+
 async def test_outage_keeps_future_bookings_but_never_promotes_them_to_alarms(hass):
     engine = Mock(async_review=AsyncMock(return_value=snapshot()))
     entry = MockConfigEntry(domain=DOMAIN)

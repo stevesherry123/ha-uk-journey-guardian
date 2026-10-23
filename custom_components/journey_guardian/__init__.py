@@ -78,6 +78,7 @@ from .const import (
 from .coordinator import JourneyGuardianCoordinator
 from .end_of_day import EndOfDayReview
 from .engine import JourneyGuardianEngine
+from .frontend import async_register_card
 from .google_routes import GoogleRoutesClient
 from .manual_review import ManualTravelReview
 from .notification import JourneyNotificationScheduler, NotificationLedger
@@ -96,6 +97,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Journey Guardian integration namespace."""
     _async_register_services(hass)
+    await async_register_card(hass)
     return True
 
 

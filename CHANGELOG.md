@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0-beta.8 (Dashboard Review Branch)
+
+- Development-branch prerelease only; not merged to main or the stable line.
+- Add a read-only dashboard projection, conditional notification timeline and
+  actual upcoming data checks, without scheduling or sending extra alerts.
+- Package the beta Lovelace card and serve only that static JavaScript file.
+  Journey data continues to use authenticated HA entity states.
+- Include overnight, clock-change, cancellation, stale and missing-data states.
+- Keep existing dashboards unchanged; add the review dashboard explicitly.
+
 ## 0.3.0-beta.7
 
 - Include stable v0.2.13 ordered routing failover alongside the retained-booking

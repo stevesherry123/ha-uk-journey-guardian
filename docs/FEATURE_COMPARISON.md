@@ -3,8 +3,8 @@
 Reviewed against v0.2.6 on 19 October 2026. This is a capability map, not a
 claim that every feature has completed real-world acceptance.
 
-This is a comparison against the repository's documented legacy capability
-inventory in `BACKLOG.md`; no private legacy configuration or personal routes
+This is a comparison against the documented capability and cutover inventory;
+see the public [roadmap](../ROADMAP.md). No private legacy configuration or personal routes
 are included here. “Partial” means the building blocks exist but the behaviour
 has not passed the required real-travel acceptance test.
 

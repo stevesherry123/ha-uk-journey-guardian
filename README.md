@@ -177,10 +177,9 @@ in [ADR 0007](docs/adr/0007-shared-provider-account-quota.md).
 Automatic checkpoint scheduling is recorded in
 [ADR 0008](docs/adr/0008-automatic-live-rail-checkpoints.md).
 
-Accepted development work follows the repository's
-[release policy](docs/RELEASE_POLICY.md): unless explicitly held as draft work, a
-completed change is published to `main`, tagged, released, and verified before it
-is presented as ready for a Home Assistant upgrade.
+Published updates follow the [release policy](docs/RELEASE_POLICY.md) and verified
+release packaging. A merge or documentation-only edit is not itself a new HACS
+release or proof that a Home Assistant installation has been upgraded.
 
 Development-only replay, connection-risk, diagnostic-review, and notification
 preview tools are
@@ -191,7 +190,7 @@ The current comparison with the documented legacy acceptance inventory is in
 [Feature comparison](docs/FEATURE_COMPARISON.md).
 
 International air travel is recorded as a future optional module in the
-[development backlog](BACKLOG.md). It will use provider-neutral flight legs and
+[roadmap](ROADMAP.md). The design direction uses provider-neutral flight legs and
 airport profiles, and may consume a separately configured flight-tracking
 integration, without changing the existing UK rail path.
 
@@ -388,17 +387,17 @@ Please report security concerns according to [SECURITY.md](SECURITY.md).
 4. richer station-wide disruption and interchange monitoring
 5. destination profiles and optional local-transit comparison
 6. dedicated notification adapters and per-event preferences
-7. HACS catalogue review and public-user feedback
+7. public-user feedback and onboarding
 
-The maintained development list is in [BACKLOG.md](BACKLOG.md).
-The [public-readiness review](docs/PUBLIC_READINESS.md) records remaining
-acceptance work and the latest documentation audit.
+The public development direction is in [ROADMAP.md](ROADMAP.md).
+The [reliability guide](docs/RELIABILITY.md) records acceptance boundaries and
+links to current capability limits and reproducible tests.
 
 ## Release strategy and path to v1.0
 
-Journey Guardian uses semantic releases. Every accepted change is versioned and
-published so HACS can expose the update; therefore patch numbers include safe
-documentation, test, and inactive-scaffold changes as well as runtime fixes.
+Journey Guardian uses semantic releases. HACS updates follow published releases,
+not every commit. Documentation-only maintenance can merge without a version
+increase; existing immutable releases retain their original documentation.
 
 The intended progression is:
 

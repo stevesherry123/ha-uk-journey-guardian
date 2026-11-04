@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from aiohttp import ClientSession, ClientTimeout
 
+from .connection_evidence import ServiceReference, StationTimeEvidence
 from .provider_broker import (
     ERROR_QUOTA_EXHAUSTED,
     ProviderBrokerError,
@@ -15,6 +17,7 @@ from .provider_broker import (
     ProviderRequestBroker,
     ProviderResult,
 )
+from .railinfo_arrival import normalize_railinfo_prediction
 
 BASE_URL = "https://api.railinfo.uk"
 REQUEST_TIMEOUT = ClientTimeout(total=15)
@@ -91,6 +94,70 @@ class RailinfoClient:
             ),
             lambda: self._async_live_board_json(code, parameters),
         )
+
+    async def async_arrival_prediction(self, **kwargs) -> StationTimeEvidence | None:
+        """Acquire explicit arrival prediction for a matched booked service."""
+        return await self._async_station_prediction(event="arrival", **kwargs)
+
+    async def async_departure_prediction(self, **kwargs) -> StationTimeEvidence | None:
+        """Acquire explicit departure prediction, including on-time predictions."""
+        return await self._async_station_prediction(event="departure", **kwargs)
+
+    async def _async_station_prediction(
+        self,
+        *,
+        origin_code: str,
+        destination_code: str,
+        expected_service_identity: str,
+        event: str,
+        booked_departure: datetime,
+        booked_arrival: datetime,
+        urgent: bool = False,
+    ) -> StationTimeEvidence | None:
+        """Acquire explicit matched arrival evidence; no automatic caller yet."""
+        if booked_departure.utcoffset() is None or booked_arrival.utcoffset() is None:
+            raise ValueError("timezone_required")
+        departure = booked_departure.astimezone(ZoneInfo("Europe/London"))
+        origin = origin_code.strip().upper()
+        destination = destination_code.strip().upper()
+        if any(
+            len(code) != 3 or not code.isascii() or not code.isalpha()
+            for code in (origin, destination)
+        ):
+            raise ValueError("resolved_station_codes_required")
+        if booked_arrival.astimezone(UTC) <= booked_departure.astimezone(UTC):
+            raise ValueError("arrival_after_departure_required")
+        expected_service = ServiceReference("railinfo", expected_service_identity)
+        parameters = {
+            "from": origin, "to": destination,
+            "date": departure.date().isoformat(), "time": departure.strftime("%H%M"),
+        }
+        result = await self._broker.async_request(
+            ProviderRequest(
+                provider="railinfo", operation="journey_details",
+                parameters=parameters, quota_controlled=False,
+            ),
+            lambda: self._async_journey_details_json(parameters), urgent=urgent,
+        )
+        if not result.healthy:
+            return None
+        return normalize_railinfo_prediction(
+            result.payload, origin_code=origin, destination_code=destination,
+            expected_service=expected_service,
+            booked_departure=booked_departure, booked_arrival=booked_arrival,
+            observed_at=result.observed_at, event=event,
+        )
+
+    async def _async_journey_details_json(
+        self, parameters: Mapping[str, Any]
+    ) -> Mapping[str, Any]:
+        payload = await self._async_json("/journeys", parameters)
+        if (
+            not isinstance(payload, Mapping)
+            or not isinstance(payload.get("journeys"), list)
+        ):
+            raise TypeError("Railinfo journey details must contain a journey list")
+        return payload
 
     async def _async_places_json(
         self, parameters: Mapping[str, Any]

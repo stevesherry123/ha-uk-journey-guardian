@@ -4,6 +4,13 @@ This backlog deliberately uses generic terminology. Real stations, destinations,
 addresses, calendars, people, notification targets, and credentials must remain
 inside each user's Home Assistant installation.
 
+## Active delivery plan
+
+The [rail connection and recovery plan](docs/RAIL_DELIVERY_PLAN.md) records the
+accepted next scope and release gates. Prioritize confirmed connections, live
+risk warnings and user-approved end-to-end recovery; flight work is deferred.
+Documentation updates are required within each delivery slice.
+
 ## Product scope
 
 Journey Guardian is a commuting assistant, not a touring itinerary planner.

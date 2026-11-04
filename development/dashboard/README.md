@@ -4,7 +4,17 @@ Branch: `development/travel-dashboard`. Not merged to main or stable. The owner
 authorised a live-data HA review on 23 October: v0.3.0-beta.10 is an opt-in
 prerelease from this branch. This does not authorise merging it into main.
 
-## First Slice
+## Unreleased connection controls
+
+Local development now adds explicit confirm/revoke service calls from the card,
+with optional transfer allowance override, saved status and visible save errors.
+These controls are not included in the published beta.10 instructions below.
+See [connection controls](../../docs/CONNECTION_CONTROLS.md) for validation and
+limitations. Opt-in local risk monitoring and warnings are now implemented; recovery searches
+remain pending. See [warning delivery](../../docs/CONNECTION_ALERTS.md). Fictional desktop and 390px/320px browser review passed on 4 November, including
+confirm/remove and failed-save flows. Live HA acceptance remains separate.
+
+## First Slice (published baseline)
 
 - A read-only `dashboard` attribute on the status sensor, schema version 1.
 - One HA custom card consuming that attribute, not recalculating travel times.

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+from contextlib import suppress
+
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
@@ -10,11 +13,16 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .arrival_collector import ArrivalCollector
 from .budget import TransportAPIBudget
 from .check_history import CheckHistory
+from .connection_alerts import ConnectionAlertController, ConnectionAlertLedger
+from .connection_monitor import ConnectionCheckLedger, ConnectionMonitor
+from .connection_preferences import CONF_CONNECTION_MONITOR
+from .connection_store import ConfirmedConnection
 from .const import (
     ATTR_ACCELERATED,
     ATTR_DELAY_MINUTES,
@@ -179,6 +187,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await coordinator.live_evidence.async_load()
     await coordinator.travel_plan.async_load(dt_util.now())
+    await coordinator.connection_confirmations.async_load(dt_util.now())
     notification_ledger = NotificationLedger(hass)
     await notification_ledger.async_load()
     notification_scheduler = JourneyNotificationScheduler(
@@ -226,6 +235,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             DEFAULT_AUTOMATIC_LIVE_RAIL_ENABLED,
         ),
     )
+    connection_scope = hashlib.sha256(
+        f"{entry.entry_id}|{entry.data[CONF_CALENDAR_ENTITY]}".encode()
+    ).hexdigest()
+    connection_ledger = ConnectionCheckLedger(
+        Store(hass, 1, f"journey_guardian.connection_checks.{connection_scope[:24]}"),
+        scope=connection_scope,
+    )
+    # An unreadable ledger cannot authorize provider work.
+    with suppress(HomeAssistantError, OSError, ValueError, TypeError):
+        await connection_ledger.async_load()
+    connection_alert_ledger = ConnectionAlertLedger(
+        Store(hass, 1, f"journey_guardian.connection_alerts.{connection_scope[:24]}"),
+        scope=connection_scope,
+    )
+    with suppress(HomeAssistantError, OSError, ValueError, TypeError, KeyError):
+        await connection_alert_ledger.async_load(dt_util.now())
+    coordinator.connection_alert_ledger = connection_alert_ledger
+    coordinator.connection_alert_error = not connection_alert_ledger.available
+    connection_monitor = ConnectionMonitor(
+        hass, coordinator, connection_ledger,
+        enabled=settings.get(CONF_CONNECTION_MONITOR, False),
+        alerts=ConnectionAlertController(
+            connection_alert_ledger, notification_scheduler
+        ),
+    )
     arrival_collector = ArrivalCollector(
         hass, coordinator, railinfo_client, check_history
     )
@@ -252,6 +286,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         station_access_monitor=station_access_monitor,
         end_of_day_review=end_of_day_review,
         manual_review=ManualTravelReview(coordinator, notification_scheduler),
+        connection_monitor=connection_monitor,
     )
     entry.async_on_unload(provider_broker.shutdown)
     await coordinator.async_config_entry_first_refresh()
@@ -266,6 +301,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(notification_scheduler.stop)
     automatic_rail_monitor.start()
     entry.async_on_unload(automatic_rail_monitor.stop)
+    connection_monitor.start()
+    entry.async_on_unload(connection_monitor.stop)
     arrival_collector.start()
     entry.async_on_unload(arrival_collector.stop)
     station_access_monitor.start()
@@ -302,7 +339,68 @@ def _runtime(hass: HomeAssistant) -> JourneyGuardianRuntimeData:
     raise HomeAssistantError("Journey Guardian is not loaded")
 
 
+def _transfer_minutes(value):
+    """Require an integer allowance without accepting booleans or strings."""
+    if type(value) is not int or not 0 <= value <= 1440:
+        raise vol.Invalid("Transfer allowance must be an integer from 0 to 1440")
+    return value
+
+
 def _async_register_services(hass: HomeAssistant) -> None:
+    async def async_confirm_connection(call: ServiceCall) -> dict:
+        coordinator = _runtime(hass).coordinator
+        snapshot = coordinator.data
+        if snapshot is None or snapshot.simulation_active or snapshot.error:
+            raise HomeAssistantError("A healthy real calendar review is required")
+        now = dt_util.now()
+        try:
+            inbound, outbound = coordinator.travel_plan.connection_pair(
+                call.data["inbound_id"], call.data["outbound_id"], now=now
+            )
+            record = ConfirmedConnection(
+                inbound.booking_id, outbound.booking_id, now.isoformat(),
+                outbound.expiry.isoformat(), call.data.get("override_minutes"),
+            )
+            await coordinator.connection_confirmations.async_confirm(record, now=now)
+        except (ValueError, OSError) as err:
+            raise HomeAssistantError(
+                "Connection confirmation could not be saved"
+            ) from err
+        coordinator.async_update_listeners()
+        return {"confirmed": True}
+
+    async def async_revoke_connection(call: ServiceCall) -> dict:
+        coordinator = _runtime(hass).coordinator
+        if coordinator.data is not None and coordinator.data.simulation_active:
+            raise HomeAssistantError("Exit simulation before changing connections")
+        try:
+            await coordinator.connection_confirmations.async_revoke(
+                call.data["inbound_id"], call.data["outbound_id"]
+            )
+        except (ValueError, OSError) as err:
+            raise HomeAssistantError(
+                "Connection revocation could not be saved"
+            ) from err
+        coordinator.async_update_listeners()
+        return {"confirmed": False}
+
+    pair_schema = {
+        vol.Required("inbound_id"): vol.Match(r"^[a-f0-9]{64}$"),
+        vol.Required("outbound_id"): vol.Match(r"^[a-f0-9]{64}$"),
+    }
+    for name, handler, fields in (
+        ("confirm_connection", async_confirm_connection, {
+            **pair_schema,
+            vol.Optional("override_minutes"): _transfer_minutes,
+        }),
+        ("revoke_connection", async_revoke_connection, pair_schema),
+    ):
+        if not hass.services.has_service(DOMAIN, name):
+            hass.services.async_register(
+                DOMAIN, name, handler, schema=vol.Schema(fields),
+                supports_response=SupportsResponse.OPTIONAL,
+            )
+
     async def async_travel_review_now(call: ServiceCall) -> dict:
         return await _runtime(hass).manual_review.async_run(
             notify=call.data["notify"]

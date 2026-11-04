@@ -57,6 +57,29 @@ export function previewData(scenario, now = Date.now()) {
     bookings: [{origin: 'Sample Harbour', destination: 'Example Central', booked_departure: at(600), booked_arrival: at(730)}],
     bookings_truncated: false,
   };
+  if (scenario.startsWith('connection')) {
+    dashboard.connections = [{station: 'Example Junction International Parkway',
+      inbound_id: 'a'.repeat(64), outbound_id: 'b'.repeat(64),
+      inbound_arrival: at(220), outbound_departure: at(235),
+      confirmed: scenario !== 'connection' && scenario !== 'connection-error', can_confirm: true,
+      override_minutes: scenario === 'connection-confirmed' ? 15 : null,
+      allowance_minutes: scenario === 'connection-confirmed' ? 15 : 10,
+      allowance_source: scenario === 'connection-confirmed' ? 'connection_override' : 'global_fallback'}];
+  }
+  if (['connection-risk','connection-recovered','connection-unknown'].includes(scenario)) {
+    dashboard.connection_monitor_enabled = true;
+    dashboard.connection_monitor_supported = true;
+    const pair = dashboard.connections[0];
+    const recovered = scenario === 'connection-recovered';
+    const unknown = scenario === 'connection-unknown';
+    pair.assessment = {classification: unknown ? 'unknown' : recovered ? 'viable' : 'at_risk',
+      reason: unknown ? 'evidence_stale' : recovered ? 'meets_transfer_allowance' : 'below_transfer_allowance',
+      minutes_available: unknown ? null : recovered ? 13 : 7, minimum_minutes: 10,
+      inbound_event_at: unknown ? null : at(recovered ? 222 : 228),
+      outbound_event_at: unknown ? null : at(235)};
+    pair.last_alert = {kind: recovered ? 'recovered' : 'risk', recorded_at: at(-1),
+      delivery: unknown ? 'claimed' : 'announcement_engine', receipt_confirmed: false};
+  }
   if (scenario === 'empty') dashboard.journey = null;
   return {
     states: {'sensor.example_journey_status': {

@@ -1,5 +1,62 @@
 # Changelog
 
+## Unreleased
+
+- Add restart-safe connection warning transitions through the existing live-alert
+  route, with meaningful updates, recovery hysteresis, delivery guards and local
+  fallback. Record hand-off uncertainty separately from device receipt; retain
+  historical dashboard risk when live evidence expires. Monitoring stays off
+  by default and live notifications remain the master delivery control.
+
+- Add opt-in development monitoring for confirmed Railinfo connections, with
+  durable daily/cadence limits, independent two-leg acquisition and dashboard
+  margins that expire back to unknown. Defaults to off; no connection-risk
+  announcements or recovery search are introduced.
+
+- Add conservative Railinfo direct-journey arrival prediction mapping using explicit
+  Darwin arrival fields, matched service/endpoints/schedule and broker acquisition.
+  Reject timetable fallback, duplicate matches and ambiguous local clocks.
+  Automatic connection monitoring and alerts remain disabled.
+
+- Add a pure, typed connection-evidence assessment foundation. Require confirmed
+  booking intent and fresh matched station-time evidence; preserve unknown states
+  for missing, stale, retained or timetable-only data. Provider arrival mapping
+  and live connection warnings remain pending.
+
+- Add fictional connection preview scenarios and responsive control styling.
+  Fix controls remaining disabled when entity state refreshes during a save.
+
+- Add global and station-specific transfer allowances to development options,
+  initially using a 10-minute fallback. Show the applied allowance and source
+  on each suggested/confirmed dashboard connection. Reject ambiguous defaults.
+
+- Add development dashboard confirmation status and confirm/revoke controls for
+  current candidate connections, with optional transfer override, pending state
+  and visible save errors. No live connection-risk monitoring is enabled.
+
+- Add explicit confirm/revoke connection actions with validation against current
+  adjacent retained bookings and simulation isolation. Persist revocation before
+  committing it in memory. Live connection alerts and dashboard controls remain
+  pending; see the development connection-controls guide.
+
+- Wire dormant connection confirmation storage into entry startup with private
+  scoped keys and degraded-load handling. User commands and alerts remain pending;
+  HA integration validation is required before release.
+
+- Add an unwired confirmation-store foundation with scoped/versioned persistence,
+  booking-pair identity, expiry and failed-write protection. Runtime integration
+  and user confirmation controls remain pending.
+
+- Add review-only transfer allowance precedence and provenance with a 10-minute
+  global fallback; use elapsed UTC time for connection calculations across DST.
+  No live settings or connection announcements are enabled.
+
+- Record accepted connection monitoring and end-to-end recovery scope, provider
+  implementation gaps, proposed state contracts and documentation delivery gates.
+- Correct stable installation references to v0.2.13.
+- Keep negative predicted connection margins at risk in the review-only helper;
+  predictions alone do not confirm a missed connection. No live warnings enabled.
+
 ## 0.3.0-beta.10 (Rail Safety And Routing Repairs)
 
 - Exclude explicitly non-rail calendar events at ingestion, before operational

@@ -79,7 +79,8 @@
   "options": {
     "error": {
       "invalid_progress_zones": "Enter 2 to 100 unique zone entity IDs, one per line, or leave blank to disable progress.",
-      "invalid_progress_alternatives": "Enter up to four paths, one per line: base start > extra station > base end. Anchors must follow base order; extra stations must be unique. Maximum 100 stations in total."
+      "invalid_progress_alternatives": "Enter up to four paths, one per line: base start > extra station > base end. Anchors must follow base order; extra stations must be unique. Maximum 100 stations in total.",
+      "invalid_station_transfers": "Use unique station names with whole minutes from 0 to 1440, one Station name=minutes per line."
     },
     "step": {
       "init": {
@@ -109,7 +110,10 @@
           "transportapi_app_id": "TransportAPI application ID",
           "transportapi_app_key": "TransportAPI application key",
           "live_rail_provider": "Live rail provider",
-          "google_routes_api_key": "Google Routes API key"
+          "google_routes_api_key": "Google Routes API key",
+          "connection_transfer_minutes": "Default connection transfer allowance",
+          "station_transfer_defaults": "Station transfer allowances",
+          "connection_monitor_enabled": "Monitor confirmed connections (development)"
         },
         "data_description": {
           "preparation_buffer_minutes": "Minutes allowed to get ready before leaving for the station.",
@@ -135,34 +139,71 @@
           "transportapi_app_id": "Required for manual or automatic live-rail checks. Leave blank to keep the saved value; a new value replaces it.",
           "transportapi_app_key": "Required for manual or automatic live-rail checks. Leave blank to keep the saved value; a new value replaces it.",
           "live_rail_provider": "Railinfo needs no credentials and does not consume the TransportAPI budget. Its use remains bounded by Journey Guardian's checkpoint schedule and provider rate-limit back-off.",
-          "google_routes_api_key": "Optional Google Routes key for live station-access timing. Leave blank to keep the saved value; a new value replaces it."
+          "google_routes_api_key": "Optional Google Routes key for live station-access timing. Leave blank to keep the saved value; a new value replaces it.",
+          "connection_transfer_minutes": "Fallback minutes for a connection without a station default or booked-pair override. Initially 10 minutes.",
+          "station_transfer_defaults": "One exact station display name=minutes per line, for example Example Junction=15. These are your preferences, not official minimum connection times.",
+          "connection_monitor_enabled": "Opt in to bounded Railinfo connection checks: at most 8 per day, at least 5 minutes apart. Fresh risk warnings use the existing announcement route only when live notifications are enabled."
         }
       }
     }
   },
   "entity": {
     "sensor": {
-      "station_progress": {"name": "Station progress"},
-      "status": {"name": "Status"},
-      "operational_phase": {"name": "Operational phase"},
-      "rail_data_freshness": {"name": "Rail data freshness"},
-      "station_access_health": {"name": "Station access routing"},
-      "next_departure": {"name": "Next departure"},
-      "prepare_at": {"name": "Prepare at"},
-      "leave_home_at": {"name": "Leave home at"},
-      "station_arrival_at": {"name": "Station arrival at"},
-      "decision_path": {"name": "Decision path"},
-      "transportapi_calls": {"name": "Journey Guardian TransportAPI budget"}
+      "station_progress": {
+        "name": "Station progress"
+      },
+      "status": {
+        "name": "Status"
+      },
+      "operational_phase": {
+        "name": "Operational phase"
+      },
+      "rail_data_freshness": {
+        "name": "Rail data freshness"
+      },
+      "station_access_health": {
+        "name": "Station access routing"
+      },
+      "next_departure": {
+        "name": "Next departure"
+      },
+      "prepare_at": {
+        "name": "Prepare at"
+      },
+      "leave_home_at": {
+        "name": "Leave home at"
+      },
+      "station_arrival_at": {
+        "name": "Station arrival at"
+      },
+      "decision_path": {
+        "name": "Decision path"
+      },
+      "transportapi_calls": {
+        "name": "Journey Guardian TransportAPI budget"
+      }
     },
     "binary_sensor": {
-      "data_healthy": {"name": "Data healthy"},
-      "simulation_active": {"name": "Simulation active"}
+      "data_healthy": {
+        "name": "Data healthy"
+      },
+      "simulation_active": {
+        "name": "Simulation active"
+      }
     },
     "button": {
-      "travel_review_now": {"name": "Travel review now"},
-      "review_now": {"name": "Refresh calendar and timings"},
-      "review_rail_now": {"name": "Check live rail now"},
-      "test_station_access": {"name": "Test station route now"}
+      "travel_review_now": {
+        "name": "Travel review now"
+      },
+      "review_now": {
+        "name": "Refresh calendar and timings"
+      },
+      "review_rail_now": {
+        "name": "Check live rail now"
+      },
+      "test_station_access": {
+        "name": "Test station route now"
+      }
     }
   },
   "services": {
@@ -170,7 +211,10 @@
       "name": "Travel review now",
       "description": "Refresh the calendar, station access and eligible live rail data, then send a briefing. Repeated taps within 30 seconds reuse the result.",
       "fields": {
-        "notify": {"name": "Send briefing", "description": "Send the summary through the configured announcement script and keep the full report in Home Assistant. Disable for response-only use."}
+        "notify": {
+          "name": "Send briefing",
+          "description": "Send the summary through the configured announcement script and keep the full report in Home Assistant. Disable for response-only use."
+        }
       }
     },
     "review_now": {
@@ -185,11 +229,26 @@
       "name": "Simulate journey",
       "description": "Activate a deterministic journey scenario without contacting TransportAPI or consuming provider allowance.",
       "fields": {
-        "scenario": {"name": "Scenario", "description": "Synthetic rail condition to apply until simulation is cleared or Home Assistant restarts."},
-        "departure_in_minutes": {"name": "Departure in minutes", "description": "Minutes from now to the synthetic scheduled departure."},
-        "delay_minutes": {"name": "Delay minutes", "description": "Delay applied by the delayed scenario; ignored by other scenarios."},
-        "duration_minutes": {"name": "Journey duration", "description": "Duration of the synthetic journey after its effective departure."},
-        "accelerated": {"name": "Accelerated timeline", "description": "Compress preparation, access, and station stages into minutes for rapid end-to-end testing."}
+        "scenario": {
+          "name": "Scenario",
+          "description": "Synthetic rail condition to apply until simulation is cleared or Home Assistant restarts."
+        },
+        "departure_in_minutes": {
+          "name": "Departure in minutes",
+          "description": "Minutes from now to the synthetic scheduled departure."
+        },
+        "delay_minutes": {
+          "name": "Delay minutes",
+          "description": "Delay applied by the delayed scenario; ignored by other scenarios."
+        },
+        "duration_minutes": {
+          "name": "Journey duration",
+          "description": "Duration of the synthetic journey after its effective departure."
+        },
+        "accelerated": {
+          "name": "Accelerated timeline",
+          "description": "Compress preparation, access, and station stages into minutes for rapid end-to-end testing."
+        }
       }
     },
     "clear_simulation": {

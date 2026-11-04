@@ -64,6 +64,7 @@ export class JourneyGuardianCard extends BaseElement {
       .notice{border-left:3px solid var(--warning-color,#c78512);padding:8px 12px;margin-top:12px;background:var(--secondary-background-color,#f3f5f5)}
       .timeline{margin-top:16px}.track{height:14px;background:var(--secondary-background-color,#eef1f2);position:relative;margin:6px 0 13px;border-radius:2px;overflow:hidden}.bar{height:100%;background:var(--primary-color,#008b9a);border-radius:2px}.rail{background:var(--success-color,#288262)}.now{position:absolute;top:0;bottom:0;width:2px;background:var(--primary-text-color,#202322)}
       .row-title{font-size:13px}.axis{font-size:12px}.rows{list-style:none;margin:0;padding:0}.rows li{display:grid;grid-template-columns:68px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid var(--divider-color,#dadddf)}time{font-variant-numeric:tabular-nums;font-weight:500}.secondary{font-size:12px;color:var(--secondary-text-color,#5d6568);overflow-wrap:anywhere}.routing{display:grid;grid-template-columns:1fr auto;gap:6px 16px}.routing dd,.routing dt{margin:0}.routing dd{text-align:right;font-variant-numeric:tabular-nums}.evidence{margin-top:16px;padding-top:12px;border-top:1px solid var(--divider-color,#dadddf)}summary{font-weight:500;cursor:pointer}details[open] summary{margin-bottom:10px}.empty{padding:24px 0}.bookings{margin-top:12px}.bookings strong{font-weight:500}.badge{color:var(--warning-color,#a46b05)}
+      input,button{font:inherit;max-width:100%;padding:8px;margin:6px 8px 6px 0}input{width:100px}button{white-space:normal;cursor:pointer}button:disabled{cursor:default;opacity:.6}label{display:block;overflow-wrap:anywhere}
       @media(max-width:420px){ha-card{padding:16px}.route{font-size:19px}.row-title{display:block}.row-title span{display:block}.routing{grid-template-columns:minmax(0,1fr) auto}.rows li{grid-template-columns:58px minmax(0,1fr);gap:8px}}
     </style><ha-card><header><h1>Journey Guardian</h1><span class="status"></span></header><div class="content"></div></ha-card>`;
     const root = this.shadowRoot.querySelector(".content");
@@ -90,6 +91,74 @@ export class JourneyGuardianCard extends BaseElement {
     if (!data.healthy) add("p", "Journey data needs attention. Times may be retained.", root, "notice");
     if (validTime(data.checked_at) && Date.now() - Date.parse(data.checked_at) > 20 * 60000) {
       add("p", "Snapshot is over 20 minutes old.", root, "notice");
+    }
+    if (data.connection_monitor_enabled && data.connection_monitor_supported === false) add("p", "Connection monitoring requires Railinfo as the selected rail provider.", root, "notice");
+    if (data.connection_alert_error) add("p", "Connection alert history could not be saved or loaded. Announcements may be paused.", root, "notice");
+    if (data.connection_storage_error) add("p", "Connection settings could not be loaded.", root, "notice");
+    if ((data.connections || []).length) {
+      add("h2", "Booked connections");
+      add("p", data.connection_monitor_enabled ? "Confirmed connections use bounded live checks. Warnings follow your live notification setting." : "Confirm intended changes of train. Live connection monitoring is disabled.", root, "secondary");
+      for (const pair of data.connections) {
+        const section = add("div", "", root, "evidence");
+        add("strong", `Change at ${pair.station}`, section);
+        add("p", `Booked arrival ${format(pair.inbound_arrival)} / onward departure ${format(pair.outbound_departure)}`, section, "secondary");
+        if (pair.confirmed && pair.assessment) {
+          const risk = pair.assessment;
+          if (validTime(risk.inbound_event_at) && validTime(risk.outbound_event_at)) add("p", `${risk.inbound_kind === "actual" ? "Recorded" : "Predicted"} arrival ${format(risk.inbound_event_at)} / onward ${format(risk.outbound_event_at)}`, section, "secondary");
+          add("p", risk.classification === "unknown" ? `Connection risk unknown / ${risk.reason.replaceAll("_", " ")}` : `${risk.classification === "viable" ? "Transfer allowance met" : "Connection at risk"} / ${risk.minutes_available} minutes available / ${risk.minimum_minutes} required`, section, risk.classification === "at_risk" ? "notice" : "secondary");
+        }
+        if (pair.confirmed && pair.last_alert && ["risk", "update"].includes(pair.last_alert.kind) && (!pair.assessment || pair.assessment.classification === "unknown")) add("p", "A previous assessment found this connection at risk. Current evidence is unavailable.", section, "notice");
+        if (pair.last_alert) {
+          const deliveries = {claimed: "delivery unconfirmed", announcement_engine: "sent to travel announcements", persistent_notification: "saved in Home Assistant", suppressed: "not sent", failed: "delivery failed"};
+          add("p", `Last connection alert attempt: ${pair.last_alert.kind} / ${format(pair.last_alert.recorded_at)} / ${deliveries[pair.last_alert.delivery] || "unknown result"} / device receipt unconfirmed`, section, "secondary");
+        }
+        const allowanceLabels = {connection_override: "this connection", station_default: "station default", global_fallback: "global fallback"};
+        if (Number.isInteger(pair.allowance_minutes)) add("p", `Required transfer: ${pair.allowance_minutes} minutes / ${allowanceLabels[pair.allowance_source] || "unknown source"}`, section, "secondary");
+        add("p", pair.confirmed ? "Connection confirmed" : "Suggested connection — please confirm", section);
+        const label = add("label", "Transfer allowance override (minutes, optional) ", section);
+        const input = add("input", "", label);
+        input.type = "number"; input.min = "0"; input.max = "1440"; input.step = "1";
+        input.value = pair.override_minutes ?? "";
+        const pairKey = `${pair.inbound_id}:${pair.outbound_id}`;
+        const message = add("p", this._connectionMessages?.[pairKey] || "", section, "secondary");
+        message.setAttribute("role", "status");
+        const buttons = [];
+        const submit = async action => {
+          if (this._connectionPending) return;
+          const payload = {inbound_id: pair.inbound_id, outbound_id: pair.outbound_id};
+          if (action === "confirm_connection" && input.value !== "") {
+            const minutes = Number(input.value);
+            if (!Number.isInteger(minutes) || minutes < 0 || minutes > 1440) {
+              message.textContent = "Enter whole minutes from 0 to 1440."; return;
+            }
+            payload.override_minutes = minutes;
+          }
+          this._connectionPending = true;
+          buttons.forEach(button => button.disabled = true);
+          message.textContent = "Saving…";
+          try {
+            await this._hass.callService("journey_guardian", action, payload);
+            message.textContent = "Saved. Connection status will refresh.";
+          } catch (_) {
+            message.textContent = "Could not save. Refresh the calendar and try again.";
+          } finally {
+            this._connectionMessages = {...this._connectionMessages, [pairKey]: message.textContent};
+            this._connectionPending = false;
+            buttons.forEach(button => button.disabled = false);
+            this.render();
+          }
+        };
+        const confirm = add("button", pair.confirmed ? "Save allowance" : "Confirm connection", section);
+        confirm.disabled = !pair.can_confirm || Boolean(this._connectionPending);
+        confirm.addEventListener("click", () => submit("confirm_connection"));
+        buttons.push(confirm);
+        if (pair.confirmed) {
+          const revoke = add("button", "Remove confirmation", section);
+          revoke.disabled = Boolean(this._connectionPending) || data.connection_storage_error;
+          revoke.addEventListener("click", () => submit("revoke_connection"));
+          buttons.push(revoke);
+        }
+      }
     }
     const journey = data.journey;
     if (!journey) { add("p", "No timed rail journey selected.", root, "empty"); return; }

@@ -38,3 +38,86 @@ test('preview suppression states match the backend contract',()=>{
   assert.equal(awake.latest_notification_record.receipt_confirmed,false);
   assert.equal(readDashboard(previewData('empty'),{entity:'sensor.example_journey_status'}).journey,null);
 });
+
+test('connection controls save exact booking IDs and expose failed writes', async()=>{
+  class Element {
+    constructor(tag='div') { this.tag=tag; this.children=[]; this.listeners={}; }
+    append(child) { this.children.push(child); }
+    setAttribute() {}
+    addEventListener(name, handler) { this.listeners[name]=handler; }
+  }
+  const prior=globalThis.document;
+  globalThis.document={createElement:tag=>new Element(tag)};
+  try {
+    const root=new Element(); const status=new Element();
+    const card=new JourneyGuardianCard();
+    card.config={entity:'sensor.example'};
+    card.shadowRoot={querySelector:selector=>selector==='.content'?root:selector==='.status'?status:null};
+    const calls=[];
+    card._hass={states:{'sensor.example':{state:'planned',attributes:{dashboard:{
+      schema_version:1,healthy:true,connections:[{station:'Example Junction',
+      inbound_id:'a'.repeat(64),outbound_id:'b'.repeat(64),confirmed:false,can_confirm:true,
+      allowance_minutes:10,allowance_source:'global_fallback'}]
+    }}}},callService:async(...args)=>{calls.push(args);card.render();}};
+    card.render();
+    const nodes=[]; const walk=node=>{nodes.push(node);node.children.forEach(walk);}; walk(root);
+    assert.ok(nodes.some(node=>node.textContent==='Required transfer: 10 minutes / global fallback'));
+    const input=nodes.find(node=>node.tag==='input');
+    const button=nodes.find(node=>node.tag==='button');
+    input.value='12'; await button.listeners.click();
+    assert.deepEqual(calls[0],['journey_guardian','confirm_connection',{
+      inbound_id:'a'.repeat(64),outbound_id:'b'.repeat(64),override_minutes:12}]);
+    assert.ok(nodes.some(node=>node.textContent==='Saved. Connection status will refresh.'));
+    card._hass.callService=async()=>{throw new Error('save failed');};
+    await button.listeners.click();
+    assert.ok(nodes.some(node=>node.textContent==='Could not save. Refresh the calendar and try again.'));
+    assert.equal(button.disabled,false);
+    const refreshed=[]; const collect=node=>{refreshed.push(node);node.children.forEach(collect);}; collect(root);
+    assert.equal(refreshed.filter(node=>node.tag==='button').at(-1).disabled,false);
+    input.value='1.5'; await button.listeners.click();
+    assert.ok(nodes.some(node=>node.textContent==='Enter whole minutes from 0 to 1440.'));
+  } finally { globalThis.document=prior; }
+});
+
+test('connection warning previews preserve freshness and receipt uncertainty',()=>{
+  const risky=readDashboard(previewData('connection-risk'),{entity:'sensor.example_journey_status'});
+  assert.equal(risky.connections[0].assessment.classification,'at_risk');
+  assert.equal(risky.connections[0].assessment.minutes_available,7);
+  assert.equal(risky.connections[0].last_alert.receipt_confirmed,false);
+  const unknown=readDashboard(previewData('connection-unknown'),{entity:'sensor.example_journey_status'});
+  assert.equal(unknown.connections[0].assessment.minutes_available,null);
+  assert.equal(unknown.connections[0].last_alert.delivery,'claimed');
+  assert.equal(readDashboard(previewData('connection-recovered'),{entity:'sensor.example_journey_status'}).connections[0].last_alert.kind,'recovered');
+});
+
+test('rendered connection history qualifies stale risk and uncertain handoff',()=>{
+  class Element {
+    constructor(tag='div') {this.tag=tag;this.children=[];this.style={};}
+    append(child) {this.children.push(child);}
+    setAttribute() {}
+    addEventListener() {}
+  }
+  const prior=globalThis.document;
+  globalThis.document={createElement:tag=>new Element(tag)};
+  try {
+    for (const scenario of ['connection-risk','connection-recovered','connection-unknown']) {
+      const root=new Element();
+      const card=new JourneyGuardianCard();
+      card.config={entity:'sensor.example_journey_status'};
+      card.shadowRoot={querySelector:selector=>selector==='.content'?root:selector==='.status'?new Element():null};
+      card._hass=previewData(scenario);
+      card.render();
+      const texts=[];const walk=node=>{texts.push(node.textContent||'');node.children.forEach(walk);};walk(root);
+      const text=texts.join('\n');
+      if(scenario==='connection-risk') assert.ok(text.includes('Connection at risk / 7 minutes available / 10 required'));
+      if(scenario==='connection-unknown') {
+        assert.ok(text.includes('A previous assessment found this connection at risk. Current evidence is unavailable.'));
+        assert.ok(text.includes('delivery unconfirmed'));
+        assert.ok(!text.includes('7 minutes available'));
+        assert.ok(!text.includes('/ claimed /'));
+      }
+      if(scenario==='connection-recovered') assert.ok(text.includes('Last connection alert attempt: recovered'));
+      assert.ok(text.includes('device receipt unconfirmed'));
+    }
+  } finally {globalThis.document=prior;}
+});

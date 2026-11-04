@@ -20,6 +20,12 @@
       <h1>Journey Guardian / development</h1>
       <label>Scenario
         <select id="scenario">
+          <option value="connection">Suggested connection</option>
+          <option value="connection-confirmed">Confirmed connection</option>
+          <option value="connection-risk">Connection at risk</option>
+          <option value="connection-recovered">Connection margin recovered</option>
+          <option value="connection-unknown">Stale connection / uncertain delivery</option>
+          <option value="connection-error">Connection save failure</option>
           <option value="normal">Waze preferred</option>
           <option value="google">Google recovery</option>
           <option value="constant">Both providers unavailable</option>
@@ -35,7 +41,7 @@
         </select>
       </label>
     </header>
-    <p class="note">Fictional data. Read-only preview, not connected to Home Assistant.</p>
+    <p class="note">Fictional data. Connection buttons simulate local saves; no Home Assistant connection.</p>
     <journey-guardian-card></journey-guardian-card>
   </main>
   <script type="module">
@@ -45,7 +51,19 @@
     card.setConfig({entity:'sensor.example_journey_status'});
     const now = Date.now();
     const select = document.getElementById('scenario');
-    const update = () => { card.hass = previewData(select.value, now); };
+    const update = () => {
+      const data = previewData(select.value, now);
+      data.callService = async (_domain, action, payload) => {
+        if (select.value === 'connection-error') throw new Error('Fictional save failure');
+        const pair = data.states['sensor.example_journey_status'].attributes.dashboard.connections[0];
+        pair.confirmed = action === 'confirm_connection';
+        pair.override_minutes = pair.confirmed ? payload.override_minutes ?? null : null;
+        pair.allowance_minutes = pair.override_minutes ?? 10;
+        pair.allowance_source = pair.override_minutes === null ? 'global_fallback' : 'connection_override';
+        card.hass = {...data, states: structuredClone(data.states)};
+      };
+      card.hass = data;
+    };
     select.addEventListener('change', update);
     update();
   </script>

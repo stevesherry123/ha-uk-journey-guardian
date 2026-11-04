@@ -9,6 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .booking_overview import render_bookings
 from .const import CONF_PERSON_ENTITY, CONF_PROGRESS_ALTERNATIVES, CONF_PROGRESS_ZONES
@@ -267,6 +268,11 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
                     ],
                 }
             )
+        connections = self.coordinator.connection_dashboard(
+            dt_util.now()
+        )
+        if isinstance(connections, dict):
+            attributes["dashboard"].update(connections)
         return attributes
 
 

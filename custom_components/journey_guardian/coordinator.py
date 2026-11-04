@@ -13,6 +13,16 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
+from .connection import resolve_transfer_allowance
+from .connection_preferences import (
+    CONF_CONNECTION_MONITOR,
+    CONF_STATION_TRANSFERS,
+    CONF_TRANSFER_FALLBACK,
+    DEFAULT_TRANSFER_MINUTES,
+    parse_station_transfers,
+    station_key,
+)
+from .connection_storage import HAConnectionConfirmations
 from .const import CONF_LIVE_RAIL_PROVIDER, DEFAULT_UPDATE_INTERVAL, NAME
 from .engine import JourneyGuardianEngine
 from .health_issues import JourneyHealthIssues
@@ -62,11 +72,25 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         entry.async_on_unload(self.health_issues.stop)
         self._last_live_snapshot: JourneySnapshot | None = None
         settings = {**entry.data, **entry.options}
+        self.connection_monitor_enabled = settings.get(CONF_CONNECTION_MONITOR, False)
+        self.connection_alert_ledger = None
+        self.connection_alert_error = False
+        self.connection_assessments = {}
+        self.next_connection_check_at = None
+        self.transfer_fallback = settings.get(
+            CONF_TRANSFER_FALLBACK, DEFAULT_TRANSFER_MINUTES
+        )
+        self.station_transfers = parse_station_transfers(
+            settings.get(CONF_STATION_TRANSFERS)
+        )
         self.live_evidence = LiveEvidenceStore(
             hass, scope=f"{entry.entry_id}|{calendar_entity}",
             provider=settings.get(CONF_LIVE_RAIL_PROVIDER, ""),
         )
         self.travel_plan = TravelPlanStore(
+            hass, scope=f"{entry.entry_id}|{calendar_entity}"
+        )
+        self.connection_confirmations = HAConnectionConfirmations(
             hass, scope=f"{entry.entry_id}|{calendar_entity}"
         )
         super().__init__(
@@ -77,6 +101,97 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
             update_interval=DEFAULT_UPDATE_INTERVAL,
             always_update=False,
         )
+
+    def connection_dashboard(self, now: datetime) -> dict:
+        """Expose current candidate pairs without assuming live transfer viability."""
+        snapshot = self.data
+        error = self.connection_confirmations.persistence_error
+        if snapshot is None or snapshot.simulation_active:
+            return {"connections": [], "connection_storage_error": error}
+        legs = self.travel_plan.attributes(now)["retained_booked_legs"]
+        current = [leg for leg in legs if leg["in_latest_response"]]
+        keys = {(first["booking_id"], second["booking_id"])
+                for first, second in zip(current, current[1:], strict=False)}
+        active = getattr(self.connection_confirmations, "active", None)
+        if active is not None:
+            keys.update((record.inbound_id, record.outbound_id)
+                        for record in active(now=now))
+        by_id = {leg["booking_id"]: leg for leg in legs}
+        pairs = []
+        for first, second in sorted(
+            keys, key=lambda pair: by_id.get(pair[1], {}).get("departure", "")
+        ):
+            if first not in by_id or second not in by_id:
+                continue
+            inbound, outbound = by_id[first], by_id[second]
+            saved = self.connection_confirmations.get(first, second, now=now)
+            try:
+                self.travel_plan.connection_pair(
+                    inbound["booking_id"], outbound["booking_id"], now=now,
+                    monitoring=saved is not None,
+                )
+            except ValueError:
+                continue
+            saved = self.connection_confirmations.get(
+                inbound["booking_id"], outbound["booking_id"], now=now
+            )
+            allowance = resolve_transfer_allowance(
+                connection_minutes=saved.override_minutes if saved else None,
+                station_minutes=self.station_transfers.get(
+                    station_key(inbound["destination"])
+                ),
+                global_minutes=self.transfer_fallback,
+            )
+            live = getattr(self, "connection_assessments", {}).get((first, second))
+            assessment = None
+            if live is not None:
+                result, expiry = live
+                assessment = result.as_dict()
+                if snapshot.error or result.minimum_minutes != allowance.minutes:
+                    assessment.update(
+                        classification="unknown",
+                        reason="calendar_unavailable" if snapshot.error
+                        else "transfer_allowance_changed",
+                        minutes_available=None, margin_minutes=None,
+                    )
+                elif expiry is not None and now > expiry:
+                    assessment.update(classification="unknown", reason="evidence_stale",
+                                      minutes_available=None, margin_minutes=None)
+            pairs.append({
+                "inbound_id": inbound["booking_id"],
+                "outbound_id": outbound["booking_id"],
+                "station": inbound["destination"],
+                "inbound_arrival": inbound["arrival"],
+                "outbound_departure": outbound["departure"],
+                "confirmed": saved is not None,
+                "assessment": assessment if saved else None,
+                "last_alert": (
+                    self.connection_alert_ledger.status((first, second), now=now)
+                    if getattr(self, "connection_alert_ledger", None) is not None
+                    else None
+                ),
+                "allowance_minutes": allowance.minutes,
+                "allowance_source": allowance.source,
+                "override_minutes": saved.override_minutes if saved else None,
+                "can_confirm": not error and not snapshot.error
+                and datetime.fromisoformat(outbound["departure"]) > now,
+                "can_monitor": not error and not snapshot.error,
+            })
+        return {
+            "connections": pairs, "connection_storage_error": error,
+            "connection_alert_error": getattr(self, "connection_alert_error", False),
+            "connection_monitor_enabled": getattr(
+                self, "connection_monitor_enabled", False
+            ),
+            "connection_monitor_supported": getattr(
+                getattr(self, "engine", None), "_live_rail_provider", None
+            ) == "railinfo",
+            "next_connection_check_at": (
+                getattr(self, "next_connection_check_at", None).isoformat()
+                if isinstance(getattr(self, "next_connection_check_at", None), datetime)
+                else None
+            ),
+        }
 
     async def _async_update_data(self) -> JourneySnapshot:
         """Return the latest normalized journey state."""

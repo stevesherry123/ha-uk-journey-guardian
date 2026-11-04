@@ -281,6 +281,35 @@ class TravelPlanStore:
             )
         ]
 
+    def connection_pair(
+        self, inbound_id: str, outbound_id: str, *, now: datetime,
+        monitoring: bool = False,
+    ) -> tuple[RetainedLeg, RetainedLeg]:
+        """Validate adjacent current calendar intent before explicit confirmation."""
+        current = sorted(
+            (leg for leg in self._legs.values()
+             if now < leg.expiry and (leg.in_latest_response or (
+                 monitoring and leg.booking_id == inbound_id and leg.arrival is not None
+                 and _instant(leg.arrival) <= now
+             ))),
+            key=lambda leg: (_instant(leg.departure), leg.booking_id),
+        )
+        for inbound, outbound in zip(current, current[1:], strict=False):
+            if (inbound.booking_id, outbound.booking_id) != (inbound_id, outbound_id):
+                continue
+            if (
+                inbound.arrival is None
+                or _instant(outbound.departure) + (
+                    timedelta(minutes=15) if monitoring else timedelta(0)
+                ) <= now
+                or _instant(inbound.arrival) > _instant(outbound.departure)
+                or inbound.destination.strip().casefold()
+                != outbound.origin.strip().casefold()
+            ):
+                break
+            return inbound, outbound
+        raise ValueError("current_adjacent_connection_required")
+
     def attributes(self, now: datetime, *, simulation: bool = False) -> dict:
         """Expose private local intent, explicitly separate from arrival evidence."""
         rendered = []

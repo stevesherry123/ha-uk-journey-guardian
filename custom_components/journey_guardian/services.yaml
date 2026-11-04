@@ -74,3 +74,41 @@ simulate_journey:
 clear_simulation:
   name: Clear simulation
   description: Return Journey Guardian to its configured calendar source. No provider call is made.
+
+confirm_connection:
+  name: Confirm booked connection
+  description: Confirm two adjacent current rail bookings as a connection. Development feature; does not enable live connection warnings.
+  fields:
+    inbound_id:
+      name: Incoming booking ID
+      required: true
+      selector:
+        text:
+    outbound_id:
+      name: Onward booking ID
+      required: true
+      selector:
+        text:
+    override_minutes:
+      name: Transfer allowance override
+      description: Optional allowance for this booked pair, in minutes.
+      selector:
+        number:
+          min: 0
+          max: 1440
+          mode: box
+
+revoke_connection:
+  name: Revoke booked connection
+  description: Remove a saved confirmation without changing either calendar booking.
+  fields:
+    inbound_id:
+      name: Incoming booking ID
+      required: true
+      selector:
+        text:
+    outbound_id:
+      name: Onward booking ID
+      required: true
+      selector:
+        text:

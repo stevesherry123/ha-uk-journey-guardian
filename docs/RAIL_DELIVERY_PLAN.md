@@ -65,7 +65,7 @@ These policies are resolved in the relevant delivery gate. This plan does not it
 | State contracts and persistence | Partly implemented locally | Versioned confirmations and typed time evidence tested; adoption/evidence retention pending |
 | Confirmation and allowances | Implemented and reviewed locally | Persistence, defaults, provenance and fictional mobile controls tested; saved templates and live HA acceptance pending |
 | Live risk and warnings | Opt-in monitoring and announcements implemented locally | Durable transitions and guarded existing delivery route tested; live HA/physical delivery acceptance pending |
-| End-to-end search | Pending | Direct and multi-change routes to confirmed final destination |
+| End-to-end search | Route contract implemented locally; search pending | Complete endpoint, fresh matched legs, viable transfers and explicit time/change limits tested; acquisition/selection pending |
 | Explicit adoption | Pending | Whole-route approval, downstream tracking, original evidence retained |
 | Release acceptance | Pending | Outage/restart rehearsals and real-travel observation |
 
@@ -308,3 +308,20 @@ branch. Main, stable release tags and live HA remain unchanged. The pre-existing
 untracked owner architecture brief is excluded from staging/publication.
 Future reviewed slices should be committed and pushed incrementally, with test
 evidence and documentation updated together rather than accumulating only locally.
+
+### End-to-end route contract: 4 November 2026
+
+Added a pure [recovery route contract](RECOVERY_ROUTE_CONTRACT.md) that rejects
+interchange-only/partial routes, disconnected or unreachable transfers, stale
+predictions, cancelled services and unsupported bounds. Context requires a
+confirmed connected-journey endpoint and fresh evidenced origin; route identity
+and prediction/allowance revision are separate. No search or adoption is exposed.
+This slice is committed/pushed incrementally to development/rail-connections.
+
+Validation for the route-contract slice: 27 focused recovery tests pass. The
+broader network-disabled run passed 652 tests with the existing early-termination
+expected failure; the local-TCP frontend test was explicitly deselected. Two
+additional preference/wait-bound cases passed in the final focused run. Ruff,
+privacy and documentation checks pass. Hosted validation of the preceding branch
+commit was still queued; no hosted pass is implied. Search acquisition, adoption
+and live journey acceptance remain pending.

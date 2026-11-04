@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add a pure end-to-end recovery route contract that rejects partial destinations,
+  disconnected/tight transfers, stale or cancelled service evidence and routes
+  outside explicit change/wait/duration bounds. Track option identity separately
+  from prediction/allowance revisions. Search and adoption remain pending.
+
 - Add restart-safe connection warning transitions through the existing live-alert
   route, with meaningful updates, recovery hysteresis, delivery guards and local
   fallback. Record hand-off uncertainty separately from device receipt; retain

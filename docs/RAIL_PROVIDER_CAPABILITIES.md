@@ -49,8 +49,9 @@ remain unverified. No provider contract is inferred from marketing descriptions.
 
 Keep recovery route search separate from the existing direct-service matcher:
 removing its direct-only filter would feed multi-leg results into a single-leg
-contract. Introduce a route result containing ordered train legs, internal
-transfers, final-destination coverage, freshness and explicit search limits.
+contract. The [recovery route contract](RECOVERY_ROUTE_CONTRACT.md) now represents
+ordered legs, transfer requirements, complete endpoints, freshness and explicit
+limits. Provider search acquisition and normalization remain pending.
 Only map a provider after its detailed response contract is established.
 
 ### Local verification

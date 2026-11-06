@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add an internal recovery-context builder that binds the final destination to
+  exact confirmed bookings and a fresh user-confirmed origin. Preserve the full
+  booked baseline separately from affected downstream legs; reject ambiguous,
+  edited, expired or incomplete chains. Runtime commands and adoption are pending.
+
 - Add an internal, single-query Railinfo recovery search to the confirmed final
   destination. Validate complete direct/one-change routes with original evidence
   age, bounded responses and explicit unavailable outcomes. Runtime controls,

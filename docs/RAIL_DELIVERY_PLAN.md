@@ -65,7 +65,7 @@ These policies are resolved in the relevant delivery gate. This plan does not it
 | State contracts and persistence | Partly implemented locally | Versioned confirmations and typed time evidence tested; adoption/evidence retention pending |
 | Confirmation and allowances | Implemented and reviewed locally | Persistence, defaults, provenance and fictional mobile controls tested; saved templates and live HA acceptance pending |
 | Live risk and warnings | Opt-in monitoring and announcements implemented locally | Durable transitions and guarded existing delivery route tested; live HA/physical delivery acceptance pending |
-| End-to-end search | Route contract and internal Railinfo search implemented locally | Bounded one-query direct/one-change normalization tested; disruption context, user controls, broader provider coverage and selection pending |
+| End-to-end search | Route contract and internal Railinfo search implemented locally | Bounded one-query direct/one-change normalization tested; user-confirmed booking-context builder tested; runtime commands, broader provider coverage and selection pending |
 | Explicit adoption | Pending | Whole-route approval, downstream tracking, original evidence retained |
 | Release acceptance | Pending | Outage/restart rehearsals and real-travel observation |
 
@@ -346,3 +346,21 @@ and live journey acceptance remain pending.
 - Next: build the recovery request from confirmed connected bookings and an
   evidenced disruption or explicit user origin confirmation, then expose route
   review and revalidation before adoption. Broader changes remain a capability gap.
+
+
+## Confirmed recovery context checkpoint — 6 November 2026
+
+- Implemented a pure context builder binding an explicitly selected final booking
+  to an unambiguous confirmed chain. Separate the full booked baseline from the
+  affected legs a replacement would supersede. Unrelated returns stay outside.
+- Require a fresh user-confirmed origin, resolved final destination, healthy
+  complete calendar and current exact confirmations. Reject edits, expiry,
+  forks, cycles and intervening bookings rather than shortening the destination.
+- Validation: 25 focused context cases; full local regression 708 passed with
+  one existing expected failure. The restricted local-TCP serving test remains
+  deselected. Lint, compilation, privacy and documentation links pass.
+- The preceding search commit passed GitHub tests, HACS and Hassfest. This slice
+  remains development-only; no Home Assistant deployment or restart occurred.
+- Next: connect this context to an explicit recovery-review command, recheck
+  confirmations around acquisition, and expose complete options and manual
+  fallback. Provider-confirmed disruption origins and route adoption are pending.

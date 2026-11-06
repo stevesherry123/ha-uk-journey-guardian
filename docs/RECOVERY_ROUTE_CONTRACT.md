@@ -95,3 +95,41 @@ buttons. The caller still needs to construct a request from confirmed connected
 bookings and a valid recovery origin. User selection, full revalidation,
 downstream supersession preview, adoption and continued tracking remain pending.
 No automatic recovery or deployment is claimed.
+
+
+## Confirmed booking context — 6 November 2026
+
+`build_user_recovery_context` is the internal request-construction boundary. It
+requires an affected booking and an explicit final booking, a complete healthy
+calendar view, and a bounded set of exact booking confirmations. It walks the
+confirmed chain in both directions and requires the final booking to be its
+terminal leg. It does not select the last event in the day's calendar.
+
+The result separates the original connected booking IDs from the affected IDs
+that a replacement would supersede for tracking. For disruption on the final
+leg, upstream bookings remain in the baseline but are not superseded. An
+unconfirmed return booking remains outside the scope. Confirmed onward legs
+cannot be silently omitted to manufacture a shorter final destination.
+
+Reject missing/edited bookings, duplicate identities, forks, cycles, expired or
+future confirmations, mismatched interchange stations, overlapping legs and a
+new intervening calendar booking. A removed upstream leg is allowed only after
+its booked arrival has elapsed; affected legs must still be in the current
+calendar response. Elapsed arrival is used only to retain booking context,
+never to infer the traveller's location or a successful journey outcome.
+
+The first boundary requires an explicit user-confirmed recovery station and a
+fresh confirmation timestamp. It does not yet accept provider-derived location:
+matched disruption/early-termination evidence needs its own adapter. The final
+station must resolve from the confirmed final booking's exact display name to
+a verified CRS code. No scheduled arrival, GPS-only position or unrelated
+calendar destination can supply that station.
+
+The context expires at the earliest origin-freshness or connection-confirmation
+expiry. The future controller must re-read current bookings and confirmations
+before querying, presenting results and adopting a route; possessing an older
+context is not permission to proceed after revocation or a booking edit.
+
+This builder is tested but is not yet wired into a Home Assistant command or
+dashboard action. Search presentation, manual fallback, full route revalidation,
+explicit adoption and restart-safe tracking remain outstanding milestones.

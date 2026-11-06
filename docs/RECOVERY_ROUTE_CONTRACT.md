@@ -133,3 +133,9 @@ context is not permission to proceed after revocation or a booking edit.
 This builder is tested but is not yet wired into a Home Assistant command or
 dashboard action. Search presentation, manual fallback, full route revalidation,
 explicit adoption and restart-safe tracking remain outstanding milestones.
+
+
+[The recovery review controller](RECOVERY_REVIEW.md) now provides the internal
+single-search and stale-result safeguards around these contracts. It rechecks
+current context after acquisition and revalidates complete routes before exposure.
+Home Assistant command and dashboard wiring remain pending.

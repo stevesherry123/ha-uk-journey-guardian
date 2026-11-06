@@ -65,7 +65,7 @@ These policies are resolved in the relevant delivery gate. This plan does not it
 | State contracts and persistence | Partly implemented locally | Versioned confirmations and typed time evidence tested; adoption/evidence retention pending |
 | Confirmation and allowances | Implemented and reviewed locally | Persistence, defaults, provenance and fictional mobile controls tested; saved templates and live HA acceptance pending |
 | Live risk and warnings | Opt-in monitoring and announcements implemented locally | Durable transitions and guarded existing delivery route tested; live HA/physical delivery acceptance pending |
-| End-to-end search | Route contract and internal Railinfo search implemented locally | Bounded one-query direct/one-change normalization tested; user-confirmed booking-context builder tested; runtime commands, broader provider coverage and selection pending |
+| End-to-end search | Route contract and internal Railinfo search implemented locally | Bounded one-query direct/one-change normalization tested; user-confirmed booking-context builder tested; review controller tested; runtime commands, broader provider coverage and selection pending |
 | Explicit adoption | Pending | Whole-route approval, downstream tracking, original evidence retained |
 | Release acceptance | Pending | Outage/restart rehearsals and real-travel observation |
 
@@ -364,3 +364,19 @@ and live journey acceptance remain pending.
 - Next: connect this context to an explicit recovery-review command, recheck
   confirmations around acquisition, and expose complete options and manual
   fallback. Provider-confirmed disruption origins and route adoption are pending.
+
+
+## Recovery review checkpoint — 6 November 2026
+
+- Added [an explicit recovery review controller](RECOVERY_REVIEW.md): one in-flight
+  search, immutable policy snapshot, live context recheck after acquisition and
+  complete-route revalidation before exposure. Revocation/unload invalidates
+  in-flight results. Reads expire options without initiating provider calls.
+- Preserve the booked baseline and affected IDs for a later supersession preview.
+  Results remain advisory, ticket acceptance unknown, and unavailable outcomes
+  require manual fallback. No selection or adoption action is implemented.
+- Validation: 23 focused cases; full local regression 731 passed, one existing
+  expected failure, and restricted local-TCP serving test deselected. Lint,
+  compilation, privacy scan and documentation links pass.
+- The preceding confirmed-context commit passed all GitHub validation jobs.
+  Runtime command/dashboard wiring and deployment remain pending.

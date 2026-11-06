@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add an internal explicit recovery-review controller with one in-flight query,
+  context and preference rechecks, complete-route revalidation, expiry on reads
+  and invalidation after revocation or unload. Keep results advisory and require
+  manual fallback for unavailable outcomes. Commands, UI and adoption are pending.
+
 - Add an internal recovery-context builder that binds the final destination to
   exact confirmed bookings and a fresh user-confirmed origin. Preserve the full
   booked baseline separately from affected downstream legs; reject ambiguous,

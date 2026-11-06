@@ -51,8 +51,10 @@ Keep recovery route search separate from the existing direct-service matcher:
 removing its direct-only filter would feed multi-leg results into a single-leg
 contract. The [recovery route contract](RECOVERY_ROUTE_CONTRACT.md) now represents
 ordered legs, transfer requirements, complete endpoints, freshness and explicit
-limits. Provider search acquisition and normalization remain pending.
-Only map a provider after its detailed response contract is established.
+limits. An internal Railinfo acquisition/normalization API now maps the previously
+observed direct/one-change shape; see the recovery contract for response limits,
+rejection rules and unsupported overnight/multi-change cases. Runtime disruption
+context, user controls and adoption remain pending.
 
 ### Local verification
 

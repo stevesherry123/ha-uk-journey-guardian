@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
 from aiohttp import ClientSession, ClientTimeout
+from homeassistant.util import dt as dt_util
 
+from .connection import TransferAllowance
 from .connection_evidence import ServiceReference, StationTimeEvidence
 from .provider_broker import (
     ERROR_QUOTA_EXHAUSTED,
@@ -18,6 +20,8 @@ from .provider_broker import (
     ProviderResult,
 )
 from .railinfo_arrival import normalize_railinfo_prediction
+from .railinfo_recovery import RailinfoRecoveryResult, normalize_railinfo_recovery
+from .recovery import RecoveryRequest
 
 BASE_URL = "https://api.railinfo.uk"
 REQUEST_TIMEOUT = ClientTimeout(total=15)
@@ -93,6 +97,59 @@ class RailinfoClient:
                 quota_controlled=False,
             ),
             lambda: self._async_live_board_json(code, parameters),
+        )
+
+    async def async_recovery_search(
+        self,
+        request: RecoveryRequest,
+        *,
+        max_age: timedelta,
+        max_wait: timedelta,
+        max_duration: timedelta,
+        station_allowances: Mapping[str, TransferAllowance] | None = None,
+        global_minutes: int = 10,
+    ) -> RailinfoRecoveryResult:
+        """Make one brokered end-to-end query; no runtime or adoption caller yet."""
+        now = dt_util.utcnow()
+        if not isinstance(request, RecoveryRequest):
+            raise ValueError("recovery_request_required")
+        if not isinstance(max_age, timedelta) or max_age <= timedelta(0):
+            raise ValueError("positive_freshness_window_required")
+        if (
+            not isinstance(max_wait, timedelta) or max_wait < timedelta(0)
+            or not isinstance(max_duration, timedelta)
+            or max_duration <= timedelta(0)
+        ):
+            raise ValueError("bounded_time_limits_required")
+        if not timedelta(0) <= now - request.origin_observed_at <= max_age:
+            return RailinfoRecoveryResult("recovery_origin_not_current")
+        ready = max(now, request.ready_at.astimezone(UTC))
+        if ready > now + max_wait:
+            return RailinfoRecoveryResult("readiness_exceeds_wait_limit")
+        departure = ready.astimezone(ZoneInfo("Europe/London"))
+        if departure.date() != now.astimezone(ZoneInfo("Europe/London")).date():
+            return RailinfoRecoveryResult("unsupported_service_day")
+        parameters = {
+            "from": request.origin_code, "to": request.final_destination_code,
+            "date": departure.date().isoformat(), "time": departure.strftime("%H%M"),
+        }
+        try:
+            result = await self._broker.async_request(
+                ProviderRequest(
+                    provider="railinfo", operation="journey_details",
+                    parameters=parameters, quota_controlled=False,
+                ),
+                lambda: self._async_journey_details_json(parameters),
+            )
+        except ProviderBrokerError:
+            return RailinfoRecoveryResult("provider_unavailable")
+        if not result.healthy:
+            return RailinfoRecoveryResult("provider_unavailable")
+        return normalize_railinfo_recovery(
+            result.payload, request, observed_at=result.observed_at,
+            now=dt_util.utcnow(), max_age=max_age, max_wait=max_wait,
+            max_duration=max_duration, station_allowances=station_allowances,
+            global_minutes=global_minutes,
         )
 
     async def async_arrival_prediction(self, **kwargs) -> StationTimeEvidence | None:

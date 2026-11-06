@@ -1,6 +1,6 @@
 # Rail connections and end-to-end recovery delivery plan
 
-Updated: 4 November 2026. Status: accepted product scope; partial local implementation.
+Updated: 6 November 2026. Status: accepted product scope; partial local implementation.
 No release date is promised. Current stable: v0.2.13. Existing previews retain
 bookings and show schedule hints; they do not deliver this connection/recovery workflow.
 
@@ -65,7 +65,7 @@ These policies are resolved in the relevant delivery gate. This plan does not it
 | State contracts and persistence | Partly implemented locally | Versioned confirmations and typed time evidence tested; adoption/evidence retention pending |
 | Confirmation and allowances | Implemented and reviewed locally | Persistence, defaults, provenance and fictional mobile controls tested; saved templates and live HA acceptance pending |
 | Live risk and warnings | Opt-in monitoring and announcements implemented locally | Durable transitions and guarded existing delivery route tested; live HA/physical delivery acceptance pending |
-| End-to-end search | Route contract implemented locally; search pending | Complete endpoint, fresh matched legs, viable transfers and explicit time/change limits tested; acquisition/selection pending |
+| End-to-end search | Route contract and internal Railinfo search implemented locally | Bounded one-query direct/one-change normalization tested; disruption context, user controls, broader provider coverage and selection pending |
 | Explicit adoption | Pending | Whole-route approval, downstream tracking, original evidence retained |
 | Release acceptance | Pending | Outage/restart rehearsals and real-travel observation |
 
@@ -325,3 +325,24 @@ additional preference/wait-bound cases passed in the final focused run. Ruff,
 privacy and documentation checks pass. Hosted validation of the preceding branch
 commit was still queued; no hosted pass is implied. Search acquisition, adoption
 and live journey acceptance remain pending.
+
+
+## Development checkpoint — 6 November 2026
+
+- Added one brokered Railinfo recovery query to the confirmed final destination,
+  with bounded direct/one-change normalization and explicit unavailable outcomes.
+  See [the recovery contract](RECOVERY_ROUTE_CONTRACT.md) for exact limitations.
+- Reject stale origin context before querying; preserve provider observation age
+  and recheck at completion. Reject ambiguous duplicate schedules even if one
+  copy is cancelled. No new runtime caller or public recovery control is enabled.
+- Full local regression: 683 passed, one existing expected failure, and the local
+  TCP frontend-serving test deselected under local network restrictions. Lint,
+  compilation and privacy scan pass. No physical journey acceptance is claimed.
+- Investigated the previous GitHub failure: Python setup failed before tests
+  because `ubuntu-latest` selected Ubuntu 26.04, without a Python 3.14.2 build.
+  Pin the test job to Ubuntu 24.04, supported by the official
+  [Python versions manifest](https://github.com/actions/python-versions/blob/main/versions-manifest.json).
+  HACS and Hassfest had passed; the new run must establish the test outcome.
+- Next: build the recovery request from confirmed connected bookings and an
+  evidenced disruption or explicit user origin confirmation, then expose route
+  review and revalidation before adoption. Broader changes remain a capability gap.

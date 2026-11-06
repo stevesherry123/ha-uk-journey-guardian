@@ -2,10 +2,17 @@
 
 ## Unreleased
 
+- Add an internal, single-query Railinfo recovery search to the confirmed final
+  destination. Validate complete direct/one-change routes with original evidence
+  age, bounded responses and explicit unavailable outcomes. Runtime controls,
+  broader changes, selection and adoption remain pending.
+- Pin the CI test runner to Ubuntu 24.04, where the required Python 3.14.2 build
+  is available; the previous Ubuntu 26.04 run failed before executing tests.
+
 - Add a pure end-to-end recovery route contract that rejects partial destinations,
   disconnected/tight transfers, stale or cancelled service evidence and routes
   outside explicit change/wait/duration bounds. Track option identity separately
-  from prediction/allowance revisions. Search and adoption remain pending.
+  from prediction/allowance revisions. Runtime search controls and adoption remain pending.
 
 - Add restart-safe connection warning transitions through the existing live-alert
   route, with meaningful updates, recovery hysteresis, delivery guards and local

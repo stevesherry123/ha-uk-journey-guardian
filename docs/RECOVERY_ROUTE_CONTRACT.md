@@ -61,7 +61,37 @@ transport. The future user-selection action must revalidate the complete route,
 show the affected original legs and obtain explicit approval. Original bookings
 and evidence must remain intact.
 
-The next work package is provider search acquisition/normalization with bounded
-candidate counts and clear unsupported/no-complete-route outcomes, followed by
-selection and continued tracking. Partial results must never be presented as a
-complete solution when the final destination has not been reached.
+## Development Railinfo search adapter — 6 November 2026
+
+`RailinfoClient.async_recovery_search` now accepts a confirmed recovery request
+and makes one brokered `/journeys` query to its final destination. It uses the
+raw journey-details cache, independently of the existing direct-service matcher.
+It preserves the original observation time, rejects unhealthy cached results,
+and checks freshness again after acquisition. Stale origins and readiness beyond
+the supplied waiting limit are rejected before a provider request.
+
+The pure `normalize_railinfo_recovery` adapter validates the previously observed
+field shape: same-day direct and one-change train routes with explicit Darwin
+predictions at both ends of every leg. It accepts at most 40 response candidates;
+an oversized or malformed envelope is rejected whole. Unsupported candidates,
+partial destinations, duplicate scheduled candidates (including cancellation
+conflicts), missing predictions and unachievable transfers are excluded whole.
+Valid options are ordered by final predicted arrival, then number of legs.
+
+Status values distinguish `options_available`, `no_complete_route_in_response`,
+`invalid_response`, `stale_response`, `provider_unavailable`,
+`recovery_origin_not_current`, `readiness_exceeds_wait_limit` and
+`unsupported_service_day`. No complete route in one response does **not** establish
+that no route exists. A later user flow must offer an actionable manual fallback.
+
+Current limitations: no overnight rollover, cross-station walking links, bus legs
+or searches with more than one change. Caller-supplied waiting, duration and
+freshness limits are still required; these tests do not choose production policy.
+No extra network-wide searches are performed to fill provider coverage gaps.
+
+This is an internal development API with fictional regression fixtures. It is
+not connected to disruption detection, Home Assistant services or dashboard
+buttons. The caller still needs to construct a request from confirmed connected
+bookings and a valid recovery origin. User selection, full revalidation,
+downstream supersession preview, adoption and continued tracking remain pending.
+No automatic recovery or deployment is claimed.

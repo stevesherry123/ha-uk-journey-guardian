@@ -89,6 +89,12 @@ export class JourneyGuardianCard extends BaseElement {
     ).format(new Date(value)) : "Unknown date";
     status.textContent = data.simulation ? "Simulation" : (data.phase || "Unknown").replaceAll("_", " ");
     if (!data.healthy) add("p", "Journey data needs attention. Times may be retained.", root, "notice");
+    for (const warning of (Array.isArray(data.integrity_warnings) ? data.integrity_warnings : []).slice(0, 3)) {
+      if (typeof warning.message !== "string") continue;
+      const notice = add("p", warning.message, root, "notice");
+      notice.setAttribute("role", "status");
+      if (validTime(warning.recorded_at)) add("span", ` Last failed check: ${format(warning.recorded_at)}.`, notice, "secondary");
+    }
     if (validTime(data.checked_at) && Date.now() - Date.parse(data.checked_at) > 20 * 60000) {
       add("p", "Snapshot is over 20 minutes old.", root, "notice");
     }

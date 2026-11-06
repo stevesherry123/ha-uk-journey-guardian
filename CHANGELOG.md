@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add booking-scoped failed-check evidence and a dashboard warning requesting
+  station/time verification and any missing onward details. Keep a previous
+  journey's historical error separate from the selected booking. Do not infer
+  a missing leg, invent a replacement train or add provider calls. Automatic
+  investigation, confirmation actions, restart reconstruction and phone/watch
+  delivery remain pending. See [booking-check warnings](docs/ITINERARY_INTEGRITY.md).
+
 - Add an internal, single-query Railinfo recovery search to the confirmed final
   destination. Validate complete direct/one-change routes with original evidence
   age, bounded responses and explicit unavailable outcomes. Runtime controls,

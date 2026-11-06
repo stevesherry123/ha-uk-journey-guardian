@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - development/rail-connections
+      - development/itinerary-integrity
 
 permissions:
   contents: read

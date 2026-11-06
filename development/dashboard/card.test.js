@@ -8,6 +8,31 @@ test('unavailable, missing and unsupported contracts are not live data',()=>{
   for(const state of ['unknown','unavailable']) assert.equal(readDashboard({states:{'sensor.example':{state,attributes:{dashboard:{schema_version:1}}}}},{entity:'sensor.example'}),null);
   assert.equal(readDashboard({states:{'sensor.example':{state:'planned',attributes:{dashboard:{schema_version:2}}}}},{entity:'sensor.example'}),null);
 });
+test('booking warnings render as bounded text without actions or HTML',()=>{
+  class Element {
+    constructor(tag='div') {this.tag=tag;this.children=[];this.attributes={};}
+    append(child) {this.children.push(child);}
+    setAttribute(name,value) {this.attributes[name]=value;}
+  }
+  const prior=globalThis.document;
+  globalThis.document={createElement:tag=>new Element(tag)};
+  try {
+    const root=new Element();
+    const card=new JourneyGuardianCard();
+    card.config={entity:'sensor.example'};
+    card.shadowRoot={querySelector:selector=>selector==='.content'?root:selector==='.status'?new Element():null};
+    card._hass={config:{time_zone:'Europe/London'},states:{'sensor.example':{
+      state:'planned',attributes:{dashboard:{schema_version:1,healthy:true,
+        integrity_warnings:Array(8).fill({message:'<img src=x onerror=alert(1)> Check booking.',recorded_at:'2026-11-06T08:00:00Z'})}
+      }}}};
+    card.render();
+    const nodes=[];const walk=node=>{nodes.push(node);node.children.forEach(walk);};walk(root);
+    assert.equal(nodes.filter(node=>node.attributes.role==='status').length,3);
+    assert.ok(nodes.some(node=>node.textContent==='<img src=x onerror=alert(1)> Check booking.'));
+    assert.ok(nodes.some(node=>node.textContent===' Last failed check: 08:00 GMT.'));
+    assert.ok(!nodes.some(node=>['img','button','input'].includes(node.tag)));
+  } finally {globalThis.document=prior;}
+});
 test('only increasing finite segments can enter the chart',()=>{
   assert.equal(validTime(null),false);
   assert.equal(validTime('invalid'),false);

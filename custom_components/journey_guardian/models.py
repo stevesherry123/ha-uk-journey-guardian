@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
@@ -19,6 +21,16 @@ class JourneyEvent:
     origin_name: str
     destination_confirmation: str
     decision_path: str
+
+    @property
+    def booking_fingerprint(self) -> str:
+        """Bind diagnostic evidence to exact booking intent, not selection order."""
+        values = [
+            self.start.isoformat(), self.end.isoformat() if self.end else None,
+            self.summary, self.location, self.origin_name,
+            self.destination_confirmation,
+        ]
+        return hashlib.sha256(json.dumps(values).encode()).hexdigest()
 
     def as_dict(self) -> dict[str, Any]:
         """Return a serializable representation."""
@@ -132,6 +144,25 @@ class BudgetSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class RailCheckIssue:
+    """A failed check, not proof that the calendar itself is incorrect."""
+
+    booking_fingerprint: str
+    recorded_at: datetime
+    category: str
+    stage: str
+
+    def as_dict(self) -> dict[str, Any]:
+        """Expose bounded categories and a timestamp, never provider payloads."""
+        return {
+            "booking_fingerprint": self.booking_fingerprint,
+            "recorded_at": self.recorded_at.isoformat(),
+            "category": self.category,
+            "stage": self.stage,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class JourneySnapshot:
     """Coordinator output exposed to Home Assistant."""
 
@@ -147,6 +178,7 @@ class JourneySnapshot:
     last_live_rail_error: str | None = None
     booked_legs: tuple[JourneyEvent, ...] = ()
     booked_leg_count: int = 0
+    current_rail_issue: RailCheckIssue | None = None
 
     @property
     def data_healthy(self) -> bool:
@@ -173,6 +205,9 @@ class JourneySnapshot:
             "data_healthy": self.data_healthy,
             "error": self.error,
             "last_live_rail_error": self.last_live_rail_error,
+            "current_rail_issue": (
+                self.current_rail_issue.as_dict() if self.current_rail_issue else None
+            ),
             "booked_legs": [leg.as_dict() for leg in self.booked_legs],
             "booked_leg_count": self.booked_leg_count,
         }

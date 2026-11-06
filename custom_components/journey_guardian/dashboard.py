@@ -25,6 +25,12 @@ def dashboard_projection(
     """Keep expected milestones separate from the limited delivery evidence."""
     context = notification_context or {}
     journey, timing = snapshot.next_journey, snapshot.timing
+    issue = snapshot.current_rail_issue
+    scoped_issue = bool(
+        not snapshot.simulation_active and journey is not None and issue is not None
+        and issue.booking_fingerprint == journey.booking_fingerprint
+        and _aware(issue.recorded_at)
+    )
     result = {
         "schema_version": 1,
         "checked_at": snapshot.checked_at.isoformat(),
@@ -36,6 +42,8 @@ def dashboard_projection(
         "segments": [],
         "notifications": [],
         "checks": [],
+        "rail_check_issue": issue.as_dict() if scoped_issue else None,
+        "integrity_warnings": [],
         "planned_delivery": (
             "announcement_engine"
             if context.get("announcement_engine_configured")
@@ -55,6 +63,27 @@ def dashboard_projection(
     }
     if journey is None:
         return result
+    if scoped_issue and issue.category in {
+        f"{provider}_{category}"
+        for provider in ("railinfo", "transportapi")
+        for category in (
+            "rail_schedule_mismatch", "rail_service_not_found",
+            "rail_service_ambiguous", "station_not_found",
+            "station_code_unresolved", "station_match_ambiguous",
+        )
+    }:
+        result["integrity_warnings"].append({
+            "kind": "booking_check_required",
+            "recorded_at": issue.recorded_at.isoformat(),
+            "reason": issue.category,
+            "message": (
+                "The last rail check could not verify this booking. "
+                "Check its stations and times, and provide any missing onward "
+                "booking. Your original booking has not been changed."
+            ),
+            "confirmation_required": True,
+            "suggested_service": None,
+        })
     departure = _actionable_departure(snapshot)
     result["journey"] = {
         "origin": journey.origin_name,

@@ -26,7 +26,7 @@ from .const import (
 )
 from .google_routes import GoogleRoutesClient, GoogleRoutesError
 from .journey import select_next_journey
-from .models import JourneyEvent, JourneySnapshot, JourneyTiming
+from .models import JourneyEvent, JourneySnapshot, JourneyTiming, RailCheckIssue
 from .phase import calculate_operational_phase
 from .provider_broker import ProviderBrokerError
 from .rail import RailDataError, normalize_station_board
@@ -95,6 +95,7 @@ class JourneyGuardianEngine:
         self._google_routes_client = google_routes_client
         self._station_resolutions: dict[str, StationResolution] = {}
         self._last_live_rail_error: str | None = None
+        self._last_rail_issue: RailCheckIssue | None = None
         self._route_warning_keys: set[str] = set()
 
     async def async_review(
@@ -157,6 +158,14 @@ class JourneyGuardianEngine:
                 last_live_rail_error=self._last_live_rail_error,
                 booked_legs=booked_legs,
                 booked_leg_count=booked_leg_count,
+                current_rail_issue=(
+                    self._last_rail_issue
+                    if next_journey is not None
+                    and self._last_rail_issue is not None
+                    and self._last_rail_issue.booking_fingerprint
+                    == next_journey.booking_fingerprint
+                    else None
+                ),
             )
         except Exception as err:  # Home Assistant service errors vary by provider
             # Exception messages from calendars and future provider clients may
@@ -261,11 +270,18 @@ class JourneyGuardianEngine:
         except (ProviderBrokerError, RailDataError, StationResolutionError) as err:
             category = getattr(err, "category", "provider_unavailable")
             self._last_live_rail_error = f"{provider}_{category}"
+            self._last_rail_issue = RailCheckIssue(
+                booking_fingerprint=journey.booking_fingerprint,
+                recorded_at=dt_util.now(),
+                category=self._last_live_rail_error,
+                stage=stage,
+            )
             _LOGGER.warning("Manual rail review failed: %s", category)
             degraded = replace(
                 snapshot,
                 budget=self._budget.snapshot(),
                 last_live_rail_error=self._last_live_rail_error,
+                current_rail_issue=self._last_rail_issue,
             )
             await self._async_record_live_check(
                 degraded,
@@ -280,6 +296,7 @@ class JourneyGuardianEngine:
             return degraded
 
         self._last_live_rail_error = None
+        self._last_rail_issue = None
         resolved_journey = replace(
             journey,
             origin_code=station.code,

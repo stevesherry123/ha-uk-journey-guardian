@@ -844,7 +844,42 @@ async def test_manual_review_rejects_materially_later_service() -> None:
     assert result.rail_observation is None
     assert result.budget.calls_used == 3
 
+    issue = result.current_rail_issue
+    assert issue is not None
+    assert issue.booking_fingerprint == base.next_journey.booking_fingerprint
+    assert issue.category == "transportapi_rail_schedule_mismatch"
+    assert issue.stage == "match_timetable"
+
     engine.async_review = JourneyGuardianEngine.async_review.__get__(engine)
+    original_events = [{
+        "start": base.next_journey.start.isoformat(),
+        "end": base.next_journey.end.isoformat(),
+        "summary": base.next_journey.summary,
+        "location": base.next_journey.location,
+    }]
+    engine._async_calendar_events = AsyncMock(return_value=original_events)
+    with patch(
+        "custom_components.journey_guardian.engine.dt_util.now",
+        return_value=base.checked_at,
+    ):
+        same_booking = await engine.async_review()
+        assert same_booking.current_rail_issue == issue
+        engine._async_calendar_events.return_value = [{
+            **original_events[0],
+            "end": (base.next_journey.end + timedelta(minutes=15)).isoformat(),
+        }]
+        edited_booking = await engine.async_review()
+        assert edited_booking.current_rail_issue is None
+        assert edited_booking.last_live_rail_error == issue.category
+
+    client.async_station_board.return_value = _provider_result(_board())
+    recovered = await engine.async_review_live_rail(snapshot=base)
+    assert recovered.current_rail_issue is None
+    assert engine._last_rail_issue is None
+    assert recovered.last_live_rail_error is None
+
+    engine.async_review = JourneyGuardianEngine.async_review.__get__(engine)
+    engine._async_calendar_events.return_value = []
     engine._hass.services.async_call = AsyncMock(
         return_value={CALENDAR_ENTITY: {"events": []}}
     )
@@ -857,7 +892,5 @@ async def test_manual_review_rejects_materially_later_service() -> None:
     assert calendar_result.status == "idle"
     assert calendar_result.error is None
     assert calendar_result.data_healthy
-    assert (
-        calendar_result.last_live_rail_error
-        == "transportapi_rail_schedule_mismatch"
-    )
+    assert calendar_result.last_live_rail_error is None
+    assert calendar_result.current_rail_issue is None

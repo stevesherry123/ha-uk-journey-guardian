@@ -1,8 +1,31 @@
-# Recovery review controller (development only)
+# Recovery route review (development only)
 
-Updated: 6 November 2026. Internal orchestration is implemented and tested.
-Home Assistant commands, dashboard controls, adoption and tracking are pending.
-Nothing in this guide enables a live recovery search automatically.
+Updated 7 November 2026. The development branch includes the Home Assistant
+action and dashboard form for explicit Railinfo recovery review. Route selection,
+adoption and continued tracking are later milestones.
+
+1. Confirm each intended connection between separate rail calendar bookings.
+2. With Railinfo selected and a current calendar review, open **Find another
+   route** on the Journey Guardian card.
+3. Choose the affected train and the final booked train in the connected journey.
+   Enter the station name you can leave from now.
+4. Select **Confirm station and find routes**. Review the predicted times,
+   transfer allowance, expiry and affected bookings. Ticket acceptance is unknown.
+5. If the search cannot verify a complete route, check live departures or ask
+   station staff about onward travel.
+
+The equivalent Home Assistant action is `journey_guardian.review_recovery`.
+It accepts `affected_booking_id`, `final_booking_id` and `origin` and returns a
+status. The status sensor publishes the advisory result in its live `recovery`
+attribute, which is excluded from Recorder. The card displays the live attribute.
+
+This first version treats the traveller as ready at the named station when
+they submit the action. It uses a maximum two-hour wait, eight-hour route
+duration, five-minute evidence age and a calendar review at most 15 minutes old.
+Only same-day direct or one-change Railinfo routes are supported. Affected
+bookings must still be present in the current calendar response. Station names
+and saved station defaults resolve through the existing station resolver before
+one route query. An unresolved station or conflicting defaults stops the review.
 
 ## Intended flow and implemented boundaries
 
@@ -24,14 +47,13 @@ flowchart TD
 ```
 
 `RecoveryReviewController` implements B through H and an internal result for I.
-The surrounding user commands and rendered screens are still required. Search
-acquisition uses [the recovery route contract](RECOVERY_ROUTE_CONTRACT.md).
+The Home Assistant action and card implement A and I. Search acquisition follows
+[the recovery route contract](RECOVERY_ROUTE_CONTRACT.md).
 
 ## State and ownership
 
 The controller is scoped to one integration runtime. Its initial state is
-`not_requested`. A dashboard read cannot trigger acquisition. Only a future
-explicit command may call `async_review`; ordinary coordinator refreshes must not.
+`not_requested`. A dashboard read cannot trigger acquisition. Only the explicit recovery action calls `async_review`.
 A second command during acquisition returns `search_in_progress` without
 starting another query. Search parameters come from an immutable policy snapshot:
 evidence age, initial wait, total duration, resolved transfer preferences and
@@ -62,9 +84,7 @@ refreshes evidence or queries a provider. Expired options require a new explicit
 review. Results are memory-only; restart begins with no reviewed options.
 
 Unavailable, stale, incomplete and unsupported results carry
-`manual_fallback=True`. The future UI must explain the specific outcome and offer
-an actionable fallback, such as opening live departure information or consulting
-station staff for onward travel. A no-complete-route response means no candidate
+`manual_fallback=True`. The card explains the outcome and points to live departures or station staff. A no-complete-route response means no candidate
 validated in that response; it does not establish that no route exists.
 
 Timeouts and expected input/acquisition failures clear the review. Task
@@ -75,16 +95,11 @@ text is replaced with a stable invalid-response category.
 
 ## Validation and next steps
 
-23 focused cases cover explicit-only acquisition, concurrent requests, revocation,
-booking and preference changes during a query, unload, expiry during acquisition
-and later reads, wrong-journey results, old predictions, provider outcomes, failed
-and cancelled commands, and invalid policies. The full local suite passes with
-731 tests and one existing expected failure; the restricted local TCP-serving
-test was deselected. These are software checks, not real-travel acceptance.
+The local suite passed 735 tests with one existing expected failure, including
+the local TCP frontend-serving test. Nine card tests passed. The fictional browser
+preview verified the form, final destination and affected-leg display, and the
+fallback at phone width. Live travel acceptance remains pending.
 
-Next: add a Home Assistant command that constructs current context safely, wire
-this controller into runtime lifecycle cleanup, expose full options and manual
-fallback on the dashboard, then implement selection revalidation and explicit
-adoption. Provider-confirmed cancellation/early-termination origins need their
-own matched evidence adapter. Routes with more than one change remain a provider
-capability gap.
+Selection revalidation, explicit adoption and tracking are the next milestone.
+Provider-confirmed cancellation and early termination need a matched evidence
+adapter. Routes with more than one change remain a provider capability gap.

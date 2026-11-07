@@ -138,4 +138,5 @@ explicit adoption and restart-safe tracking remain outstanding milestones.
 [The recovery review controller](RECOVERY_REVIEW.md) now provides the internal
 single-search and stale-result safeguards around these contracts. It rechecks
 current context after acquisition and revalidates complete routes before exposure.
-Home Assistant command and dashboard wiring remain pending.
+The explicit Home Assistant action and dashboard form now use the controller.
+See [the recovery guide](RECOVERY_REVIEW.md) for development usage and limits.

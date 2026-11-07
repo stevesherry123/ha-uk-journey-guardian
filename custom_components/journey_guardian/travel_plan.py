@@ -281,6 +281,15 @@ class TravelPlanStore:
             )
         ]
 
+    def recovery_bookings(self, now: datetime) -> tuple[RetainedLeg, ...]:
+        """Return bounded, current intent for explicit recovery review."""
+        if self._truncated or self._source != "calendar":
+            raise ValueError("complete_current_calendar_required")
+        return tuple(sorted(
+            (leg for leg in self._legs.values() if now < leg.expiry),
+            key=lambda leg: (leg.departure, leg.booking_id),
+        ))
+
     def connection_pair(
         self, inbound_id: str, outbound_id: str, *, now: datetime,
         monitoring: bool = False,

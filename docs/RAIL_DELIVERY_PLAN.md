@@ -1,6 +1,6 @@
 # Rail connections and end-to-end recovery delivery plan
 
-Updated: 6 November 2026. Status: accepted product scope; partial local implementation.
+Updated: 7 November 2026. Status: accepted product scope; partial local implementation.
 No release date is promised. Current stable: v0.2.13. Existing previews retain
 bookings and show schedule hints; they do not deliver this connection/recovery workflow.
 
@@ -65,7 +65,7 @@ These policies are resolved in the relevant delivery gate. This plan does not it
 | State contracts and persistence | Partly implemented locally | Versioned confirmations and typed time evidence tested; adoption/evidence retention pending |
 | Confirmation and allowances | Implemented and reviewed locally | Persistence, defaults, provenance and fictional mobile controls tested; saved templates and live HA acceptance pending |
 | Live risk and warnings | Opt-in monitoring and announcements implemented locally | Durable transitions and guarded existing delivery route tested; live HA/physical delivery acceptance pending |
-| End-to-end search | Route contract and internal Railinfo search implemented locally | Bounded one-query direct/one-change normalization tested; user-confirmed booking-context builder tested; review controller tested; runtime commands, broader provider coverage and selection pending |
+| End-to-end search | Explicit Railinfo review wired to Home Assistant and dashboard | One-query direct and one-change options, current confirmation rechecks, affected-leg preview and manual fallback tested. Broader provider coverage and selection pending |
 | Explicit adoption | Pending | Whole-route approval, downstream tracking, original evidence retained |
 | Release acceptance | Pending | Outage/restart rehearsals and real-travel observation |
 
@@ -380,3 +380,20 @@ and live journey acceptance remain pending.
   compilation, privacy scan and documentation links pass.
 - The preceding confirmed-context commit passed all GitHub validation jobs.
   Runtime command/dashboard wiring and deployment remain pending.
+
+
+## Home Assistant recovery review checkpoint — 7 November 2026
+
+- Wired the explicit recovery action and dashboard form to the existing review
+  controller. The user confirms the current station and selects the affected and
+  final booked train. Route results show predicted times, transfers, expiry and
+  affected booked legs. Unavailable results show a manual fallback.
+- Recovery requires a healthy calendar review within 15 minutes and a fresh
+  origin confirmation. The initial review policy allows a two-hour departure
+  wait and eight-hour route duration. See [the recovery guide](RECOVERY_REVIEW.md)
+  for supported routes and setup.
+- Full local regression passed 735 tests with one existing expected failure.
+  Nine card tests passed. The fictional browser rehearsal covered action
+  submission, complete route display and phone-width fallback.
+- Selection, adoption, provider-derived recovery origins and real-travel
+  acceptance remain pending.

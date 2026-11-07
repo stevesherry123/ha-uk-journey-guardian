@@ -80,10 +80,32 @@ export function previewData(scenario, now = Date.now()) {
     pair.last_alert = {kind: recovered ? 'recovered' : 'risk', recorded_at: at(-1),
       delivery: unknown ? 'claimed' : 'announcement_engine', receipt_confirmed: false};
   }
+  let recovery;
+  if (scenario.startsWith('recovery')) {
+    const booked = [
+      {id: 'a'.repeat(64), origin: 'Example Central', destination: 'Example Junction',
+        departure: at(90), can_affect: true, can_finish: false},
+      {id: 'b'.repeat(64), origin: 'Example Junction', destination: 'Sample Harbour',
+        departure: at(235), can_affect: true, can_finish: true},
+    ];
+    recovery = {
+      bookings: booked,
+      affected: booked,
+      status: scenario === 'recovery-unavailable' ? 'no_complete_route_in_response' : 'options_available',
+      options: scenario === 'recovery-unavailable' ? [] : [{
+        valid_until: at(5),
+        legs: [
+          {origin: 'EXC', destination: 'EXJ', departure: at(20), arrival: at(45)},
+          {origin: 'EXJ', destination: 'SMP', departure: at(60), arrival: at(90)},
+        ],
+        transfers: [{station: 'EXJ', available: 15, required: 10}],
+      }],
+    };
+  }
   if (scenario === 'empty') dashboard.journey = null;
   return {
     states: {'sensor.example_journey_status': {
-      state: scenario === 'unavailable' ? 'unavailable' : 'planned', attributes: {dashboard},
+      state: scenario === 'unavailable' ? 'unavailable' : 'planned', attributes: recovery ? {dashboard, recovery} : {dashboard},
     }},
     config: {time_zone: 'Europe/London'}, locale: {language: 'en-GB'},
   };

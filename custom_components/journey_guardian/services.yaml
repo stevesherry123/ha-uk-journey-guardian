@@ -112,3 +112,23 @@ revoke_connection:
       required: true
       selector:
         text:
+
+review_recovery:
+  name: Review rail recovery options
+  description: Search from your confirmed current station to the final booking in a confirmed connected journey.
+  fields:
+    affected_booking_id:
+      name: Affected booking ID
+      required: true
+      selector:
+        text:
+    final_booking_id:
+      name: Final booking ID
+      required: true
+      selector:
+        text:
+    origin:
+      name: Confirmed current station name
+      required: true
+      selector:
+        text:

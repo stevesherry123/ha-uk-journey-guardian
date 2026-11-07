@@ -25,6 +25,8 @@
           <option value="connection-risk">Connection at risk</option>
           <option value="connection-recovered">Connection margin recovered</option>
           <option value="connection-unknown">Stale connection / uncertain delivery</option>
+          <option value="recovery-options">Recovery route review</option>
+          <option value="recovery-unavailable">Recovery manual fallback</option>
           <option value="connection-error">Connection save failure</option>
           <option value="normal">Waze preferred</option>
           <option value="google">Google recovery</option>
@@ -41,7 +43,7 @@
         </select>
       </label>
     </header>
-    <p class="note">Fictional data. Connection buttons simulate local saves; no Home Assistant connection.</p>
+    <p class="note">Fictional data. Connection and recovery actions use local examples; no Home Assistant connection.</p>
     <journey-guardian-card></journey-guardian-card>
   </main>
   <script type="module">
@@ -54,6 +56,11 @@
     const update = () => {
       const data = previewData(select.value, now);
       data.callService = async (_domain, action, payload) => {
+        if (action === 'review_recovery') {
+          const fixture = previewData(select.value, Date.now());
+          card.hass = {...data, states: fixture.states};
+          return;
+        }
         if (select.value === 'connection-error') throw new Error('Fictional save failure');
         const pair = data.states['sensor.example_journey_status'].attributes.dashboard.connections[0];
         pair.confirmed = action === 'confirm_connection';

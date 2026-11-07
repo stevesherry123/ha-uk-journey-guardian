@@ -93,6 +93,7 @@ from .notification import JourneyNotificationScheduler, NotificationLedger
 from .provider_broker import ProviderRequestBroker
 from .rail_monitor import AutomaticRailLedger, AutomaticRailMonitor
 from .railinfo import RailinfoClient
+from .recovery_runtime import RecoveryRuntime
 from .runtime import JourneyGuardianRuntimeData
 from .simulation import JourneySimulation
 from .station_access_monitor import StationAccessMonitor
@@ -288,6 +289,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         manual_review=ManualTravelReview(coordinator, notification_scheduler),
         connection_monitor=connection_monitor,
     )
+    if engine._live_rail_provider == "railinfo":
+        coordinator.recovery_runtime = RecoveryRuntime(coordinator, railinfo_client)
+        entry.async_on_unload(coordinator.recovery_runtime.stop)
     entry.async_on_unload(provider_broker.shutdown)
     await coordinator.async_config_entry_first_refresh()
     entry.async_on_unload(
@@ -366,6 +370,9 @@ def _async_register_services(hass: HomeAssistant) -> None:
             raise HomeAssistantError(
                 "Connection confirmation could not be saved"
             ) from err
+        if isinstance(recovery := getattr(coordinator, "recovery_runtime", None),
+                      RecoveryRuntime):
+            recovery.invalidate()
         coordinator.async_update_listeners()
         return {"confirmed": True}
 
@@ -381,8 +388,17 @@ def _async_register_services(hass: HomeAssistant) -> None:
             raise HomeAssistantError(
                 "Connection revocation could not be saved"
             ) from err
+        if isinstance(recovery := getattr(coordinator, "recovery_runtime", None),
+                      RecoveryRuntime):
+            recovery.invalidate()
         coordinator.async_update_listeners()
         return {"confirmed": False}
+
+    async def async_review_recovery(call: ServiceCall) -> dict:
+        recovery = getattr(_runtime(hass).coordinator, "recovery_runtime", None)
+        if recovery is None:
+            return {"status": "provider_unsupported"}
+        return {"status": await recovery.async_search(**call.data)}
 
     pair_schema = {
         vol.Required("inbound_id"): vol.Match(r"^[a-f0-9]{64}$"),
@@ -394,6 +410,11 @@ def _async_register_services(hass: HomeAssistant) -> None:
             vol.Optional("override_minutes"): _transfer_minutes,
         }),
         ("revoke_connection", async_revoke_connection, pair_schema),
+        ("review_recovery", async_review_recovery, {
+            vol.Required("affected_booking_id"): vol.Match(r"^[a-f0-9]{64}$"),
+            vol.Required("final_booking_id"): vol.Match(r"^[a-f0-9]{64}$"),
+            vol.Required("origin"): vol.All(str, str.strip, vol.Length(min=1, max=120)),
+        }),
     ):
         if not hass.services.has_service(DOMAIN, name):
             hass.services.async_register(

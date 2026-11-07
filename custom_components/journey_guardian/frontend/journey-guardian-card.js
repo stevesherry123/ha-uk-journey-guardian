@@ -1,4 +1,4 @@
-/* Beta read-only Lovelace card. No services or network requests. */
+/* Journey Guardian Lovelace card. Explicit actions use Home Assistant services. */
 export function validTime(value) {
   return typeof value === "string" && /(?:Z|[+-]\d{2}:\d{2})$/.test(value) &&
     Number.isFinite(Date.parse(value));
@@ -18,7 +18,9 @@ export function readDashboard(hass, config) {
   const entity = hass?.states?.[config.entity];
   if (!entity || ["unknown", "unavailable"].includes(entity.state)) return null;
   const data = entity.attributes?.dashboard;
-  return data?.schema_version === 1 ? data : null;
+  if (data?.schema_version !== 1) return null;
+  const recovery = entity.attributes.recovery;
+  return recovery ? {...data, recovery} : data;
 }
 
 export function chartRows(data) {
@@ -50,10 +52,15 @@ export class JourneyGuardianCard extends BaseElement {
   connectedCallback() {
     if (!this.timer) this.timer = setInterval(() => this.render(), 60000);
   }
-  disconnectedCallback() { clearInterval(this.timer); this.timer = null; }
+  disconnectedCallback() {
+    clearInterval(this.timer);
+    clearTimeout(this._recoveryExpiry);
+    this.timer = null;
+  }
 
   render() {
     if (!this.config || !this.shadowRoot) return;
+    clearTimeout(this._recoveryExpiry);
     const expanded = this.shadowRoot.querySelector("details")?.open ?? true;
     // Only constant markup enters innerHTML. Calendar/provider values use textContent.
     this.shadowRoot.innerHTML = `<style>
@@ -64,7 +71,7 @@ export class JourneyGuardianCard extends BaseElement {
       .notice{border-left:3px solid var(--warning-color,#c78512);padding:8px 12px;margin-top:12px;background:var(--secondary-background-color,#f3f5f5)}
       .timeline{margin-top:16px}.track{height:14px;background:var(--secondary-background-color,#eef1f2);position:relative;margin:6px 0 13px;border-radius:2px;overflow:hidden}.bar{height:100%;background:var(--primary-color,#008b9a);border-radius:2px}.rail{background:var(--success-color,#288262)}.now{position:absolute;top:0;bottom:0;width:2px;background:var(--primary-text-color,#202322)}
       .row-title{font-size:13px}.axis{font-size:12px}.rows{list-style:none;margin:0;padding:0}.rows li{display:grid;grid-template-columns:68px minmax(0,1fr);gap:12px;padding:10px 0;border-top:1px solid var(--divider-color,#dadddf)}time{font-variant-numeric:tabular-nums;font-weight:500}.secondary{font-size:12px;color:var(--secondary-text-color,#5d6568);overflow-wrap:anywhere}.routing{display:grid;grid-template-columns:1fr auto;gap:6px 16px}.routing dd,.routing dt{margin:0}.routing dd{text-align:right;font-variant-numeric:tabular-nums}.evidence{margin-top:16px;padding-top:12px;border-top:1px solid var(--divider-color,#dadddf)}summary{font-weight:500;cursor:pointer}details[open] summary{margin-bottom:10px}.empty{padding:24px 0}.bookings{margin-top:12px}.bookings strong{font-weight:500}.badge{color:var(--warning-color,#a46b05)}
-      input,button{font:inherit;max-width:100%;padding:8px;margin:6px 8px 6px 0}input{width:100px}button{white-space:normal;cursor:pointer}button:disabled{cursor:default;opacity:.6}label{display:block;overflow-wrap:anywhere}
+      input,select,button{font:inherit;max-width:100%;padding:8px;margin:6px 8px 6px 0}input{width:100px}input[type=text]{width:260px}button{white-space:normal;cursor:pointer}button:disabled{cursor:default;opacity:.6}label{display:block;overflow-wrap:anywhere}
       @media(max-width:420px){ha-card{padding:16px}.route{font-size:19px}.row-title{display:block}.row-title span{display:block}.routing{grid-template-columns:minmax(0,1fr) auto}.rows li{grid-template-columns:58px minmax(0,1fr);gap:8px}}
     </style><ha-card><header><h1>Journey Guardian</h1><span class="status"></span></header><div class="content"></div></ha-card>`;
     const root = this.shadowRoot.querySelector(".content");
@@ -157,6 +164,100 @@ export class JourneyGuardianCard extends BaseElement {
           revoke.disabled = Boolean(this._connectionPending) || data.connection_storage_error;
           revoke.addEventListener("click", () => submit("revoke_connection"));
           buttons.push(revoke);
+        }
+      }
+    }
+    const recovery = data.recovery;
+    if (recovery?.bookings?.some(leg => leg.can_finish)) {
+      add("h2", "Find another route");
+      const section = add("div", "", root, "evidence");
+      add("p", "Choose the affected train and your final booked train. Confirm the station you can leave from.", section);
+      this._recoveryDraft ??= {};
+      const bookingSelect = (title, key, eligibility) => {
+        const label = add("label", title + " ", section);
+        const select = add("select", "", label);
+        add("option", "Choose a train", select).value = "";
+        for (const leg of recovery.bookings.filter(leg => leg[eligibility])) {
+          add("option", `${day(leg.departure)} ${format(leg.departure)} · ${leg.origin} to ${leg.destination}`, select).value = leg.id;
+        }
+        select.value = this._recoveryDraft[key] || "";
+        select.addEventListener("change", () => {
+          this._recoveryDraft[key] = select.value;
+          updateButton();
+        });
+        return select;
+      };
+      const affected = bookingSelect("Affected train", "affected_booking_id", "can_affect");
+      const final = bookingSelect("Final booked train", "final_booking_id", "can_finish");
+      const label = add("label", "Current station name ", section);
+      const origin = add("input", "", label);
+      origin.type = "text";
+      origin.maxLength = 120;
+      origin.value = this._recoveryDraft.origin || "";
+      origin.addEventListener("input", () => {
+        this._recoveryDraft.origin = origin.value;
+        updateButton();
+      });
+      const button = add("button", "Confirm station and find routes", section);
+      const updateButton = () => {
+        button.disabled = Boolean(this._recoveryPending) ||
+          !affected.value || !final.value || !origin.value.trim();
+      };
+      updateButton();
+      const feedback = add("p", this._recoveryPending ? "Searching for complete routes…" :
+        this._recoveryError || "", section, "secondary");
+      feedback.setAttribute("role", "status");
+      button.addEventListener("click", async () => {
+        if (button.disabled) return;
+        this._recoveryPending = true;
+        this._recoveryError = "";
+        this.render();
+        try {
+          await this._hass.callService("journey_guardian", "review_recovery", {
+            affected_booking_id: affected.value,
+            final_booking_id: final.value,
+            origin: origin.value.trim(),
+          });
+        } catch (_) {
+          this._recoveryError = "Could not start the search. Check Home Assistant and try again.";
+        } finally {
+          this._recoveryPending = false;
+          this.render();
+        }
+      });
+      if (!this._recoveryPending) {
+        const options = (recovery.options || []).filter(option =>
+          validTime(option.valid_until) && Date.parse(option.valid_until) > Date.now());
+        if (options.length) {
+          if (this.isConnected) {
+            const expiry = Math.min(...options.map(option => Date.parse(option.valid_until)));
+            this._recoveryExpiry = setTimeout(() => this.render(), Math.max(1, expiry - Date.now()));
+          }
+          add("p", "Ticket acceptance is unknown. Check with station staff before boarding.", section, "notice");
+          for (const option of options) {
+            const route = add("div", "", section, "evidence");
+            add("p", `Predicted times · review valid until ${format(option.valid_until)}`, route, "secondary");
+            for (const leg of option.legs) {
+              add("p", `${leg.origin} ${format(leg.departure)} → ${leg.destination} ${format(leg.arrival)}`, route);
+            }
+            for (const transfer of option.transfers) {
+              add("p", `Change at ${transfer.station}: ${transfer.available} minutes available, ${transfer.required} required`, route, "secondary");
+            }
+          }
+          add("p", "Booked trains this recovery would replace:", section, "secondary");
+          for (const leg of recovery.affected || []) {
+            add("p", `${format(leg.departure)} · ${leg.origin} to ${leg.destination}`, section);
+          }
+        } else if (recovery.status !== "not_requested") {
+          const explanations = {
+            no_complete_route_in_response: "This search found no complete route it could verify.",
+            options_available: "These options have expired. Search again for current times.",
+            context_changed: "The booking or confirmation needs review. Check your choices and try again.",
+            provider_unavailable: "Live rail information is unavailable.",
+            review_unavailable: "Check the current station name and confirmed bookings, then try again.",
+          };
+          add("p", explanations[recovery.status] || "Complete recovery options are unavailable.", section, "notice");
+          add("p", "Check live departures or ask station staff about onward travel.", section, "secondary");
         }
       }
     }

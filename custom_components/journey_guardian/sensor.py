@@ -87,6 +87,8 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
     _attr_translation_key = "status"
     _attr_icon = "mdi:shield-check"
 
+    _unrecorded_attributes = frozenset({"recovery"})
+
     def __init__(
         self,
         coordinator,
@@ -273,6 +275,9 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
         )
         if isinstance(connections, dict):
             attributes["dashboard"].update(connections)
+        recovery = getattr(self.coordinator, "recovery_runtime", None)
+        if recovery is not None:
+            attributes["recovery"] = recovery.dashboard(dt_util.utcnow())
         return attributes
 
 

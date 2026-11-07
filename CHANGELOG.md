@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Wire explicit Railinfo recovery review into Home Assistant and the dashboard.
+  Confirm the current station, select the affected and final booked trains,
+  and review complete routes, transfer time, expiry and affected bookings.
+  Show manual fallback when a route cannot be verified. Adoption is pending.
+
 - Add an internal explicit recovery-review controller with one in-flight query,
   context and preference rechecks, complete-route revalidation, expiry on reads
   and invalidation after revocation or unload. Keep results advisory and require

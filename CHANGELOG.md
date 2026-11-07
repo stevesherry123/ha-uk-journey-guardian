@@ -2,11 +2,15 @@
 
 ## Unreleased
 
+- Restore booking-check warnings from the existing bounded history after a
+  restart, scoped to the exact booking and integration settings. A later
+  check supersedes older evidence; unscoped legacy records cannot raise warnings.
+
 - Add booking-scoped failed-check evidence and a dashboard warning requesting
   station/time verification and any missing onward details. Keep a previous
   journey's historical error separate from the selected booking. Do not infer
   a missing leg, invent a replacement train or add provider calls. Automatic
-  investigation, confirmation actions, restart reconstruction and phone/watch
+  investigation, confirmation actions and phone/watch
   delivery remain pending. See [booking-check warnings](docs/ITINERARY_INTEGRITY.md).
 
 - Add an internal, single-query Railinfo recovery search to the confirmed final

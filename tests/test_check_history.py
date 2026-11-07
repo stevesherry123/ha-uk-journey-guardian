@@ -1,6 +1,9 @@
 """Tests for restart-safe live-check history."""
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
+
+import pytest
 
 from custom_components.journey_guardian.check_history import (
     MAX_RECORDS,
@@ -45,3 +48,42 @@ async def test_history_restores_only_mappings(hass) -> None:
     await history.async_load()
 
     assert history.records() == [{"outcome": "failed"}]
+
+
+@pytest.mark.parametrize("latest", [
+    {"outcome": "success"},
+    {"booking_check_failure": "railinfo_provider_unavailable"},
+    {"booking_check_recorded_at": "2026-11-08T08:00:00+00:00"},
+    {"booking_check_recorded_at": "2026-11-07T08:00:00"},
+    {"stage": "invalid"},
+])
+async def test_history_does_not_restore_superseded_or_invalid_warning(hass, latest):
+    now = datetime(2026, 11, 7, 8, tzinfo=UTC)
+    failure = {
+        "operation": "station_timetables",
+        "booking_check_key": "example-key",
+        "booking_check_recorded_at": now.isoformat(),
+        "booking_check_failure": "railinfo_rail_schedule_mismatch",
+        "stage": "match_timetable",
+        "outcome": "failed",
+    }
+    history = CheckHistory(hass)
+    history._store.async_load = AsyncMock(
+        return_value={"records": [failure, {**failure, **latest}]}
+    )
+    await history.async_load()
+    assert history.booking_issue("example-key", "fingerprint", now) is None
+
+
+async def test_legacy_history_cannot_restore_a_booking_warning(hass):
+    history = CheckHistory(hass)
+    history._store.async_load = AsyncMock(return_value={"records": [{
+        "operation": "station_timetables",
+        "journey_fingerprint": "legacy-fingerprint",
+        "error_category": "rail_schedule_mismatch",
+        "outcome": "failed",
+    }]})
+    await history.async_load()
+    assert history.booking_issue(
+        "example-key", "fingerprint", datetime(2026, 11, 7, 8, tzinfo=UTC)
+    ) is None

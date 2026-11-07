@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, Mock, call, patch
 import pytest
 from homeassistant.core import SupportsResponse
 
+from custom_components.journey_guardian.check_history import CheckHistory
 from custom_components.journey_guardian.engine import JourneyGuardianEngine
 from custom_components.journey_guardian.google_routes import (
     GoogleRoutesError,
@@ -783,7 +784,7 @@ async def test_manual_live_review_requires_credentials_without_calling_api() -> 
     client.async_station_board.assert_not_called()
 
 
-async def test_manual_review_rejects_materially_later_service() -> None:
+async def test_manual_review_rejects_materially_later_service(hass) -> None:
     """A unique nearby train cannot silently make conservative advice later."""
     client = Mock()
     client.configured = True
@@ -823,15 +824,23 @@ async def test_manual_review_rejects_materially_later_service() -> None:
     base = _calendar_snapshot()
     budget = _budget()
     budget.snapshot.return_value = BudgetSnapshot("2026-09-03", 3, 30, 3)
+    history = CheckHistory(hass)
+    history._store.async_save = AsyncMock()
     engine = JourneyGuardianEngine(
         Mock(),
         calendar_entity=CALENDAR_ENTITY,
         budget=budget,
         transportapi_client=client,
+        check_history=history,
+        check_history_scope="example-entry",
     )
     engine.async_review = AsyncMock(return_value=base)
 
-    result = await engine.async_review_live_rail()
+    with patch(
+        "custom_components.journey_guardian.engine.dt_util.now",
+        return_value=base.checked_at,
+    ):
+        result = await engine.async_review_live_rail()
 
     assert result.status == "planned"
     assert result.error is None
@@ -849,6 +858,23 @@ async def test_manual_review_rejects_materially_later_service() -> None:
     assert issue.booking_fingerprint == base.next_journey.booking_fingerprint
     assert issue.category == "transportapi_rail_schedule_mismatch"
     assert issue.stage == "match_timetable"
+    assert issue.recorded_at == base.checked_at
+
+    restored_history = CheckHistory(hass)
+    restored_history._store.async_load = AsyncMock(
+        return_value=history._store.async_save.await_args.args[0]
+    )
+    await restored_history.async_load()
+    restarted = JourneyGuardianEngine(
+        Mock(), calendar_entity=CALENDAR_ENTITY, budget=budget,
+        check_history=restored_history, check_history_scope="example-entry",
+    )
+    assert restarted._booking_issue(base.next_journey, base.checked_at) == issue
+    unrelated = JourneyGuardianEngine(
+        Mock(), calendar_entity=CALENDAR_ENTITY, budget=budget,
+        check_history=restored_history, check_history_scope="different-entry",
+    )
+    assert unrelated._booking_issue(base.next_journey, base.checked_at) is None
 
     engine.async_review = JourneyGuardianEngine.async_review.__get__(engine)
     original_events = [{
@@ -858,12 +884,16 @@ async def test_manual_review_rejects_materially_later_service() -> None:
         "location": base.next_journey.location,
     }]
     engine._async_calendar_events = AsyncMock(return_value=original_events)
+    restarted._async_calendar_events = AsyncMock(return_value=original_events)
     with patch(
         "custom_components.journey_guardian.engine.dt_util.now",
         return_value=base.checked_at,
     ):
         same_booking = await engine.async_review()
         assert same_booking.current_rail_issue == issue
+        after_restart = await restarted.async_review()
+        assert after_restart.current_rail_issue == issue
+        assert after_restart.last_live_rail_error is None
         engine._async_calendar_events.return_value = [{
             **original_events[0],
             "end": (base.next_journey.end + timedelta(minutes=15)).isoformat(),
@@ -877,6 +907,11 @@ async def test_manual_review_rejects_materially_later_service() -> None:
     assert recovered.current_rail_issue is None
     assert engine._last_rail_issue is None
     assert recovered.last_live_rail_error is None
+    restored_history._store.async_load.return_value = (
+        history._store.async_save.await_args.args[0]
+    )
+    await restored_history.async_load()
+    assert restarted._booking_issue(base.next_journey, base.checked_at) is None
 
     engine.async_review = JourneyGuardianEngine.async_review.__get__(engine)
     engine._async_calendar_events.return_value = []

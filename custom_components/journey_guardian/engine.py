@@ -6,7 +6,7 @@ import hashlib
 import logging
 from collections.abc import Mapping
 from dataclasses import replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
@@ -72,6 +72,7 @@ class JourneyGuardianEngine:
         station_access_mode: str = "auto",
         station_access_profiles: object = None,
         google_routes_client: GoogleRoutesClient | None = None,
+        check_history_scope: str = "",
     ) -> None:
         """Initialize the engine."""
         self._hass = hass
@@ -87,6 +88,9 @@ class JourneyGuardianEngine:
         self._railinfo_client = railinfo_client
         self._live_rail_provider = live_rail_provider
         self._check_history = check_history
+        self._check_history_scope = hashlib.sha256(
+            f"{check_history_scope}|{calendar_entity}|{live_rail_provider}".encode()
+        ).hexdigest()
         self._person_entity = person_entity
         self._station_access_mode = station_access_mode
         self._station_access_profiles = parse_station_access_profiles(
@@ -158,14 +162,7 @@ class JourneyGuardianEngine:
                 last_live_rail_error=self._last_live_rail_error,
                 booked_legs=booked_legs,
                 booked_leg_count=booked_leg_count,
-                current_rail_issue=(
-                    self._last_rail_issue
-                    if next_journey is not None
-                    and self._last_rail_issue is not None
-                    and self._last_rail_issue.booking_fingerprint
-                    == next_journey.booking_fingerprint
-                    else None
-                ),
+                current_rail_issue=self._booking_issue(next_journey, checked_at),
             )
         except Exception as err:  # Home Assistant service errors vary by provider
             # Exception messages from calendars and future provider clients may
@@ -292,6 +289,7 @@ class JourneyGuardianEngine:
                 destination,
                 stage,
                 getattr(err, "schedule_offset_minutes", None),
+                booked_journey=journey,
             )
             return degraded
 
@@ -356,6 +354,7 @@ class JourneyGuardianEngine:
             destination,
             "complete",
             None,
+            booked_journey=journey,
         )
         return result
 
@@ -508,6 +507,26 @@ class JourneyGuardianEngine:
             station_access_provider_minutes=estimate.duration_minutes,
         )
 
+    def _booking_check_key(self, fingerprint: str) -> str:
+        return hashlib.sha256(
+            f"{self._check_history_scope}:{fingerprint}".encode()
+        ).hexdigest()
+
+    def _booking_issue(
+        self, journey: JourneyEvent | None, now: datetime
+    ) -> RailCheckIssue | None:
+        if journey is None:
+            return None
+        fingerprint = journey.booking_fingerprint
+        issue = self._last_rail_issue
+        if issue is not None and issue.booking_fingerprint == fingerprint:
+            return issue
+        if self._check_history is not None:
+            return self._check_history.booking_issue(
+                self._booking_check_key(fingerprint), fingerprint, now
+            )
+        return None
+
     async def _async_record_live_check(
         self,
         snapshot,
@@ -518,6 +537,8 @@ class JourneyGuardianEngine:
         destination,
         stage,
         schedule_offset_minutes,
+        *,
+        booked_journey: JourneyEvent,
     ) -> None:
         """Persist a privacy-safe live-check audit record."""
         if self._check_history is None:
@@ -529,12 +550,20 @@ class JourneyGuardianEngine:
                 f"{journey.start.isoformat()}|{journey.origin_name}|{journey.destination_confirmation}".encode()
             ).hexdigest()[:16]
         observation = snapshot.rail_observation
+        issue = snapshot.current_rail_issue
         await self._check_history.async_record(
             {
                 "checked_at": snapshot.checked_at.isoformat(),
                 "journey_date": journey.start.date().isoformat() if journey else None,
                 "trigger": trigger,
                 "journey_fingerprint": fingerprint,
+                "booking_check_key": self._booking_check_key(
+                    booked_journey.booking_fingerprint
+                ),
+                "booking_check_recorded_at": (
+                    issue.recorded_at if issue else dt_util.now()
+                ).isoformat(),
+                "booking_check_failure": issue.category if issue else None,
                 "origin_code": (
                     station.code
                     if station

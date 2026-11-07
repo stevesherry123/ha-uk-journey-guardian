@@ -8,6 +8,16 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
 
+BOOKING_CHECK_FAILURES = frozenset(
+    f"{provider}_{category}"
+    for provider in ("railinfo", "transportapi")
+    for category in (
+        "rail_schedule_mismatch", "rail_service_not_found",
+        "rail_service_ambiguous", "station_not_found",
+        "station_code_unresolved", "station_match_ambiguous",
+    )
+)
+
 
 @dataclass(frozen=True, slots=True)
 class JourneyEvent:

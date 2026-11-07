@@ -168,6 +168,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             CONF_LIVE_RAIL_PROVIDER, DEFAULT_LIVE_RAIL_PROVIDER
         ),
         check_history=check_history,
+        check_history_scope=entry.entry_id,
         person_entity=entry.data.get(CONF_PERSON_ENTITY, ""),
         station_access_mode=settings.get(
             CONF_STATION_ACCESS_MODE, DEFAULT_STATION_ACCESS_MODE

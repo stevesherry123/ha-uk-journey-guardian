@@ -15,17 +15,19 @@ as proof that your booking is wrong.
   category, stage and hashed booking identity. Its time can be later than the
   calendar snapshot's `checked_at`: they describe different operations.
 - The dashboard shows the last failed-check time, not a claim that a fresh check
-  is running. The warning remains until a successful check or a booking change;
-  it does not expire into an implied successful verification.
+  is running. A newer check replaces that evidence; a booking change prevents
+  the warning from carrying over. No warning does not imply verification.
 - Identity includes departure, arrival, title, location and endpoint labels.
   Changing a booking cannot inherit an unrelated warning. A successful live
   check clears the current failure. Simulation and idle views do not display it.
 - The older `last_live_rail_error` remains a historical diagnostic. It alone
   cannot establish that the currently selected booking failed verification.
-- This slice retains one scoped failure in memory. The existing check-history
-  store still records failed checks, but rebuilding scoped warnings after a
-  restart is not implemented here. No new recorder, poller or provider requests
-  are introduced.
+- The existing bounded check history restores the latest actionable failure
+  after restart for the exact booking, integration entry, calendar and provider.
+  Older records without a scoped booking key are not restored as warnings.
+  A later success or non-booking failure supersedes the older warning. Restored
+  evidence retains its original check time and cannot certify a live match.
+  No new recorder, poller or provider requests are introduced.
 
 ## What is not implemented
 
@@ -44,9 +46,9 @@ unchanged.
 
 ## Validation of this development slice
 
-The backend suite passed 696 tests with the existing early-termination expected
-failure. Three frontend-serving tests passed separately with local-only network
-access; ten Node dashboard tests passed, including warning bounds and plain-text
-rendering. Repository lint, compilation, privacy scan and diff checks pass.
+The network-disabled suite passed 704 tests with the existing early-termination
+expected failure. The remaining dashboard-serving test passed separately with
+local-only network access. Ten Node dashboard tests passed, including warning
+bounds and plain-text rendering. Lint, privacy scan and diff checks passed.
 No physical-device delivery or live HA acceptance is implied. Later work on the
 parallel connection branch requires its own merged-tree validation.

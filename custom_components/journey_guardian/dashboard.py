@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from .booking_overview import render_bookings
-from .models import JourneySnapshot
+from .models import BOOKING_CHECK_FAILURES, JourneySnapshot
 from .notification import (
     WAKE_REMINDER_OFFSETS,
     _actionable_departure,
@@ -63,15 +63,7 @@ def dashboard_projection(
     }
     if journey is None:
         return result
-    if scoped_issue and issue.category in {
-        f"{provider}_{category}"
-        for provider in ("railinfo", "transportapi")
-        for category in (
-            "rail_schedule_mismatch", "rail_service_not_found",
-            "rail_service_ambiguous", "station_not_found",
-            "station_code_unresolved", "station_match_ambiguous",
-        )
-    }:
+    if scoped_issue and issue.category in BOOKING_CHECK_FAILURES:
         result["integrity_warnings"].append({
             "kind": "booking_check_required",
             "recorded_at": issue.recorded_at.isoformat(),

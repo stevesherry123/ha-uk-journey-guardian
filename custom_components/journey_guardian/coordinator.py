@@ -72,6 +72,8 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         self.health_issues = JourneyHealthIssues(hass)
         entry.async_on_unload(self.health_issues.stop)
         self._last_live_snapshot: JourneySnapshot | None = None
+        self._booking_match_revision = 0
+        self._booking_match_review: BookingMatchResult | None = None
         settings = {**entry.data, **entry.options}
         self.connection_monitor_enabled = settings.get(CONF_CONNECTION_MONITOR, False)
         self.connection_alert_ledger = None
@@ -348,10 +350,36 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
             or snapshot.next_journey != request.booking
         ):
             return BookingMatchResult("booking_match_context_unavailable")
+        self._booking_match_revision += 1
+        revision = self._booking_match_revision
+        self._booking_match_review = None
         result = await self.engine.async_booking_match(request)
-        if self.data is not snapshot or not self.last_update_success:
+        if (
+            self.data is not snapshot or not self.last_update_success
+            or revision != self._booking_match_revision
+        ):
             return BookingMatchResult("booking_match_context_changed")
+        if result.proposal is not None:
+            self._booking_match_review = result
         return result
+
+    def confirm_booking_match(self, proposal_id: str) -> BookingMatchResult:
+        """Acknowledge one current proposal, without changing operational intent."""
+        snapshot = self.data
+        review = self._booking_match_review
+        proposal = review.proposal if review is not None else None
+        if (
+            not self.last_update_success or snapshot is None
+            or snapshot.error or snapshot.simulation_active
+            or snapshot.next_journey is None or proposal is None
+            or snapshot.next_journey.booking_fingerprint != proposal.booking_fingerprint
+            or proposal.proposal_id != proposal_id
+            or not proposal.observed_at <= dt_util.utcnow() < proposal.valid_until
+        ):
+            return BookingMatchResult("booking_match_confirmation_unavailable")
+        confirmed = BookingMatchResult("proposal_confirmed", proposal, confirmed=True)
+        self._booking_match_review = confirmed
+        return confirmed
 
     async def async_test_station_access(
         self, *, automatic: bool = False

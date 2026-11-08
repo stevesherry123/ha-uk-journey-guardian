@@ -93,6 +93,7 @@ from .notification import JourneyNotificationScheduler, NotificationLedger
 from .provider_broker import ProviderRequestBroker
 from .rail_monitor import AutomaticRailLedger, AutomaticRailMonitor
 from .railinfo import RailinfoClient
+from .railinfo_booking_match import BookingMatchRequest, BookingMatchResult
 from .runtime import JourneyGuardianRuntimeData
 from .simulation import JourneySimulation
 from .station_access_monitor import StationAccessMonitor
@@ -348,6 +349,48 @@ def _transfer_minutes(value):
 
 
 def _async_register_services(hass: HomeAssistant) -> None:
+    async def async_investigate_booking(call: ServiceCall) -> dict:
+        coordinator = _runtime(hass).coordinator
+        snapshot = coordinator.data
+        booking = snapshot.next_journey if snapshot is not None else None
+        if booking is None or booking.booking_fingerprint != call.data["booking_id"]:
+            return BookingMatchResult("booking_match_context_unavailable").as_dict()
+        try:
+            request = BookingMatchRequest(
+                booking, call.data["origin_code"], call.data["booked_destination_code"],
+                call.data["alternative_code"],
+            )
+        except ValueError:
+            return BookingMatchResult("booking_match_invalid_request").as_dict()
+        return (await coordinator.async_booking_match(request)).as_dict()
+
+    if not hass.services.has_service(DOMAIN, "investigate_booking"):
+        station_code = vol.Match(r"^[A-Z]{3}\Z")
+        hass.services.async_register(
+            DOMAIN, "investigate_booking", async_investigate_booking,
+            schema=vol.Schema({
+                vol.Required("booking_id"): vol.Match(r"^[a-f0-9]{64}\Z"),
+                vol.Required("origin_code"): station_code,
+                vol.Required("booked_destination_code"): station_code,
+                vol.Required("alternative_code"): station_code,
+            }),
+            supports_response=SupportsResponse.ONLY,
+        )
+
+    async def async_confirm_booking_match(call: ServiceCall) -> dict:
+        return _runtime(hass).coordinator.confirm_booking_match(
+            call.data["proposal_id"]
+        ).as_dict()
+
+    if not hass.services.has_service(DOMAIN, "confirm_booking_match"):
+        hass.services.async_register(
+            DOMAIN, "confirm_booking_match", async_confirm_booking_match,
+            schema=vol.Schema({
+                vol.Required("proposal_id"): vol.Match(r"^[a-f0-9]{64}\Z"),
+            }),
+            supports_response=SupportsResponse.ONLY,
+        )
+
     async def async_confirm_connection(call: ServiceCall) -> dict:
         coordinator = _runtime(hass).coordinator
         snapshot = coordinator.data

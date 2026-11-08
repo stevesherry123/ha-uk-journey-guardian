@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add response-only Home Assistant actions to investigate an exact booking
+  and acknowledge its current timetable proposal. Confirmation is temporary
+  review state, not a calendar edit or change to the tracked service.
+
 - Guard explicit timetable investigations against edited bookings, simulation
   and changes during a lookup. Do not silently switch providers.
 

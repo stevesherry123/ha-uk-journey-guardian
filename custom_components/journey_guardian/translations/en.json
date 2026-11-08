@@ -207,6 +207,23 @@
     }
   },
   "services": {
+    "confirm_booking_match": {
+      "name": "Confirm timetable proposal",
+      "description": "Acknowledge the exact unexpired proposal without changing the tracked train.",
+      "fields": {
+        "proposal_id": {"name": "Proposal ID"}
+      }
+    },
+    "investigate_booking": {
+      "name": "Investigate booking mismatch",
+      "description": "Check one alternative station through Railinfo without changing the booking.",
+      "fields": {
+        "booking_id": {"name": "Booking fingerprint"},
+        "origin_code": {"name": "Origin station code"},
+        "booked_destination_code": {"name": "Booked destination station code"},
+        "alternative_code": {"name": "Alternative station code"}
+      }
+    },
     "travel_review_now": {
       "name": "Travel review now",
       "description": "Refresh the calendar, station access and eligible live rail data, then send a briefing. Repeated taps within 30 seconds reuse the result.",

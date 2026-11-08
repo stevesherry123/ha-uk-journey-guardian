@@ -1,5 +1,6 @@
 """Tests for Journey Guardian coordinator polling."""
 
+import asyncio
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, Mock, patch
@@ -21,6 +22,7 @@ from custom_components.journey_guardian.models import (
     RailObservation,
 )
 from custom_components.journey_guardian.railinfo_booking_match import (
+    BookingMatchProposal,
     BookingMatchRequest,
     BookingMatchResult,
 )
@@ -80,6 +82,89 @@ async def test_booking_match_is_read_only_and_rejects_changed_context(hass, stat
         engine.async_booking_match.assert_awaited_once_with(request)
         assert result.status == "no_match"
         assert coordinator.data is snapshot
+
+
+@pytest.mark.parametrize("condition", ["current", "expired", "edited", "wrong_id"])
+async def test_confirmation_applies_only_to_current_unexpired_proposal(hass, condition):
+    booking = JourneyEvent(
+        CHECKED_AT + timedelta(hours=1), CHECKED_AT + timedelta(hours=2),
+        "Example Central to Sample Harbour", "", "EXC", "Example Central",
+        "Sample Harbour", "calendar_route",
+    )
+    request = BookingMatchRequest(booking, "EXC", "SMP", "EXJ")
+    proposal = BookingMatchProposal(
+        booking.booking_fingerprint, "a" * 16, "EXC", "EXJ",
+        booking.start, booking.end, CHECKED_AT, CHECKED_AT + timedelta(minutes=5),
+    )
+    engine = Mock(async_booking_match=AsyncMock(
+        return_value=BookingMatchResult("proposal_available", proposal)
+    ))
+    coordinator = JourneyGuardianCoordinator(
+        hass, MockConfigEntry(domain=DOMAIN), engine
+    )
+    coordinator.data = replace(_idle_snapshot(), next_journey=booking)
+    await coordinator.async_booking_match(request)
+    if condition == "edited":
+        coordinator.data = replace(
+            coordinator.data, next_journey=replace(booking, end=None)
+        )
+    snapshot = coordinator.data
+    proposal_id = "b" * 64 if condition == "wrong_id" else proposal.proposal_id
+    with patch(
+        "custom_components.journey_guardian.coordinator.dt_util.utcnow",
+        return_value=proposal.valid_until if condition == "expired" else CHECKED_AT,
+    ):
+        result = coordinator.confirm_booking_match(proposal_id)
+    if condition == "current":
+        assert result.status == "proposal_confirmed"
+        assert result.as_dict()["proposal"]["confirmation_required"] is False
+    else:
+        assert result.status == "booking_match_confirmation_unavailable"
+        assert result.proposal is None
+    assert coordinator.data is snapshot
+    engine.async_booking_match.assert_awaited_once()
+
+
+async def test_new_investigation_discards_older_in_flight_result(hass):
+    booking = JourneyEvent(
+        CHECKED_AT + timedelta(hours=1), CHECKED_AT + timedelta(hours=2),
+        "Example Central to Sample Harbour", "", "EXC", "Example Central",
+        "Sample Harbour", "calendar_route",
+    )
+    old_request = BookingMatchRequest(booking, "EXC", "SMP", "EXJ")
+    new_request = BookingMatchRequest(booking, "EXC", "SMP", "EXO")
+    started, finish = asyncio.Event(), asyncio.Event()
+    proposal = BookingMatchProposal(
+        booking.booking_fingerprint, "a" * 16, "EXC", "EXJ",
+        booking.start, booking.end, CHECKED_AT, CHECKED_AT + timedelta(minutes=5),
+    )
+
+    async def lookup(request):
+        if request == old_request:
+            started.set()
+            await finish.wait()
+            return BookingMatchResult("proposal_available", proposal)
+        return BookingMatchResult("no_match")
+
+    coordinator = JourneyGuardianCoordinator(
+        hass, MockConfigEntry(domain=DOMAIN),
+        Mock(async_booking_match=AsyncMock(side_effect=lookup)),
+    )
+    coordinator.data = replace(_idle_snapshot(), next_journey=booking)
+    async with asyncio.TaskGroup() as group:
+        older = group.create_task(coordinator.async_booking_match(old_request))
+        await started.wait()
+        try:
+            newer = await coordinator.async_booking_match(new_request)
+            assert newer.status == "no_match"
+        finally:
+            finish.set()
+    assert older.result().status == "booking_match_context_changed"
+    with patch(
+        "custom_components.journey_guardian.coordinator.dt_util.utcnow",
+        return_value=CHECKED_AT,
+    ):
+        assert coordinator.confirm_booking_match(proposal.proposal_id).proposal is None
 
 
 async def test_calendar_source_refresh_obeys_configured_interval(hass) -> None:

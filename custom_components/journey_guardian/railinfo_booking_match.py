@@ -1,5 +1,6 @@
 """Review-only timetable evidence for a suspected calendar destination mismatch."""
 
+import hashlib
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -68,6 +69,16 @@ class BookingMatchProposal:
     observed_at: datetime
     valid_until: datetime
 
+    @property
+    def proposal_id(self) -> str:
+        """Identify this exact service, endpoint and evidence revision."""
+        fields = (
+            self.booking_fingerprint, self.service_identity, self.origin_code,
+            self.alternative_code, self.scheduled_departure.isoformat(),
+            self.scheduled_arrival.isoformat(), self.observed_at.isoformat(),
+        )
+        return hashlib.sha256("|".join(fields).encode()).hexdigest()
+
 
 @dataclass(frozen=True, slots=True)
 class BookingMatchResult:
@@ -75,6 +86,26 @@ class BookingMatchResult:
 
     status: str
     proposal: BookingMatchProposal | None = None
+    confirmed: bool = False
+
+    def as_dict(self) -> dict[str, Any]:
+        """Expose a response-only proposal, without raw provider or calendar data."""
+        proposal = self.proposal
+        return {
+            "status": self.status,
+            "proposal": None if proposal is None else {
+                "proposal_id": proposal.proposal_id,
+                "booking_fingerprint": proposal.booking_fingerprint,
+                "service_identity": proposal.service_identity,
+                "origin_code": proposal.origin_code,
+                "alternative_code": proposal.alternative_code,
+                "scheduled_departure": proposal.scheduled_departure.isoformat(),
+                "scheduled_arrival": proposal.scheduled_arrival.isoformat(),
+                "observed_at": proposal.observed_at.isoformat(),
+                "valid_until": proposal.valid_until.isoformat(),
+                "confirmation_required": not self.confirmed,
+            },
+        }
 
 
 def normalize_booking_match(

@@ -46,15 +46,28 @@ Uniqueness applies only to this response for the supplied alternative, not to
 all services or possible destinations. It does not verify live operation,
 the traveller's intention or ticket validity.
 
+## Explicit review actions
+
+The coordinator checks that the requested booking is current and
+discards the result if the snapshot changes during the lookup. It does not
+publish a changed journey or switch rail providers.
+
+1. In Home Assistant's Actions developer tool, run
+   `journey_guardian.investigate_booking` with the current rail-check issue's
+   `booking_fingerprint` as `booking_id`, and uppercase three-letter
+   `origin_code`, `booked_destination_code` and `alternative_code`.
+2. Review the returned proposal and its times. To acknowledge it, call
+   `journey_guardian.confirm_booking_match` with its `proposal_id`.
+
+Both actions return responses and are opt-in. A confirmation is held in memory
+only, applies to the exact unexpired proposal for the current booking, and
+does not edit a calendar or change tracking. A new investigation replaces the
+previous review. No action contacts a provider in simulation.
+
 ## What is not implemented
 
-The internal coordinator checks that the requested booking is current and
-discards the result if the snapshot changes during the lookup. It does not
-publish a changed journey or switch rail providers. The lookup has no HA
-service, dashboard action or scheduled caller.
-There is no automatic destination discovery, correction, confirmation action
-or added phone/watch announcement. A proposed match must receive
-explicit confirmation before adoption in the later workflow. Detecting a truly
+There is no dashboard action, scheduled investigation, automatic destination
+discovery, operational adoption or added phone/watch announcement. Detecting a truly
 missing onward booking needs evidence of intended journey continuity; the app
 must not guess a final destination from unrelated calendar events. Onward-train
 suggestions remain separate future development, not a warning prerequisite.

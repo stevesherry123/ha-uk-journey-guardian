@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add an internal, bounded Railinfo timetable check for one supplied alternative
+  endpoint. Require one direct train matching both booked clocks, reject ambiguity,
+  and return review-only evidence without modifying the original booking. No
+  runtime caller, destination discovery or confirmation action is added.
+
 - Restore booking-check warnings from the existing bounded history after a
   restart, scoped to the exact booking and integration settings. A later
   check supersedes older evidence; unscoped legacy records cannot raise warnings.

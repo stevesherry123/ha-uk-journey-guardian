@@ -20,6 +20,11 @@ from .provider_broker import (
     ProviderResult,
 )
 from .railinfo_arrival import normalize_railinfo_prediction
+from .railinfo_booking_match import (
+    BookingMatchRequest,
+    BookingMatchResult,
+    normalize_booking_match,
+)
 from .railinfo_recovery import RailinfoRecoveryResult, normalize_railinfo_recovery
 from .recovery import RecoveryRequest
 
@@ -97,6 +102,34 @@ class RailinfoClient:
                 quota_controlled=False,
             ),
             lambda: self._async_live_board_json(code, parameters),
+        )
+
+    async def async_booking_match(
+        self, request: BookingMatchRequest
+    ) -> BookingMatchResult:
+        """Check one explicit alternative through the existing journey-details cache."""
+        if not isinstance(request, BookingMatchRequest):
+            raise ValueError("booking_match_request_required")
+        departure = request.departure
+        parameters = {
+            "from": request.origin_code, "to": request.alternative_code,
+            "date": departure.date().isoformat(), "time": departure.strftime("%H%M"),
+        }
+        try:
+            result = await self._broker.async_request(
+                ProviderRequest(
+                    provider="railinfo", operation="journey_details",
+                    parameters=parameters, quota_controlled=False,
+                ),
+                lambda: self._async_journey_details_json(parameters),
+            )
+        except ProviderBrokerError:
+            return BookingMatchResult("provider_unavailable")
+        if not result.healthy:
+            return BookingMatchResult("provider_unavailable")
+        return normalize_booking_match(
+            result.payload, request, observed_at=result.observed_at,
+            now=dt_util.utcnow(),
         )
 
     async def async_recovery_search(

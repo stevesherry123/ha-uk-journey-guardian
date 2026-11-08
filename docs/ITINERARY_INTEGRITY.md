@@ -29,10 +29,28 @@ as proof that your booking is wrong.
   evidence retains its original check time and cannot certify a live match.
   No new recorder, poller or provider requests are introduced.
 
+## Bounded timetable investigation
+
+The internal Railinfo client can check one explicitly supplied alternative
+station for an exact booking. It uses the existing broker and journey-details
+cache. The alternative must be a resolved station distinct from both the origin
+and the originally booked destination; it is not inferred from calendar gaps.
+
+A proposal requires one direct train with the exact scheduled departure and
+arrival, matching station codes and UK service day. Expected times never count
+as scheduled evidence. Duplicate or competing rows, cancellation, missing
+identity, ambiguous clock changes, overnight bookings and stale or oversized
+responses do not produce a proposal. The result carries the original booking
+fingerprint, dated service identity and a five-minute evidence lifetime.
+Uniqueness applies only to this response for the supplied alternative, not to
+all services or possible destinations. It does not verify live operation,
+the traveller's intention or ticket validity.
+
 ## What is not implemented
 
-There is no automatic correction, candidate-service search, confirmation action
-or added phone/watch announcement in this slice. A proposed match must receive
+The internal lookup has no HA service, dashboard action or scheduled caller.
+There is no automatic destination discovery, correction, confirmation action
+or added phone/watch announcement. A proposed match must receive
 explicit confirmation before adoption in the later workflow. Detecting a truly
 missing onward booking needs evidence of intended journey continuity; the app
 must not guess a final destination from unrelated calendar events. Onward-train

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Guard explicit timetable investigations against edited bookings, simulation
+  and changes during a lookup. Do not silently switch providers.
+
 - Add an internal, bounded Railinfo timetable check for one supplied alternative
   endpoint. Require one direct train matching both booked clocks, reject ambiguity,
   and return review-only evidence without modifying the original booking. No

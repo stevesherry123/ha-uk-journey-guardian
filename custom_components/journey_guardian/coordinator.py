@@ -29,6 +29,7 @@ from .health_issues import JourneyHealthIssues
 from .live_evidence import MAX_OBSERVATION_AGE, LiveEvidenceStore
 from .models import JourneySnapshot
 from .phase import calculate_operational_phase
+from .railinfo_booking_match import BookingMatchRequest, BookingMatchResult
 from .travel_plan import TravelPlanStore
 
 _LOGGER = logging.getLogger(__name__)
@@ -335,6 +336,22 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
             await self.live_evidence.async_save(snapshot)
         self.async_set_updated_data(snapshot)
         return snapshot
+
+    async def async_booking_match(
+        self, request: BookingMatchRequest
+    ) -> BookingMatchResult:
+        """Review the current booking without publishing a changed journey."""
+        snapshot = self.data
+        if (
+            not self.last_update_success or snapshot is None
+            or snapshot.error or snapshot.simulation_active
+            or snapshot.next_journey != request.booking
+        ):
+            return BookingMatchResult("booking_match_context_unavailable")
+        result = await self.engine.async_booking_match(request)
+        if self.data is not snapshot or not self.last_update_success:
+            return BookingMatchResult("booking_match_context_changed")
+        return result
 
     async def async_test_station_access(
         self, *, automatic: bool = False

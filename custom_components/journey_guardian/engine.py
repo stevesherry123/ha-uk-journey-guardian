@@ -31,6 +31,7 @@ from .phase import calculate_operational_phase
 from .provider_broker import ProviderBrokerError
 from .rail import RailDataError, normalize_station_board
 from .railinfo import RailinfoClient
+from .railinfo_booking_match import BookingMatchRequest, BookingMatchResult
 from .simulation import JourneySimulation
 from .station import StationResolution, StationResolutionError, resolve_station
 from .station_access_profiles import (
@@ -506,6 +507,14 @@ class JourneyGuardianEngine:
             station_access_checked_at=estimate.observed_at,
             station_access_provider_minutes=estimate.duration_minutes,
         )
+
+    async def async_booking_match(
+        self, request: BookingMatchRequest
+    ) -> BookingMatchResult:
+        """Use only the configured provider for timetable investigation."""
+        if self._live_rail_provider != "railinfo" or self._railinfo_client is None:
+            return BookingMatchResult("booking_match_provider_unsupported")
+        return await self._railinfo_client.async_booking_match(request)
 
     def _booking_check_key(self, fingerprint: str) -> str:
         return hashlib.sha256(

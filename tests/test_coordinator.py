@@ -20,6 +20,10 @@ from custom_components.journey_guardian.models import (
     JourneyTiming,
     RailObservation,
 )
+from custom_components.journey_guardian.railinfo_booking_match import (
+    BookingMatchRequest,
+    BookingMatchResult,
+)
 
 CHECKED_AT = datetime(2026, 8, 28, 14, 15, tzinfo=UTC)
 CALENDAR_ENTITY = ".".join(("calendar", "example_travel"))
@@ -38,6 +42,44 @@ def _idle_snapshot() -> JourneySnapshot:
         next_journey=None,
         budget=BUDGET,
     )
+
+
+@pytest.mark.parametrize("state", ["current", "edited", "simulation", "changed"])
+async def test_booking_match_is_read_only_and_rejects_changed_context(hass, state):
+    booking = JourneyEvent(
+        CHECKED_AT + timedelta(hours=1), CHECKED_AT + timedelta(hours=2),
+        "Example Central to Sample Harbour", "", "EXC", "Example Central",
+        "Sample Harbour", "calendar_route",
+    )
+    request = BookingMatchRequest(booking, "EXC", "SMP", "EXJ")
+    snapshot = replace(
+        _idle_snapshot(),
+        next_journey=replace(booking, end=None) if state == "edited" else booking,
+        simulation_active=state == "simulation",
+    )
+    engine = Mock()
+    coordinator = JourneyGuardianCoordinator(
+        hass, MockConfigEntry(domain=DOMAIN), engine
+    )
+    coordinator.data = snapshot
+
+    async def lookup(_request):
+        if state == "changed":
+            coordinator.data = _idle_snapshot()
+        return BookingMatchResult("no_match")
+
+    engine.async_booking_match = AsyncMock(side_effect=lookup)
+    result = await coordinator.async_booking_match(request)
+    if state in ("edited", "simulation"):
+        engine.async_booking_match.assert_not_awaited()
+        assert result.status == "booking_match_context_unavailable"
+    elif state == "changed":
+        assert result.status == "booking_match_context_changed"
+        assert coordinator.data.next_journey is None
+    else:
+        engine.async_booking_match.assert_awaited_once_with(request)
+        assert result.status == "no_match"
+        assert coordinator.data is snapshot
 
 
 async def test_calendar_source_refresh_obeys_configured_interval(hass) -> None:

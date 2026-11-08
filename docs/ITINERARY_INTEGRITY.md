@@ -48,7 +48,10 @@ the traveller's intention or ticket validity.
 
 ## What is not implemented
 
-The internal lookup has no HA service, dashboard action or scheduled caller.
+The internal coordinator checks that the requested booking is current and
+discards the result if the snapshot changes during the lookup. It does not
+publish a changed journey or switch rail providers. The lookup has no HA
+service, dashboard action or scheduled caller.
 There is no automatic destination discovery, correction, confirmation action
 or added phone/watch announcement. A proposed match must receive
 explicit confirmation before adoption in the later workflow. Detecting a truly

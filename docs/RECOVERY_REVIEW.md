@@ -1,8 +1,8 @@
 # Recovery route review (development only)
 
-Updated 7 November 2026. The development branch includes the Home Assistant
-action and dashboard form for explicit Railinfo recovery review. Route selection,
-adoption and continued tracking are later milestones.
+Updated 8 November 2026. The development branch includes the Home Assistant
+action and dashboard form for explicit Railinfo recovery review and selection.
+Approval, adoption and continued tracking are later milestones.
 
 1. Confirm each intended connection between separate rail calendar bookings.
 2. With Railinfo selected and a current calendar review, open **Find another
@@ -11,7 +11,11 @@ adoption and continued tracking are later milestones.
    Enter the station name you can leave from now.
 4. Select **Confirm station and find routes**. Review the predicted times,
    transfer allowance, expiry and affected bookings. Ticket acceptance is unknown.
-5. If the search cannot verify a complete route, check live departures or ask
+5. Choose **Recheck this route** for an option you would consider. Journey
+   Guardian makes a fresh Railinfo request and marks the route as rechecked if
+   the trains, times and transfer requirements still match. Review and choose
+   again if the result changes.
+6. If the search cannot verify a complete route, check live departures or ask
    station staff about onward travel.
 
 The equivalent Home Assistant action is `journey_guardian.review_recovery`.
@@ -42,7 +46,7 @@ flowchart TD
     G --> H{Fresh achievable options?}
     H -->|No| M
     H -->|Yes| I[Advisory route review and affected-booking preview]
-    I -. Future explicit selection .-> J[Revalidate again and preview superseded legs]
+    I -->|Explicit selection| J[Recheck exact route and show approval preview]
     J -. Future explicit approval .-> K[Track replacement while retaining booked baseline]
 ```
 
@@ -69,8 +73,8 @@ also call `invalidate`, preventing an in-flight result from restoring old option
 Before exposure, validate every route again against the complete final destination,
 current time and captured policy. Do not mix routes from another journey, retain
 only a partial route, or expose unrecognized provider status text. Successful
-results remain advisory and preserve unknown ticket acceptance. No selection,
-calendar edit, booking mutation, announcement or adopted tracking is performed.
+results remain advisory and preserve unknown ticket acceptance. The selection is an in-memory approval preview. Booking changes and
+replacement tracking require a separate adoption action.
 
 The context includes the entire original connected booking baseline and the
 separate affected booking IDs. These are a future supersession preview; they do
@@ -95,11 +99,27 @@ text is replaced with a stable invalid-response category.
 
 ## Validation and next steps
 
-The local suite passed 735 tests with one existing expected failure, including
-the local TCP frontend-serving test. Nine card tests passed. The fictional browser
+The local suite passed 739 tests with one existing expected failure, including
+the local TCP frontend-serving test. Ten card tests passed. The fictional browser
 preview verified the form, final destination and affected-leg display, and the
 fallback at phone width. Live travel acceptance remains pending.
 
-Selection revalidation, explicit adoption and tracking are the next milestone.
+Explicit approval, adoption and tracking are the next milestone.
 Provider-confirmed cancellation and early termination need a matched evidence
 adapter. Routes with more than one change remain a provider capability gap.
+
+
+## Rechecking a selected route
+
+`journey_guardian.select_recovery` takes the `option_id` and `revision` from a
+current option in the status sensor. The ID binds the booked journey and
+services. The revision binds predicted times and transfer requirements.
+The action skips the cached response and requires fresh provider evidence.
+The broker may share an in-flight request for the same search.
+
+The controller rebuilds current booking and preference context around the query.
+A result that matches both identifiers is marked as rechecked in the live
+preview. When times or services change, the card shows the refreshed options and
+asks you to choose again. Expired options require a new review, and revocation
+or unloading invalidates the preview. The rechecked option expires with its
+route evidence or original recovery context, whichever expires first.

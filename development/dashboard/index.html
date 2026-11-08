@@ -56,8 +56,16 @@
     const update = () => {
       const data = previewData(select.value, now);
       data.callService = async (_domain, action, payload) => {
-        if (action === 'review_recovery') {
+        if (action === 'review_recovery' || action === 'select_recovery') {
           const fixture = previewData(select.value, Date.now());
+          const recovery = fixture.states['sensor.example_journey_status'].attributes.recovery;
+          if (action === 'select_recovery') {
+            if (!recovery.options.some(option =>
+              option.option_id === payload.option_id && option.revision === payload.revision
+            )) throw new Error('Fictional option unavailable');
+            recovery.selected_option_id = payload.option_id;
+            recovery.selection_status = 'selection_verified';
+          }
           card.hass = {...data, states: fixture.states};
           return;
         }

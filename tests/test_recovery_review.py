@@ -254,3 +254,45 @@ async def test_unknown_provider_status_is_not_exposed_as_user_guidance():
     assert (
         await review.async_review(lambda: INPUTS)
     ).status == "invalid_search_response"
+
+
+async def test_changed_prediction_requires_selecting_updated_revision():
+    review, _, _ = controller()
+    await review.async_review(lambda: INPUTS)
+    delayed = replace(
+        LEG, arrival=replace(LEG.arrival, event_at=ARR + timedelta(minutes=5))
+    )
+    refresh = AsyncMock(return_value=RailinfoRecoveryResult(
+        "options_available", (replace(ROUTE, legs=(delayed,)),),
+    ))
+    status = await review.async_select(ROUTE.option_id, ROUTE.revision, refresh=refresh)
+    assert status == "selection_changed"
+    result = review.current()
+    assert result.selected_option_id is None
+    assert result.routes[0].option_id == ROUTE.option_id
+    assert result.routes[0].revision != ROUTE.revision
+
+
+async def test_expired_selection_does_not_acquire_new_data():
+    review, _, clock = controller()
+    await review.async_review(lambda: INPUTS)
+    clock.return_value = ROUTE.valid_until
+    refresh = AsyncMock()
+    status = await review.async_select(ROUTE.option_id, ROUTE.revision, refresh=refresh)
+    assert status == "selection_expired"
+    refresh.assert_not_awaited()
+
+
+async def test_selection_recheck_cannot_restore_revoked_context():
+    review, _, _ = controller()
+    await review.async_review(lambda: INPUTS)
+
+    async def revoke_during_refresh(*args, **kwargs):
+        review.invalidate()
+        return RESULT
+
+    status = await review.async_select(
+        ROUTE.option_id, ROUTE.revision, refresh=revoke_during_refresh,
+    )
+    assert status == "context_changed"
+    assert review.current().selected_option_id is None

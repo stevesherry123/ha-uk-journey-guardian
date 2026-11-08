@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import timedelta
+from functools import partial
 
 from homeassistant.util import dt as dt_util
 
@@ -34,9 +35,11 @@ class RecoveryRuntime:
         self._stopped = False
         self._generation = 0
         self._preflight_failed = False
+        self._selection_status = None
 
     def invalidate(self):
         self._generation += 1
+        self._selection_status = None
         self.review.invalidate()
 
     def stop(self):
@@ -142,6 +145,25 @@ class RecoveryRuntime:
         result = await self.review.async_review(rebuild)
         return result.status
 
+    async def async_select(self, *, option_id, revision):
+        if self._busy:
+            return "search_in_progress"
+        self._busy = True
+        generation = self._generation
+        try:
+            status = await self.review.async_select(
+                option_id,
+                revision,
+                refresh=partial(self.client.async_recovery_search, force_refresh=True),
+            )
+            if generation == self._generation:
+                self._selection_status = status
+            return status
+        finally:
+            self._busy = False
+            if not self._stopped:
+                self.coordinator.async_update_listeners()
+
     def dashboard(self, now):
         try:
             bookings = self._bookings(now)
@@ -178,6 +200,8 @@ class RecoveryRuntime:
         result = self.review.current()
         return {
             "bookings": list(labels.values()),
+            "selection_status": self._selection_status,
+            "selected_option_id": result.selected_option_id,
             "status": "review_unavailable" if self._preflight_failed else result.status,
             "affected": [
                 labels[key]
@@ -188,6 +212,8 @@ class RecoveryRuntime:
             else [],
             "options": [
                 {
+                    "option_id": route.option_id,
+                    "revision": route.revision,
                     "valid_until": min(
                         route.valid_until, result.context.valid_until
                     ).isoformat(),

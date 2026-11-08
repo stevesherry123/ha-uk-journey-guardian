@@ -93,6 +93,7 @@ export function previewData(scenario, now = Date.now()) {
       affected: booked,
       status: scenario === 'recovery-unavailable' ? 'no_complete_route_in_response' : 'options_available',
       options: scenario === 'recovery-unavailable' ? [] : [{
+        option_id: "d".repeat(64), revision: "e".repeat(64),
         valid_until: at(5),
         legs: [
           {origin: 'EXC', destination: 'EXJ', departure: at(20), arrival: at(45)},

@@ -61,7 +61,7 @@ def runtime_fixture():
     async def resolve(*, name, **_):
         return SimpleNamespace(code=stations[name.casefold()])
 
-    async def search(request, **policy):
+    async def search(request, *, force_refresh=False, **policy):
         return normalize_railinfo_recovery(
             {
                 "date": "2026-11-07",
@@ -125,14 +125,26 @@ async def test_service_publishes_complete_routes_and_excludes_unrelated_return(h
             return_response=True,
         )
         dashboard = recovery.dashboard(NOW)
+        option = dashboard["options"][0]
+        selection = await hass.services.async_call(
+            DOMAIN,
+            "select_recovery",
+            {"option_id": option["option_id"], "revision": option["revision"]},
+            blocking=True,
+            return_response=True,
+        )
+        selected = recovery.dashboard(NOW)
     assert result == {"status": "options_available"}
-    client.async_recovery_search.assert_awaited_once()
+    assert selection == {"status": "selection_verified"}
+    assert selected["selected_option_id"] == option["option_id"]
+    assert client.async_recovery_search.await_count == 2
+    assert client.async_recovery_search.await_args.kwargs["force_refresh"] is True
     request = client.async_recovery_search.await_args.args[0]
     assert request.final_destination_code == "SMP"
     assert dashboard["options"][0]["legs"][-1]["destination"] == "SMP"
     assert [leg["id"] for leg in dashboard["affected"]] == ["a" * 64, "b" * 64]
     assert [leg["id"] for leg in dashboard["bookings"]] == ["a" * 64, "b" * 64]
-    coordinator.async_update_listeners.assert_called_once()
+    assert coordinator.async_update_listeners.call_count == 2
 
 
 async def test_stale_calendar_blocks_station_resolution_and_search():

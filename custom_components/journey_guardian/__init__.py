@@ -400,6 +400,12 @@ def _async_register_services(hass: HomeAssistant) -> None:
             return {"status": "provider_unsupported"}
         return {"status": await recovery.async_search(**call.data)}
 
+    async def async_select_recovery(call: ServiceCall) -> dict:
+        recovery = getattr(_runtime(hass).coordinator, "recovery_runtime", None)
+        if recovery is None:
+            return {"status": "provider_unsupported"}
+        return {"status": await recovery.async_select(**call.data)}
+
     pair_schema = {
         vol.Required("inbound_id"): vol.Match(r"^[a-f0-9]{64}$"),
         vol.Required("outbound_id"): vol.Match(r"^[a-f0-9]{64}$"),
@@ -410,6 +416,10 @@ def _async_register_services(hass: HomeAssistant) -> None:
             vol.Optional("override_minutes"): _transfer_minutes,
         }),
         ("revoke_connection", async_revoke_connection, pair_schema),
+        ("select_recovery", async_select_recovery, {
+            vol.Required("option_id"): vol.Match(r"^[a-f0-9]{64}$"),
+            vol.Required("revision"): vol.Match(r"^[a-f0-9]{64}$"),
+        }),
         ("review_recovery", async_review_recovery, {
             vol.Required("affected_booking_id"): vol.Match(r"^[a-f0-9]{64}$"),
             vol.Required("final_booking_id"): vol.Match(r"^[a-f0-9]{64}$"),

@@ -121,3 +121,43 @@ test('rendered connection history qualifies stale risk and uncertain handoff',()
     }
   } finally {globalThis.document=prior;}
 });
+
+test('recovery recheck submits the displayed route and revision', async () => {
+  class Element {
+    constructor(tag = 'div') { this.tag = tag; this.children = []; this.listeners = {}; this.style = {}; }
+    append(child) { this.children.push(child); }
+    setAttribute() {}
+    addEventListener(name, handler) { this.listeners[name] = handler; }
+  }
+  const prior = globalThis.document;
+  globalThis.document = {createElement: tag => new Element(tag)};
+  try {
+    const root = new Element();
+    const status = new Element();
+    const card = new JourneyGuardianCard();
+    const entity = 'sensor.example_journey_status';
+    card.config = {entity};
+    card.shadowRoot = {querySelector: selector =>
+      selector === '.content' ? root : selector === '.status' ? status : null};
+    const data = previewData('recovery-options');
+    const recovery = data.states[entity].attributes.recovery;
+    const calls = [];
+    card._hass = {...data, callService: async (...args) => {
+      calls.push(args);
+      recovery.selected_option_id = args[2].option_id;
+    }};
+    card.render();
+    const nodes = [];
+    const walk = node => { nodes.push(node); node.children.forEach(walk); };
+    walk(root);
+    await nodes.find(node => node.textContent === 'Recheck this route').listeners.click();
+    assert.deepEqual(calls, [['journey_guardian', 'select_recovery', {
+      option_id: recovery.options[0].option_id,
+      revision: recovery.options[0].revision,
+    }]]);
+    nodes.length = 0;
+    walk(root);
+    assert.ok(nodes.some(node =>
+      node.textContent === 'Route rechecked. This is a preview for approval.'));
+  } finally { globalThis.document = prior; }
+});

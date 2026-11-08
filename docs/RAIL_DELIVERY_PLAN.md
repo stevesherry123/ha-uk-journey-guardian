@@ -1,6 +1,6 @@
 # Rail connections and end-to-end recovery delivery plan
 
-Updated: 7 November 2026. Status: accepted product scope; partial local implementation.
+Updated: 8 November 2026. Status: accepted product scope; partial local implementation.
 No release date is promised. Current stable: v0.2.13. Existing previews retain
 bookings and show schedule hints; they do not deliver this connection/recovery workflow.
 
@@ -65,7 +65,7 @@ These policies are resolved in the relevant delivery gate. This plan does not it
 | State contracts and persistence | Partly implemented locally | Versioned confirmations and typed time evidence tested; adoption/evidence retention pending |
 | Confirmation and allowances | Implemented and reviewed locally | Persistence, defaults, provenance and fictional mobile controls tested; saved templates and live HA acceptance pending |
 | Live risk and warnings | Opt-in monitoring and announcements implemented locally | Durable transitions and guarded existing delivery route tested; live HA/physical delivery acceptance pending |
-| End-to-end search | Explicit Railinfo review wired to Home Assistant and dashboard | One-query direct and one-change options, current confirmation rechecks, affected-leg preview and manual fallback tested. Broader provider coverage and selection pending |
+| End-to-end search | Explicit Railinfo review wired to Home Assistant and dashboard | One-query direct and one-change options, current confirmation rechecks, affected-leg preview and manual fallback tested. Selection recheck tested. Broader provider coverage and adoption pending |
 | Explicit adoption | Pending | Whole-route approval, downstream tracking, original evidence retained |
 | Release acceptance | Pending | Outage/restart rehearsals and real-travel observation |
 
@@ -397,3 +397,14 @@ and live journey acceptance remain pending.
   submission, complete route display and phone-width fallback.
 - Selection, adoption, provider-derived recovery origins and real-travel
   acceptance remain pending.
+
+
+## Selected route recheck checkpoint — 8 November 2026
+
+- Added a dashboard action that rechecks an exact route ID and revision with
+  fresh Railinfo evidence. The card shows an approval preview for a matching
+  route and asks for a new selection when predictions change.
+- Current bookings, confirmations and transfer preferences are rechecked around
+  acquisition. Expiry and revocation invalidate the preview.
+- The next milestone is explicit approval and durable replacement tracking.
+  See [the recovery guide](RECOVERY_REVIEW.md).

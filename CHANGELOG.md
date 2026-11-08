@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add a recovery route recheck that verifies the selected route with fresh
+  Railinfo evidence. Show an approval preview for unchanged routes and ask for
+  a new selection if timings or services change.
+
 - Wire explicit Railinfo recovery review into Home Assistant and the dashboard.
   Confirm the current station, select the affected and final booked trains,
   and review complete routes, transfer time, expiry and affected bookings.

@@ -234,6 +234,12 @@ export class JourneyGuardianCard extends BaseElement {
             this._recoveryExpiry = setTimeout(() => this.render(), Math.max(1, expiry - Date.now()));
           }
           add("p", "Ticket acceptance is unknown. Check with station staff before boarding.", section, "notice");
+          if (recovery.selection_status === "selection_changed") {
+            add("p", "The route changed during the recheck. Review the updated options and choose again.", section, "notice");
+          }
+          if (recovery.selection_status === "selection_expired") {
+            add("p", "That option has expired. Choose a current option or search again.", section, "notice");
+          }
           for (const option of options) {
             const route = add("div", "", section, "evidence");
             add("p", `Predicted times · review valid until ${format(option.valid_until)}`, route, "secondary");
@@ -242,6 +248,27 @@ export class JourneyGuardianCard extends BaseElement {
             }
             for (const transfer of option.transfers) {
               add("p", `Change at ${transfer.station}: ${transfer.available} minutes available, ${transfer.required} required`, route, "secondary");
+            }
+            if (recovery.selected_option_id === option.option_id && option.option_id) {
+              add("p", "Route rechecked. This is a preview for approval.", route, "notice");
+            } else if (option.option_id && option.revision) {
+              const select = add("button", "Recheck this route", route);
+              select.addEventListener("click", async () => {
+                if (this._recoveryPending || Date.parse(option.valid_until) <= Date.now()) return;
+                this._recoveryPending = true;
+                this._recoveryError = "";
+                this.render();
+                try {
+                  await this._hass.callService("journey_guardian", "select_recovery", {
+                    option_id: option.option_id, revision: option.revision,
+                  });
+                } catch (_) {
+                  this._recoveryError = "Could not recheck the route. Search again for current options.";
+                } finally {
+                  this._recoveryPending = false;
+                  this.render();
+                }
+              });
             }
           }
           add("p", "Booked trains this recovery would replace:", section, "secondary");

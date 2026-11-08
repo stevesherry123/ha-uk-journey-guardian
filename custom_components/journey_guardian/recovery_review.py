@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Protocol
 
@@ -77,6 +77,7 @@ class RecoveryReview:
     context: RecoveryContext | None = None
     routes: tuple[RecoveryRoute, ...] = ()
     manual_fallback: bool = True
+    selected_option_id: str | None = None
 
 
 class RecoverySearch(Protocol):
@@ -143,12 +144,23 @@ class RecoveryReviewController:
                 self._review = RecoveryReview("options_expired", fresh.context)
             elif routes != self._review.routes:
                 self._review = RecoveryReview(
-                    "options_available", fresh.context, routes, False
+                    "options_available",
+                    fresh.context,
+                    routes,
+                    False,
+                    self._review.selected_option_id
+                    if any(
+                        r.option_id == self._review.selected_option_id for r in routes
+                    )
+                    else None,
                 )
         return self._review
 
     async def async_review(
-        self, rebuild: Callable[[], RecoveryReviewInputs]
+        self,
+        rebuild: Callable[[], RecoveryReviewInputs],
+        *,
+        refresh: RecoverySearch | None = None,
     ) -> RecoveryReview:
         """Run only after an explicit command, never as a dashboard read effect."""
         if self._busy:
@@ -165,7 +177,8 @@ class RecoveryReviewController:
                     raise RecoveryRouteError("context_expired")
                 self._review = RecoveryReview("searching", inputs.context)
                 policy = inputs.policy
-                result = await self._search(
+                search = refresh if refresh is not None else self._search
+                result = await search(
                     inputs.context.request,
                     max_age=policy.max_age,
                     max_wait=policy.max_wait,
@@ -235,3 +248,29 @@ class RecoveryReviewController:
             self._busy = False
             if self._generation == generation and self._review.status == "searching":
                 self._review = RecoveryReview("review_unavailable")
+
+    async def async_select(
+        self, option_id: str, revision: str, *, refresh: RecoverySearch
+    ) -> str:
+        """Recheck the exact reviewed route before exposing an approval preview."""
+        if self._busy:
+            return "search_in_progress"
+        review = self.current()
+        rebuild = self._rebuild
+        if rebuild is None or not any(
+            route.option_id == option_id and route.revision == revision
+            for route in review.routes
+        ):
+            self._review = replace(review, selected_option_id=None)
+            return "selection_expired"
+
+        refreshed = await self.async_review(rebuild, refresh=refresh)
+        if refreshed.status != "options_available":
+            return refreshed.status
+        if not any(
+            route.option_id == option_id and route.revision == revision
+            for route in refreshed.routes
+        ):
+            return "selection_changed"
+        self._review = replace(refreshed, selected_option_id=option_id)
+        return "selection_verified"

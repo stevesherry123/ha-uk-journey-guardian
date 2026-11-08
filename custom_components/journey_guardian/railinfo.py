@@ -108,8 +108,9 @@ class RailinfoClient:
         max_duration: timedelta,
         station_allowances: Mapping[str, TransferAllowance] | None = None,
         global_minutes: int = 10,
+        force_refresh: bool = False,
     ) -> RailinfoRecoveryResult:
-        """Make one brokered end-to-end query; no runtime or adoption caller yet."""
+        """Make one brokered end-to-end query for review or selection."""
         now = dt_util.utcnow()
         if not isinstance(request, RecoveryRequest):
             raise ValueError("recovery_request_required")
@@ -140,10 +141,11 @@ class RailinfoClient:
                     parameters=parameters, quota_controlled=False,
                 ),
                 lambda: self._async_journey_details_json(parameters),
+                force_refresh=force_refresh,
             )
         except ProviderBrokerError:
             return RailinfoRecoveryResult("provider_unavailable")
-        if not result.healthy:
+        if not result.healthy or (force_refresh and result.source != "provider"):
             return RailinfoRecoveryResult("provider_unavailable")
         return normalize_railinfo_recovery(
             result.payload, request, observed_at=result.observed_at,

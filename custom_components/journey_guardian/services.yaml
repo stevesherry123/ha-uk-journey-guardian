@@ -132,3 +132,18 @@ review_recovery:
       required: true
       selector:
         text:
+
+select_recovery:
+  name: Recheck a recovery route
+  description: Recheck a reviewed route and prepare its approval preview.
+  fields:
+    option_id:
+      name: Reviewed route ID
+      required: true
+      selector:
+        text:
+    revision:
+      name: Reviewed route revision
+      required: true
+      selector:
+        text:

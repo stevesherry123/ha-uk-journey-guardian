@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Link to the National Rail Journey Planner when recovery options are unavailable
+  or a replacement transfer is at risk.
+
 - Schedule replacement train checks when connection monitoring is enabled.
   Share the durable connection budget and use matched predictions to warn when
   the approved replacement transfer falls below its allowance.

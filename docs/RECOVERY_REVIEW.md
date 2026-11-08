@@ -16,8 +16,8 @@ tracking workflow uses matched live checks and user-confirmed arrivals.
    Guardian makes a fresh Railinfo request and marks the route as rechecked if
    the trains, times and transfer requirements still match. Review and choose
    again if the result changes.
-6. If the search cannot verify a complete route, check live departures or ask
-   station staff about onward travel.
+6. If the search cannot verify a complete route, open the National Rail Journey
+   Planner from the card or ask station staff about onward travel.
 
 The equivalent Home Assistant action is `journey_guardian.review_recovery`.
 It accepts `affected_booking_id`, `final_booking_id` and `origin` and returns a
@@ -89,7 +89,9 @@ refreshes evidence or queries a provider. Expired options require a new explicit
 review. Results are memory-only; restart begins with no reviewed options.
 
 Unavailable, stale, incomplete and unsupported results carry
-`manual_fallback=True`. The card explains the outcome and points to live departures or station staff. A no-complete-route response means no candidate
+`manual_fallback=True`. The card explains the outcome and links to the National Rail Journey Planner.
+The link opens the planner with blank station fields. A fresh or historical
+replacement transfer warning also provides the link. A no-complete-route response means no candidate
 validated in that response; it does not establish that no route exists.
 
 Timeouts and expected input/acquisition failures clear the review. Task

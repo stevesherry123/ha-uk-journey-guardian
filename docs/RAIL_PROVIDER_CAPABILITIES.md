@@ -77,3 +77,30 @@ arrival prediction fields and provenance were inspected in public sample respons
 See the [observed arrival contract](RAILINFO_ARRIVAL_CONTRACT.md) for mapping,
 strict limits and remaining runtime integration. Generic arrival-board and
 service-detail clocks are not treated as verified arrival prediction fields.
+
+
+## Broader journey planning access — 8 November 2026
+
+Railinfo documents direct and one-change journeys. Journey Guardian uses that
+scope for its current recovery search and approval. The National Rail Journey
+Planner provides a manual fallback when the app cannot validate a complete
+route. The card opens the planner without adding calendar or station details
+to the link.
+
+- [Railinfo developer API overview](https://railinfo.uk/developers)
+- [National Rail Journey Planner](https://www.nationalrail.co.uk/journey-planner/)
+
+National Rail describes its Real Time Journey Planner (RTJP) SOAP feed as
+supporting multi-leg planning with live Darwin data. Its developer page says
+the feed is moving to the Rail Data Marketplace, and describes formal licensing
+and cost recovery charges. This establishes a candidate feed. Access,
+installation-level availability and current terms still need verification
+before building or advertising an adapter.
+
+- [National Rail Online Journey Planner data feeds](https://www.nationalrail.co.uk/developers/online-journey-planner-data-feeds/)
+
+An adapter must demonstrate a complete route with two changes, dated service
+identities, matched predictions at every endpoint and explicit handling for
+cancelled or shortened services. Adoption, persisted tracking and recheck
+limits must then expand together. Until those checks pass, a response that
+cannot reach the final destination uses the manual fallback.

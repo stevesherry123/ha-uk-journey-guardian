@@ -8,14 +8,15 @@ The current stable release targets Home Assistant 2026.8 or newer.
 Releases include a [runtime-only HACS ZIP](docs/RELEASE_PACKAGING.md) from v0.2.10.
 Existing installations update in place; no uninstall is needed.
 
-The stable maintenance line is **0.2.13**. The **0.3 preview** adds a
-[read-only upcoming and retained booking views](docs/BOOKING_OVERVIEW.md),
-not completed automatic
-interchange or disruption recovery. Choose prereleases deliberately.
+The stable maintenance line is **0.2.13**. The **0.3 preview** introduces
+[upcoming and retained booking views](docs/BOOKING_OVERVIEW.md).
 
-Connection-risk warnings and end-to-end disruption recovery are planned, not
-available features. See the [rail delivery plan](docs/RAIL_DELIVERY_PLAN.md) for
-accepted scope, implementation gates and known limitations.
+The development branch adds confirmed connection warnings, explicit recovery
+review, and approved replacement tracking. Railinfo recovery supports same-day
+direct journeys and routes with one change. See the
+[recovery guide](docs/RECOVERY_REVIEW.md) and the
+[rail delivery plan](docs/RAIL_DELIVERY_PLAN.md) for development usage and
+remaining acceptance work.
 
 Start with the [setup and first-journey guide](docs/GETTING_STARTED.md).
 For missing journeys, alarms, or provider results, use

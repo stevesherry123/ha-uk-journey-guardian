@@ -168,6 +168,12 @@ export class JourneyGuardianCard extends BaseElement {
       }
     }
     const recovery = data.recovery;
+    const addRailPlanner = section => {
+      const link = add("a", "Open National Rail Journey Planner", section, "secondary");
+      link.href = "https://www.nationalrail.co.uk/journey-planner/";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+    };
     const runTrackingAction = async (action, payload) => {
       if (this._recoveryPending) return;
       this._recoveryPending = true;
@@ -287,6 +293,9 @@ export class JourneyGuardianCard extends BaseElement {
                 approve.addEventListener("click", () => runTrackingAction("approve_recovery", {
                   option_id: option.option_id, revision: option.revision,
                 }));
+              } else if (recovery.can_approve === false) {
+                add("p", "Replacement tracking is unavailable. Use the route as a reference or check onward travel separately.", route, "notice");
+                addRailPlanner(route);
               }
             } else if (option.option_id && option.revision) {
               const select = add("button", "Recheck this route", route);
@@ -318,6 +327,7 @@ export class JourneyGuardianCard extends BaseElement {
           };
           add("p", explanations[recovery.status] || "Complete recovery options are unavailable.", section, "notice");
           add("p", "Check live departures or ask station staff about onward travel.", section, "secondary");
+          addRailPlanner(section);
         }
       }
     }
@@ -350,10 +360,12 @@ export class JourneyGuardianCard extends BaseElement {
             const risk = transfer.classification === "at_risk";
             const label = risk ? "Replacement connection at risk" : "Replacement transfer allowance met";
             add("p", `${label} · ${transfer.minutes_available} minutes predicted, ${transfer.minimum_minutes} required`, section, risk ? "notice" : "secondary");
+            if (risk) addRailPlanner(section);
           } else {
             const earlierRisk = ["risk", "update"].includes(tracking.last_alert?.kind);
             add("p", earlierRisk ? "An earlier check found the replacement connection at risk. Current times are unavailable." :
               "Replacement transfer risk is unknown. Check live train times.", section, earlierRisk ? "notice" : "secondary");
+            if (earlierRisk) addRailPlanner(section);
           }
         }
         const payload = {tracking_id: tracking.id, leg_index: tracking.leg_index};

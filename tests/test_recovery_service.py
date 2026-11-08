@@ -186,7 +186,7 @@ async def test_approval_is_explicit_and_progress_restores_after_restart(hass):
     store = RecoveryTrackingStore(storage)
     await store.async_load(NOW)
     recovery.tracking = store
-    coordinator.async_request_refresh = AsyncMock()
+    coordinator.async_request_refresh = AsyncMock(side_effect=OSError)
     coordinator.suppress_superseded.side_effect = lambda snapshot: snapshot
     clock = Mock(return_value=NOW)
     with (

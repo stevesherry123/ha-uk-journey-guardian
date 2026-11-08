@@ -67,7 +67,7 @@ These policies are resolved in the relevant delivery gate. This plan does not it
 | Live risk and warnings | Opt-in monitoring and announcements implemented locally | Durable transitions and guarded existing delivery route tested; live HA/physical delivery acceptance pending |
 | End-to-end search | Explicit Railinfo review wired to Home Assistant and dashboard | One-query direct and one-change options, current confirmation rechecks, affected-leg preview and manual fallback tested. Selection recheck tested. Broader provider coverage pending |
 | Explicit adoption | Implemented for bounded replacement tracking | Exact approval, durable progress, scoped booking suppression, scheduled checks and transfer warnings tested. Real-travel acceptance pending |
-| Release acceptance | Pending | Outage/restart rehearsals and real-travel observation |
+| Release acceptance | Home Assistant rehearsal passed | Two-leg recovery, outage, restart and unrelated booking preservation rehearsed. Real travel and physical announcement receipt remain pending |
 
 ## Documentation is part of each delivery gate
 
@@ -431,3 +431,14 @@ and live journey acceptance remain pending.
   the approved transfer allowance. Reuse the existing announcement route and
   alert history for meaningful warnings. The card qualifies expired evidence.
 - See [the recovery guide](RECOVERY_REVIEW.md) for cadence and limits.
+
+
+## Replacement acceptance rehearsal — 8 November 2026
+
+- Exercised the real Home Assistant service, sensor, provider-broker and reload
+  paths with fictional responses for a complete two-train replacement.
+- Verified automatic risk warning, durable check deduplication, rate-limit
+  fallback, restoration without a repeated warning, explicit leg advancement
+  and completed-route restart. The evening return remains eligible.
+- Local validation passed 745 tests with one existing expected failure for
+  provider-confirmed early termination. Ten card tests passed.

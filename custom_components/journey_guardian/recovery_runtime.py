@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
 from datetime import timedelta
 from functools import partial
 
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 
 from .connection import TransferAllowance
@@ -210,7 +212,7 @@ class RecoveryRuntime:
             current = self.coordinator.suppress_superseded(snapshot)
             if current is not snapshot:
                 self.coordinator.async_set_updated_data(current)
-            await self.coordinator.async_request_refresh()
+            await self._refresh_operational_snapshot()
             return "replacement_approved"
         except ValueError, OSError:
             return "approval_unavailable"
@@ -218,6 +220,11 @@ class RecoveryRuntime:
             self._busy = False
             if not self._stopped:
                 self.coordinator.async_update_listeners()
+
+    async def _refresh_operational_snapshot(self):
+        # The route change is durable even if the ensuing calendar refresh fails.
+        with suppress(HomeAssistantError, ValueError, OSError):
+            await self.coordinator.async_request_refresh()
 
     def is_booking_superseded(self, booking_id, now):
         record = self.tracking.record if self.tracking is not None else None
@@ -245,7 +252,7 @@ class RecoveryRuntime:
         try:
             if leg_index is None:
                 await self.tracking.async_stop(tracking_id)
-                await self.coordinator.async_request_refresh()
+                await self._refresh_operational_snapshot()
             else:
                 await self.tracking.async_confirm_arrival(
                     tracking_id, leg_index, now=dt_util.utcnow()

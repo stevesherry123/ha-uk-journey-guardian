@@ -100,7 +100,7 @@ text is replaced with a stable invalid-response category.
 
 ## Validation and next steps
 
-The local suite passed 739 tests with one existing expected failure, including
+The local suite passed 745 tests with one existing expected failure, including
 the local TCP frontend-serving test. Ten card tests passed. The fictional browser
 preview verified the form, final destination and affected-leg display, and the
 fallback at phone width. Live travel acceptance remains pending.
@@ -168,3 +168,20 @@ be tracked. They need a new approval for transfer assessment.
 Checks are based on the approved timetable and may skip a checkpoint when the
 shared budget is exhausted or the user approves after its catch-up window.
 The manual **Check live train times** action remains available.
+
+
+### Home Assistant rehearsal
+
+The isolated Home Assistant rehearsal exercises the real config-entry lifecycle
+with fictional Railinfo and calendar responses. It confirms a split booking,
+searches to the final destination, rechecks and approves a two-train
+replacement, and checks that the original bookings remain available.
+The scheduled check produces a five-minute transfer against a ten-minute
+allowance. A reload restores tracking without repeating the provider check.
+A simulated rate limit makes transfer risk unknown while retaining the
+historical warning. A successful refresh restores the risk assessment without
+repeating the warning. Both arrival confirmations and the final completion
+survive reload, and the unrelated evening train remains eligible.
+
+Real travel, provider-confirmed early termination and physical announcement
+receipt still need acceptance evidence.

@@ -70,6 +70,7 @@ class Rehearsal:
         self.awake_after = 3
         self.reload_on_pulse = None
         self.early_termination = False
+        self.replacement_fixture = False
         self.review_result = None
         self.pulses = []
         self.deliveries = []
@@ -125,7 +126,17 @@ class Rehearsal:
         response.raise_for_status = Mock()
         if parsed.path == "/stations":
             codes = {NAMES[0]: "EXC", NAMES[2]: "SMP"}
-            payload = [{"crs": codes[params["q"]], "description": params["q"]}]
+            if self.replacement_fixture:
+                codes = {name.casefold(): code for name, code in codes.items()}
+                codes[NAMES[1].casefold()] = "EXD"
+                code = codes[params["q"].casefold()]
+            else:
+                code = codes[params["q"]]
+            payload = [{"crs": code, "description": params["q"]}]
+        elif parsed.path == "/journeys" and self.replacement_fixture and (
+            params["from"], params["to"]
+        ) in {("EXC", "SMP"), ("EXC", "EXD"), ("EXD", "SMP")}:
+            payload = self.replacement_response(params)
         elif parsed.path == "/journeys":
             returning = params["from"] == "SMP"
             payload = {
@@ -176,6 +187,30 @@ class Rehearsal:
         response.json = AsyncMock(return_value=payload)
         return response
 
+    def replacement_response(self, params):
+        """Fictional provider response for the approval and transfer rehearsal."""
+        first = {
+            "from_crs": "EXC", "to_crs": "EXD", "dep": "0912", "arr": "0935",
+            "expected_dep": "0912", "expected_arr": (
+                "0947" if dt_util.now() >= clock("09:07") else "0935"
+            ),
+            "headcode": "1R23", "mode": "train",
+            "status": "on_time", "status_source": "darwin",
+        }
+        second = {
+            "from_crs": "EXD", "to_crs": "SMP", "dep": "0952", "arr": "1040",
+            "expected_dep": "0952", "expected_arr": "1040", "headcode": "1R24",
+            "mode": "train", "status": "on_time", "status_source": "darwin",
+        }
+        legs = [first, second]
+        if params["to"] == "EXD":
+            legs = [first]
+        elif params["from"] == "EXD":
+            legs = [second]
+        return {"date": DAY.date().isoformat(), "is_today": True, "journeys": [{
+            "changes": len(legs) - 1, "status": "on_time", "legs": legs,
+        }]}
+
     def route_post(self, url, *, json, **_kwargs):
         assert url == ROUTES_URL
         self.requests.append(
@@ -209,7 +244,10 @@ class Rehearsal:
             self.hass.states.async_set(AWAKE, "on")
         await asyncio.sleep(0)
 
-    async def load(self, *, home=True, preparation=2, start="08:44", routes=False):
+    async def load(
+        self, *, home=True, preparation=2, start="08:44", routes=False,
+        connection_monitor=False,
+    ):
         self.freezer.move_to(clock(start))
         await self.hass.config.async_set_time_zone("Europe/London")
         assert await async_setup_component(self.hass, "persistent_notification", {})
@@ -265,6 +303,7 @@ class Rehearsal:
                 "live_rail_provider": "railinfo",
                 "google_routes_api_key": "fixture-only-key" if routes else "",
                 "automatic_live_rail_enabled": True,
+                "connection_monitor_enabled": connection_monitor,
                 "live_notifications_enabled": True,
                 "home_wake_enabled": True,
                 "home_wake_awake_entity": AWAKE,
@@ -933,3 +972,98 @@ async def test_existing_route_profile_uses_waze_sensor_through_runtime_reload(
     await h.reload()
     assert h.runtime.coordinator.data.timing.station_access_source == "waze_sensor"
     assert not h.requests
+
+
+async def test_approved_replacement_rehearsal_survives_reload_and_warns(rehearsal):
+    h = rehearsal
+    h.replacement_fixture = True
+    h.events = [
+        {"summary": f"{origin} to {destination}",
+         "start": clock(start).isoformat(), "end": clock(end).isoformat()}
+        for origin, destination, start, end in (
+            (NAMES[0], NAMES[1], "09:00", "09:28"),
+            (NAMES[1], NAMES[2], "09:45", "10:30"),
+            (NAMES[2], NAMES[0], "17:00", "18:00"),
+        )
+    ]
+    await h.load(home=False, connection_monitor=True)
+    entity_id = er.async_get(h.hass).async_get_entity_id(
+        "sensor", DOMAIN, f"{h.entry.entry_id}_status",
+    )
+
+    def attributes():
+        return h.hass.states.get(entity_id).attributes
+
+    async def action(name, payload):
+        result = await h.hass.services.async_call(
+            DOMAIN, name, payload, blocking=True, return_response=True,
+        )
+        await h.hass.async_block_till_done()
+        return result
+
+    first, final, unrelated = [
+        item["booking_id"] for item in attributes()["retained_booked_legs"]
+    ]
+    await action("confirm_connection", {"inbound_id": first, "outbound_id": final})
+    review = await action("review_recovery", {
+        "affected_booking_id": first,
+        "final_booking_id": final,
+        "origin": NAMES[0],
+    })
+    assert review["status"] == "options_available"
+    option, = attributes()["recovery"]["options"]
+    assert [leg["destination"] for leg in option["legs"]] == ["EXD", "SMP"]
+    route = {key: option[key] for key in ("option_id", "revision")}
+    assert (await action("select_recovery", route))["status"] == "selection_verified"
+    assert (await action("approve_recovery", route))["status"] == "replacement_approved"
+    tracking = attributes()["recovery"]["tracking"]
+    assert tracking["state"] == "tracking"
+    assert [item["booking_id"] for item in attributes()["retained_booked_legs"]] == [
+        first, final, unrelated,
+    ]
+    assert h.runtime.coordinator.data.next_journey.start == clock("17:00")
+
+    await h.advance("09:07")
+    tracking = attributes()["recovery"]["tracking"]
+    assert tracking["transfer"]["classification"] == "at_risk"
+    assert tracking["transfer"]["minutes_available"] == 5
+    warnings = [
+        item for item in h.deliveries if "at risk" in item["message"].casefold()
+    ]
+    assert len(warnings) == 1
+    provider_calls = len(h.requests)
+    await h.reload()
+    assert attributes()["recovery"]["tracking"]["id"] == tracking["id"]
+    assert len(h.requests) == provider_calls
+    assert h.runtime.coordinator.data.next_journey.start == clock("17:00")
+
+    h.provider_error = "429"
+    await h.advance("09:25")
+    unavailable = attributes()["recovery"]["tracking"]
+    assert unavailable["leg_index"] == 0
+    assert unavailable["transfer"]["classification"] == "unknown"
+    assert unavailable["last_alert"]["kind"] == "risk"
+    h.provider_error = None
+    await h.advance("09:26")
+    assert (await action("check_recovery_tracking", {
+        "tracking_id": tracking["id"], "leg_index": 0,
+    }))["status"] == "tracking_checked"
+    recovered = attributes()["recovery"]["tracking"]
+    assert recovered["transfer"]["classification"] == "at_risk"
+    assert len([
+        item for item in h.deliveries if "at risk" in item["message"].casefold()
+    ]) == 1
+
+    await h.advance("09:47")
+    assert (await action("confirm_recovery_arrival", {
+        "tracking_id": tracking["id"], "leg_index": 0,
+    }))["status"] == "tracking_updated"
+    assert attributes()["recovery"]["tracking"]["leg_index"] == 1
+    await h.advance("10:40")
+    assert (await action("confirm_recovery_arrival", {
+        "tracking_id": tracking["id"], "leg_index": 1,
+    }))["status"] == "tracking_updated"
+    assert attributes()["recovery"]["tracking"]["state"] == "completed"
+    await h.reload()
+    assert attributes()["recovery"]["tracking"]["state"] == "completed"
+    assert h.runtime.coordinator.data.next_journey.start == clock("17:00")

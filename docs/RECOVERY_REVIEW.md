@@ -3,7 +3,7 @@
 Updated 8 November 2026. The development branch includes the Home Assistant
 action and dashboard form for explicit Railinfo recovery review and selection.
 Approval starts durable tracking for the selected replacement. The initial
-tracking workflow uses on-demand live checks and user-confirmed arrivals.
+tracking workflow uses matched live checks and user-confirmed arrivals.
 
 1. Confirm each intended connection between separate rail calendar bookings.
 2. With Railinfo selected and a current calendar review, open **Find another
@@ -105,7 +105,7 @@ the local TCP frontend-serving test. Ten card tests passed. The fictional browse
 preview verified the form, final destination and affected-leg display, and the
 fallback at phone width. Live travel acceptance remains pending.
 
-Scheduled replacement checks and live transfer warnings are the next milestone.
+Real-travel acceptance and provider-confirmed disruption origins remain pending.
 Provider-confirmed cancellation and early termination need a matched evidence
 adapter. Routes with more than one change remain a provider capability gap.
 
@@ -144,5 +144,27 @@ restart. A scheduled or predicted arrival alone never advances the route.
 **Stop replacement tracking** stops the replacement and resumes normal calendar
 selection. A completed or stopped route can be replaced by another explicit
 approval. Records expire eight hours after the approved final arrival. The
-initial tracking version uses one active route, at most two legs, and no
-automatic replacement announcements. Ticket acceptance remains unknown.
+tracking version uses one active route and at most two legs. Ticket acceptance
+remains unknown.
+
+### Scheduled checks and replacement transfer warnings
+
+With connection monitoring enabled, Journey Guardian schedules a check five
+minutes before each approved departure and ten minutes before each approved
+arrival of the current replacement train. The shared connection ledger allows
+eight automatic check claims per local day, spaced at least five minutes apart.
+A checkpoint can catch up for two minutes, and each claim is saved before any
+provider call. Advancing, stopping or unloading the replacement invalidates an
+old leg's checkpoint.
+
+For a replacement with a change, the check compares the live predicted arrival
+against the onward train's live predicted departure and the allowance from
+approval. A short margin uses the existing travel announcement route when live
+notifications are enabled. The alert ledger deduplicates repeated warnings.
+The card shows fresh margins and qualifies historical warnings when predictions
+expire. Routes approved before transfer allowance storage was added can still
+be tracked. They need a new approval for transfer assessment.
+
+Checks are based on the approved timetable and may skip a checkpoint when the
+shared budget is exhausted or the user approves after its catch-up window.
+The manual **Check live train times** action remains available.

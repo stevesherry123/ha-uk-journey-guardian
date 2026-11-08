@@ -9,6 +9,7 @@ from functools import partial
 from homeassistant.util import dt as dt_util
 
 from .connection import TransferAllowance
+from .connection_evidence import ServiceReference, assess_connection_evidence
 from .connection_preferences import station_key
 from .provider_broker import ProviderBrokerError
 from .recovery_context import build_user_recovery_context
@@ -25,10 +26,13 @@ MAX_CALENDAR_AGE = timedelta(minutes=15)
 class RecoveryRuntime:
     """Resolve stations and rebuild current inputs around an explicit search."""
 
-    def __init__(self, coordinator, client, tracking=None):
+    def __init__(self, coordinator, client, tracking=None, *, alerts=None):
         self.coordinator = coordinator
         self.client = client
         self.tracking = tracking
+        self.alerts = alerts
+        self.next_tracking_check_at = None
+        self._transfer_assessment = None
         self._live_tracking = None
         self.review = RecoveryReviewController(
             client.async_recovery_search, clock=dt_util.utcnow
@@ -201,6 +205,7 @@ class RecoveryRuntime:
             )
             self.invalidate()
             self._live_tracking = None
+            self._transfer_assessment = None
             snapshot = self.coordinator.data
             current = self.coordinator.suppress_superseded(snapshot)
             if current is not snapshot:
@@ -246,6 +251,7 @@ class RecoveryRuntime:
                     tracking_id, leg_index, now=dt_util.utcnow()
                 )
             self._live_tracking = None
+            self._transfer_assessment = None
             return "tracking_updated"
         except ValueError, OSError:
             return "tracking_unavailable"
@@ -254,38 +260,64 @@ class RecoveryRuntime:
             if not self._stopped:
                 self.coordinator.async_update_listeners()
 
-    async def async_check_tracking(self, *, tracking_id, leg_index):
-        if not self._tracking_allowed() or self._busy:
-            return "tracking_unavailable"
+    def active_tracking(self, now):
+        if not self._tracking_allowed():
+            return None
         record = self.tracking.record
-        now = dt_util.utcnow()
         if (
             record is None
             or record.stopped
             or record.finished
+            or now >= record.expires_at
+        ):
+            return None
+        return record
+
+    @staticmethod
+    def _prediction_arguments(leg):
+        return {
+            "origin_code": leg.origin,
+            "destination_code": leg.destination,
+            "expected_service_identity": leg.service_identity,
+            "booked_departure": leg.instant("scheduled_departure"),
+            "booked_arrival": leg.instant("scheduled_arrival"),
+        }
+
+    @staticmethod
+    def _alert_pair(record):
+        return (record.tracking_id, record.option_id)
+
+    async def async_check_tracking(self, *, tracking_id, leg_index):
+        record = self.active_tracking(dt_util.utcnow())
+        if (
+            self._busy
+            or record is None
             or record.tracking_id != tracking_id
             or record.leg_index != leg_index
-            or now >= record.expires_at
         ):
             return "tracking_unavailable"
         self._busy = True
         self._live_tracking = None
+        self._transfer_assessment = None
         try:
             leg = record.legs[leg_index]
-            arguments = {
-                "origin_code": leg.origin,
-                "destination_code": leg.destination,
-                "expected_service_identity": leg.service_identity,
-                "booked_departure": leg.instant("scheduled_departure"),
-                "booked_arrival": leg.instant("scheduled_arrival"),
-            }
-            departure, arrival = await asyncio.gather(
+            arguments = self._prediction_arguments(leg)
+            queries = [
                 self.client.async_departure_prediction(**arguments),
                 self.client.async_arrival_prediction(**arguments),
-            )
-            if not self._tracking_allowed() or self.tracking.record is not record:
-                return "tracking_unavailable"
+            ]
+            onward = None
+            if leg_index == 0 and record.transfer_minutes is not None:
+                onward = record.legs[1]
+                queries.append(
+                    self.client.async_departure_prediction(
+                        **self._prediction_arguments(onward)
+                    )
+                )
+            departure, arrival, *onward_predictions = await asyncio.gather(*queries)
             now = dt_util.utcnow()
+            if self.active_tracking(now) is not record:
+                return "tracking_unavailable"
             self._live_tracking = {
                 name: evidence
                 for name, evidence in (
@@ -296,6 +328,10 @@ class RecoveryRuntime:
                 and now < evidence.event_at
                 and timedelta(0) <= now - evidence.observed_at < MAX_AGE
             }
+            if onward is not None:
+                await self._async_check_transfer(
+                    record, leg, onward, arrival, onward_predictions[0], now
+                )
             return (
                 "tracking_checked" if self._live_tracking else "prediction_unavailable"
             )
@@ -305,6 +341,40 @@ class RecoveryRuntime:
             self._busy = False
             if not self._stopped:
                 self.coordinator.async_update_listeners()
+
+    async def _async_check_transfer(self, record, leg, onward, arrival, departure, now):
+        assessment = assess_connection_evidence(
+            confirmed=True,
+            inbound=arrival,
+            outbound=departure,
+            expected_inbound=ServiceReference("railinfo", leg.service_identity),
+            expected_outbound=ServiceReference("railinfo", onward.service_identity),
+            station_identity=leg.destination,
+            minimum_minutes=record.transfer_minutes,
+            now=now,
+            max_age=MAX_AGE,
+        )
+        expires = None
+        if assessment.classification in ("at_risk", "viable"):
+            expires = min(
+                arrival.observed_at + MAX_AGE,
+                departure.observed_at + MAX_AGE,
+                arrival.event_at,
+                departure.event_at,
+            )
+        self._transfer_assessment = (assessment, expires)
+        if self.alerts is not None:
+            try:
+                await self.alerts.async_process(
+                    self._alert_pair(record),
+                    assessment,
+                    expires,
+                    station=leg.destination,
+                    expires_at=record.expires_at,
+                    is_current=lambda: self.active_tracking(dt_util.utcnow()) is record,
+                )
+            except Exception:
+                self.coordinator.connection_alert_error = True
 
     def _tracking_dashboard(self, now):
         if not self._tracking_allowed():
@@ -320,8 +390,31 @@ class RecoveryRuntime:
                 live[f"{name}_valid_until"] = min(
                     evidence.event_at, evidence.observed_at + MAX_AGE
                 ).isoformat()
+        transfer = None
+        last_alert = None
+        if active and record.leg_index == 0 and record.transfer_minutes is not None:
+            transfer = {
+                "classification": "unknown",
+                "minimum_minutes": record.transfer_minutes,
+            }
+            if self._transfer_assessment is not None:
+                assessment, expiry = self._transfer_assessment
+                if expiry is not None and now < expiry:
+                    transfer = assessment.as_dict()
+                    transfer["valid_until"] = expiry.isoformat()
+            if self.alerts is not None:
+                last_alert = self.alerts.ledger.status(
+                    self._alert_pair(record), now=now
+                )
         return {
             "id": record.tracking_id,
+            "transfer": transfer,
+            "last_alert": last_alert,
+            "next_check_at": (
+                self.next_tracking_check_at.isoformat()
+                if active and self.next_tracking_check_at is not None
+                else None
+            ),
             "state": "stopped"
             if record.stopped
             else ("completed" if record.finished else "tracking"),

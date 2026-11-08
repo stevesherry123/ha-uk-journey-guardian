@@ -47,6 +47,7 @@ class TrackedRecovery:
     legs: tuple[TrackedRecoveryLeg, ...]
     leg_index: int = 0
     stopped: bool = False
+    transfer_minutes: int | None = None
 
     @property
     def tracking_id(self) -> str:
@@ -67,6 +68,14 @@ class TrackedRecovery:
         if (
             not 1 <= len(self.legs) <= 2
             or not 1 <= len(self.affected_booking_ids) <= 64
+            or (
+                self.transfer_minutes is not None
+                and (
+                    len(self.legs) != 2
+                    or type(self.transfer_minutes) is not int
+                    or not 0 <= self.transfer_minutes <= 1440
+                )
+            )
             or type(self.stopped) is not bool
             or type(self.leg_index) is not int
             or not 0 <= self.leg_index <= len(self.legs)
@@ -81,10 +90,9 @@ class TrackedRecovery:
         approved_at = _utc(datetime.fromisoformat(self.approved_at))
         for leg in self.legs:
             leg.validate()
-            if (
-                leg.instant("approved_departure") <= approved_at
-                or leg.instant("approved_arrival") > approved_at + timedelta(hours=10)
-            ):
+            if leg.instant("approved_departure") <= approved_at or leg.instant(
+                "approved_arrival"
+            ) > approved_at + timedelta(hours=10):
                 raise ValueError("invalid_approval_time")
         for first, second in zip(self.legs, self.legs[1:], strict=False):
             if first.destination != second.origin or first.instant(
@@ -160,6 +168,9 @@ class RecoveryTrackingStore:
                         leg.arrival.event_at.isoformat(),
                     )
                     for leg in route.legs
+                ),
+                transfer_minutes=(
+                    route.transfers[0].minutes_required if route.transfers else None
                 ),
             )
             record.validate()

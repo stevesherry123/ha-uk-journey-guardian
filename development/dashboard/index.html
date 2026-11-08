@@ -91,9 +91,16 @@
               arrival: leg.arrival,
               arrival_valid_until: new Date(Date.now() + 300000).toISOString(),
             };
+            if (recovery.tracking.leg_index === 0 && recovery.tracking.legs.length > 1) {
+              recovery.tracking.transfer = {
+                classification: 'at_risk', minutes_available: 6, minimum_minutes: 10,
+                valid_until: recovery.tracking.live.arrival_valid_until,
+              };
+            }
           } else if (action === 'confirm_recovery_arrival') {
             recovery.tracking.leg_index += 1;
             recovery.tracking.live = {};
+            recovery.tracking.transfer = null;
             if (recovery.tracking.leg_index === recovery.tracking.legs.length) {
               recovery.tracking.state = 'completed';
             }

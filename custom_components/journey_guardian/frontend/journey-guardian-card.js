@@ -192,7 +192,10 @@ export class JourneyGuardianCard extends BaseElement {
         this.render();
       }
     };
-    if (recovery?.bookings?.some(leg => leg.can_finish)) {
+    if (
+      recovery?.tracking?.state !== "tracking" &&
+      recovery?.bookings?.some(leg => leg.can_finish)
+    ) {
       add("h2", "Find another route");
       const section = add("div", "", root, "evidence");
       add("p", "Choose the affected train and your final booked train. Confirm the station you can leave from.", section);
@@ -264,6 +267,10 @@ export class JourneyGuardianCard extends BaseElement {
           if (recovery.selection_status === "selection_expired") {
             add("p", "That option has expired. Choose a current option or search again.", section, "notice");
           }
+          add("p", "Booked trains this recovery would replace:", section, "secondary");
+          for (const leg of recovery.affected || []) {
+            add("p", `${format(leg.departure)} · ${leg.origin} to ${leg.destination}`, section);
+          }
           for (const option of options) {
             const route = add("div", "", section, "evidence");
             add("p", `Predicted times · review valid until ${format(option.valid_until)}`, route, "secondary");
@@ -301,10 +308,6 @@ export class JourneyGuardianCard extends BaseElement {
               });
             }
           }
-          add("p", "Booked trains this recovery would replace:", section, "secondary");
-          for (const leg of recovery.affected || []) {
-            add("p", `${format(leg.departure)} · ${leg.origin} to ${leg.destination}`, section);
-          }
         } else if (recovery.status !== "not_requested") {
           const explanations = {
             no_complete_route_in_response: "This search found no complete route it could verify.",
@@ -335,6 +338,22 @@ export class JourneyGuardianCard extends BaseElement {
           const until = tracking.live?.[`${event}_valid_until`];
           if (validTime(at) && validTime(until) && Date.parse(until) > Date.now()) {
             add("p", `Live predicted ${event} ${format(at)}`, section, "secondary");
+          }
+        }
+        if (validTime(tracking.next_check_at) && Date.parse(tracking.next_check_at) > Date.now()) {
+          add("p", `Next replacement check ${format(tracking.next_check_at)}`, section, "secondary");
+        }
+        const transfer = tracking.transfer;
+        if (transfer) {
+          const fresh = validTime(transfer.valid_until) && Date.parse(transfer.valid_until) > Date.now();
+          if (fresh) {
+            const risk = transfer.classification === "at_risk";
+            const label = risk ? "Replacement connection at risk" : "Replacement transfer allowance met";
+            add("p", `${label} · ${transfer.minutes_available} minutes predicted, ${transfer.minimum_minutes} required`, section, risk ? "notice" : "secondary");
+          } else {
+            const earlierRisk = ["risk", "update"].includes(tracking.last_alert?.kind);
+            add("p", earlierRisk ? "An earlier check found the replacement connection at risk. Current times are unavailable." :
+              "Replacement transfer risk is unknown. Check live train times.", section, earlierRisk ? "notice" : "secondary");
           }
         }
         const payload = {tracking_id: tracking.id, leg_index: tracking.leg_index};

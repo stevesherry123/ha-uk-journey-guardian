@@ -95,6 +95,7 @@ from .rail_monitor import AutomaticRailLedger, AutomaticRailMonitor
 from .railinfo import RailinfoClient
 from .recovery_runtime import RecoveryRuntime
 from .recovery_tracking import RecoveryTrackingStore
+from .replacement_monitor import ReplacementMonitor
 from .runtime import JourneyGuardianRuntimeData
 from .simulation import JourneySimulation
 from .station_access_monitor import StationAccessMonitor
@@ -255,12 +256,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await connection_alert_ledger.async_load(dt_util.now())
     coordinator.connection_alert_ledger = connection_alert_ledger
     coordinator.connection_alert_error = not connection_alert_ledger.available
+    connection_alerts = ConnectionAlertController(
+        connection_alert_ledger, notification_scheduler
+    )
     connection_monitor = ConnectionMonitor(
         hass, coordinator, connection_ledger,
         enabled=settings.get(CONF_CONNECTION_MONITOR, False),
-        alerts=ConnectionAlertController(
-            connection_alert_ledger, notification_scheduler
-        ),
+        alerts=connection_alerts,
     )
     arrival_collector = ArrivalCollector(
         hass, coordinator, railinfo_client, check_history
@@ -290,6 +292,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         manual_review=ManualTravelReview(coordinator, notification_scheduler),
         connection_monitor=connection_monitor,
     )
+    replacement_monitor = None
     if engine._live_rail_provider == "railinfo":
         tracking = RecoveryTrackingStore(Store(
             hass, 1, f"journey_guardian.replacement.{connection_scope[:24]}"
@@ -297,8 +300,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         with suppress(HomeAssistantError, OSError, ValueError, TypeError, KeyError):
             await tracking.async_load(dt_util.utcnow())
         coordinator.recovery_runtime = RecoveryRuntime(
-            coordinator, railinfo_client, tracking
+            coordinator, railinfo_client, tracking,
+            alerts=(
+                connection_alerts if coordinator.connection_monitor_enabled else None
+            ),
         )
+        if coordinator.connection_monitor_enabled:
+            replacement_monitor = ReplacementMonitor(
+                hass, coordinator.recovery_runtime, connection_ledger
+            )
         engine.recovery_excludes = coordinator.is_superseded
         entry.async_on_unload(coordinator.recovery_runtime.stop)
     entry.async_on_unload(provider_broker.shutdown)
@@ -314,6 +324,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(notification_scheduler.stop)
     automatic_rail_monitor.start()
     entry.async_on_unload(automatic_rail_monitor.stop)
+    if replacement_monitor is not None:
+        replacement_monitor.start()
+        entry.async_on_unload(replacement_monitor.stop)
     connection_monitor.start()
     entry.async_on_unload(connection_monitor.stop)
     arrival_collector.start()

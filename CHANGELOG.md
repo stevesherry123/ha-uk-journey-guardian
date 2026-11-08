@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Schedule replacement train checks when connection monitoring is enabled.
+  Share the durable connection budget and use matched predictions to warn when
+  the approved replacement transfer falls below its allowance.
+
 - Approve a rechecked rail replacement and track its progress across restarts.
   Skip affected original bookings in the normal monitors, retain the calendar
   baseline, and advance replacement legs only after explicit arrival confirmation.

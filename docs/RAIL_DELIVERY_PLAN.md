@@ -66,7 +66,7 @@ These policies are resolved in the relevant delivery gate. This plan does not it
 | Confirmation and allowances | Implemented and reviewed locally | Persistence, defaults, provenance and fictional mobile controls tested; saved templates and live HA acceptance pending |
 | Live risk and warnings | Opt-in monitoring and announcements implemented locally | Durable transitions and guarded existing delivery route tested; live HA/physical delivery acceptance pending |
 | End-to-end search | Explicit Railinfo review wired to Home Assistant and dashboard | One-query direct and one-change options, current confirmation rechecks, affected-leg preview and manual fallback tested. Selection recheck tested. Broader provider coverage pending |
-| Explicit adoption | Implemented for manual tracking | Exact route approval, durable progress and scoped booking suppression tested. Scheduled replacement checks and real-travel acceptance pending |
+| Explicit adoption | Implemented for bounded replacement tracking | Exact approval, durable progress, scoped booking suppression, scheduled checks and transfer warnings tested. Real-travel acceptance pending |
 | Release acceptance | Pending | Outage/restart rehearsals and real-travel observation |
 
 ## Documentation is part of each delivery gate
@@ -420,3 +420,14 @@ and live journey acceptance remain pending.
   unrelated trips remain separate.
 - Remaining work includes scheduled replacement checks, live transfer assessment
   for adopted routes, and real-travel acceptance.
+
+
+## Replacement monitoring checkpoint — 8 November 2026
+
+- Added opt-in, durable replacement check claims to the existing daily connection
+  budget. The scheduler follows the current approved leg and invalidates old
+  checkpoints after progress, stop or unload.
+- Use matched live inbound arrival and onward departure predictions to assess
+  the approved transfer allowance. Reuse the existing announcement route and
+  alert history for meaningful warnings. The card qualifies expired evidence.
+- See [the recovery guide](RECOVERY_REVIEW.md) for cadence and limits.

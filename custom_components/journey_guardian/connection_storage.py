@@ -8,9 +8,9 @@ from datetime import datetime
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.storage import Store
 
 from .connection_store import ConnectionConfirmationStore
+from .verified_rail_store import VerifiedRailStore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,7 +20,9 @@ class HAConnectionConfirmations(ConnectionConfirmationStore):
 
     def __init__(self, hass: HomeAssistant, *, scope: str) -> None:
         scope_hash = hashlib.sha256(scope.encode()).hexdigest()
-        storage = Store(hass, 1, f"journey_guardian.connections.{scope_hash[:24]}")
+        storage = VerifiedRailStore(
+            hass, f"journey_guardian.connections.{scope_hash[:24]}"
+        )
         super().__init__(storage, scope=scope_hash)
         self.persistence_error = False
 

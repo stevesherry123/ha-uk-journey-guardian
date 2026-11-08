@@ -102,7 +102,7 @@ text is replaced with a stable invalid-response category.
 
 ## Validation and next steps
 
-The local suite passed 745 tests with one existing expected failure, including
+The local suite passed 746 tests with one existing expected failure, including
 the local TCP frontend-serving test. Ten card tests passed. The fictional browser
 preview verified the form, final destination and affected-leg display, and the
 fallback at phone width. Live travel acceptance remains pending.
@@ -155,8 +155,8 @@ With connection monitoring enabled, Journey Guardian schedules a check five
 minutes before each approved departure and ten minutes before each approved
 arrival of the current replacement train. The shared connection ledger allows
 eight automatic check claims per local day, spaced at least five minutes apart.
-A checkpoint can catch up for two minutes, and each claim is saved before any
-provider call. Advancing, stopping or unloading the replacement invalidates an
+A checkpoint can catch up for two minutes. Journey Guardian verifies each
+saved claim before any provider call. Advancing, stopping or unloading the replacement invalidates an
 old leg's checkpoint.
 
 For a replacement with a change, the check compares the live predicted arrival
@@ -187,3 +187,9 @@ survive reload, and the unrelated evening train remains eligible.
 
 Real travel, provider-confirmed early termination and physical announcement
 receipt still need acceptance evidence.
+
+
+Rail confirmations, approvals, tracking progress, check claims and alert claims
+use atomic Home Assistant storage. Journey Guardian reads the record back before
+using it to authorize work. A logged write failure leaves the previously saved
+record in effect.

@@ -13,7 +13,6 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later
-from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .arrival_collector import ArrivalCollector
@@ -100,6 +99,7 @@ from .runtime import JourneyGuardianRuntimeData
 from .simulation import JourneySimulation
 from .station_access_monitor import StationAccessMonitor
 from .transportapi import TransportAPIClient
+from .verified_rail_store import VerifiedRailStore
 
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -242,14 +242,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         f"{entry.entry_id}|{entry.data[CONF_CALENDAR_ENTITY]}".encode()
     ).hexdigest()
     connection_ledger = ConnectionCheckLedger(
-        Store(hass, 1, f"journey_guardian.connection_checks.{connection_scope[:24]}"),
+        VerifiedRailStore(
+            hass, f"journey_guardian.connection_checks.{connection_scope[:24]}"
+        ),
         scope=connection_scope,
     )
     # An unreadable ledger cannot authorize provider work.
     with suppress(HomeAssistantError, OSError, ValueError, TypeError):
         await connection_ledger.async_load()
     connection_alert_ledger = ConnectionAlertLedger(
-        Store(hass, 1, f"journey_guardian.connection_alerts.{connection_scope[:24]}"),
+        VerifiedRailStore(
+            hass, f"journey_guardian.connection_alerts.{connection_scope[:24]}"
+        ),
         scope=connection_scope,
     )
     with suppress(HomeAssistantError, OSError, ValueError, TypeError, KeyError):
@@ -294,8 +298,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     replacement_monitor = None
     if engine._live_rail_provider == "railinfo":
-        tracking = RecoveryTrackingStore(Store(
-            hass, 1, f"journey_guardian.replacement.{connection_scope[:24]}"
+        tracking = RecoveryTrackingStore(VerifiedRailStore(
+            hass, f"journey_guardian.replacement.{connection_scope[:24]}"
         ))
         with suppress(HomeAssistantError, OSError, ValueError, TypeError, KeyError):
             await tracking.async_load(dt_util.utcnow())

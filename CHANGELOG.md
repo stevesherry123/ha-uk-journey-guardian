@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Verify atomic writes for rail confirmations, replacement tracking and check
+  and alert claims. A logged storage failure can no longer authorize a new
+  recovery decision or provider check.
+
 - Link to the National Rail Journey Planner when recovery options are unavailable
   or a replacement transfer is at risk.
 

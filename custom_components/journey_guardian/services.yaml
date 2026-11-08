@@ -147,3 +147,66 @@ select_recovery:
       required: true
       selector:
         text:
+
+approve_recovery:
+  name: Approve and track a recovery route
+  description: Adopt the currently rechecked route for replacement tracking.
+  fields:
+    option_id:
+      name: Rechecked route ID
+      required: true
+      selector:
+        text:
+    revision:
+      name: Rechecked route revision
+      required: true
+      selector:
+        text:
+
+check_recovery_tracking:
+  name: Check replacement train predictions
+  description: Update predictions for the current approved replacement train.
+  fields:
+    tracking_id:
+      name: Replacement tracking ID
+      required: true
+      selector:
+        text:
+    leg_index:
+      name: Current leg index
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 1
+          mode: box
+
+confirm_recovery_arrival:
+  name: Confirm arrival on a replacement train
+  description: Record your arrival and advance the approved replacement route.
+  fields:
+    tracking_id:
+      name: Replacement tracking ID
+      required: true
+      selector:
+        text:
+    leg_index:
+      name: Current leg index
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 1
+          mode: box
+
+stop_recovery_tracking:
+  name: Stop tracking the replacement
+  description: Stop the approved replacement and resume normal calendar selection.
+  fields:
+    tracking_id:
+      name: Replacement tracking ID
+      required: true
+      selector:
+        text:

@@ -454,6 +454,12 @@ class JourneyNotificationScheduler:
         fingerprint = _notification_fingerprint(snapshot, kind)
         if not await self._ledger.async_claim(fingerprint):
             return
+        excludes = getattr(self._coordinator, "is_superseded", None)
+        if (
+            not snapshot.simulation_active and excludes is not None
+            and excludes(snapshot.next_journey, dt_util.utcnow()) is True
+        ):
+            return
         title = (
             "UK Journey Guardian simulation"
             if snapshot.simulation_active
@@ -467,6 +473,9 @@ class JourneyNotificationScheduler:
             title=title,
             notification_id=f"{DOMAIN}_{fingerprint}",
             simulation=snapshot.simulation_active,
+            is_current=(
+                lambda: excludes(snapshot.next_journey, dt_util.utcnow()) is not True
+            ) if not snapshot.simulation_active and excludes is not None else None,
         )
         self._coordinator.record_notification(kind, dt_util.now())
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from datetime import UTC, datetime
 from typing import Any
 
@@ -82,7 +82,10 @@ def _route_parts(summary: str) -> tuple[str, str] | None:
 
 
 def select_next_journey(
-    events: Iterable[Mapping[str, Any]], reference: datetime
+    events: Iterable[Mapping[str, Any]],
+    reference: datetime,
+    *,
+    exclude: Callable[[JourneyEvent], bool] | None = None,
 ) -> JourneyEvent | None:
     """Return the next timed event and its Journey Guardian decision path."""
     candidates: list[JourneyEvent] = []
@@ -101,16 +104,16 @@ def select_next_journey(
         if route is None:
             continue
         origin_name, destination_name = route
-        candidates.append(
-            JourneyEvent(
-                start=start,
-                end=end,
-                summary=summary,
-                location=location,
-                origin_code="CALENDAR",
-                origin_name=origin_name,
-                destination_confirmation=destination_name,
-                decision_path="calendar_route",
-            )
+        candidate = JourneyEvent(
+            start=start,
+            end=end,
+            summary=summary,
+            location=location,
+            origin_code="CALENDAR",
+            origin_name=origin_name,
+            destination_confirmation=destination_name,
+            decision_path="calendar_route",
         )
+        if exclude is None or not exclude(candidate):
+            candidates.append(candidate)
     return min(candidates, key=lambda event: event.start) if candidates else None

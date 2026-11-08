@@ -168,6 +168,30 @@ export class JourneyGuardianCard extends BaseElement {
       }
     }
     const recovery = data.recovery;
+    const runTrackingAction = async (action, payload) => {
+      if (this._recoveryPending) return;
+      this._recoveryPending = true;
+      this._recoveryError = "";
+      this.render();
+      try {
+        const result = await this._hass.callService(
+          "journey_guardian", action, payload, undefined, true
+        );
+        const status = result?.response?.status;
+        const messages = {
+          selection_expired: "The route preview expired. Search and recheck the route again.",
+          approval_unavailable: "Could not save the replacement. Check that there is no active replacement.",
+          tracking_unavailable: "That tracking action is unavailable. Refresh the dashboard and try again.",
+          prediction_unavailable: "Live predictions are unavailable. Check station information.",
+        };
+        this._recoveryError = messages[status] || "";
+      } catch (_) {
+        this._recoveryError = "Could not complete the replacement tracking action.";
+      } finally {
+        this._recoveryPending = false;
+        this.render();
+      }
+    };
     if (recovery?.bookings?.some(leg => leg.can_finish)) {
       add("h2", "Find another route");
       const section = add("div", "", root, "evidence");
@@ -251,6 +275,12 @@ export class JourneyGuardianCard extends BaseElement {
             }
             if (recovery.selected_option_id === option.option_id && option.option_id) {
               add("p", "Route rechecked. This is a preview for approval.", route, "notice");
+              if (recovery.can_approve) {
+                const approve = add("button", "Approve and track this route", route);
+                approve.addEventListener("click", () => runTrackingAction("approve_recovery", {
+                  option_id: option.option_id, revision: option.revision,
+                }));
+              }
             } else if (option.option_id && option.revision) {
               const select = add("button", "Recheck this route", route);
               select.addEventListener("click", async () => {
@@ -286,6 +316,42 @@ export class JourneyGuardianCard extends BaseElement {
           add("p", explanations[recovery.status] || "Complete recovery options are unavailable.", section, "notice");
           add("p", "Check live departures or ask station staff about onward travel.", section, "secondary");
         }
+      }
+    }
+    const tracking = recovery?.tracking;
+    if (tracking) {
+      add("h2", "Replacement tracking");
+      const section = add("div", "", root, "evidence");
+      const labels = {tracking: "Approved replacement", completed: "Arrival confirmed at final destination", stopped: "Tracking stopped"};
+      add("p", labels[tracking.state], section);
+      for (const [index, leg] of tracking.legs.entries()) {
+        const label = index < tracking.leg_index ? "Arrival confirmed" :
+          index === tracking.leg_index && tracking.state === "tracking" ? "Current train" : "Approved times";
+        add("p", `${label} · ${leg.origin} ${format(leg.departure)} → ${leg.destination} ${format(leg.arrival)}`, section);
+      }
+      if (tracking.state === "tracking") {
+        for (const event of ["departure", "arrival"]) {
+          const at = tracking.live?.[event];
+          const until = tracking.live?.[`${event}_valid_until`];
+          if (validTime(at) && validTime(until) && Date.parse(until) > Date.now()) {
+            add("p", `Live predicted ${event} ${format(at)}`, section, "secondary");
+          }
+        }
+        const payload = {tracking_id: tracking.id, leg_index: tracking.leg_index};
+        const check = add("button", "Check live train times", section);
+        check.disabled = Boolean(this._recoveryPending);
+        check.addEventListener("click", () => runTrackingAction("check_recovery_tracking", payload));
+        const arrived = add("button", "Confirm arrival at " + tracking.legs[tracking.leg_index].destination, section);
+        arrived.disabled = Boolean(this._recoveryPending) ||
+          Date.parse(tracking.legs[tracking.leg_index].departure) > Date.now();
+        arrived.addEventListener("click", () => runTrackingAction("confirm_recovery_arrival", payload));
+        const stop = add("button", "Stop replacement tracking", section);
+        stop.disabled = Boolean(this._recoveryPending);
+        stop.addEventListener("click", () => runTrackingAction("stop_recovery_tracking", {tracking_id: tracking.id}));
+      }
+      if (this._recoveryPending || this._recoveryError) {
+        const message = add("p", this._recoveryPending ? "Updating recovery…" : this._recoveryError, section, "secondary");
+        message.setAttribute("role", "status");
       }
     }
     const journey = data.journey;

@@ -11,6 +11,7 @@ from custom_components.journey_guardian.railinfo_recovery import (
     normalize_railinfo_recovery,
 )
 from custom_components.journey_guardian.recovery_runtime import RecoveryRuntime
+from custom_components.journey_guardian.recovery_tracking import RecoveryTrackingStore
 from custom_components.journey_guardian.travel_plan import RetainedLeg
 
 NOW = datetime(2026, 11, 7, 10, tzinfo=UTC)
@@ -175,3 +176,71 @@ async def test_revocation_during_station_lookup_blocks_route_search():
         assert await recovery.async_search(**COMMAND) == "review_unavailable"
         assert not recovery.dashboard(NOW)["options"]
     client.async_recovery_search.assert_not_awaited()
+
+
+async def test_approval_is_explicit_and_progress_restores_after_restart(hass):
+    recovery, coordinator, _ = runtime_fixture()
+    storage = SimpleNamespace(
+        async_load=AsyncMock(return_value=None), async_save=AsyncMock()
+    )
+    store = RecoveryTrackingStore(storage)
+    await store.async_load(NOW)
+    recovery.tracking = store
+    coordinator.async_request_refresh = AsyncMock()
+    coordinator.suppress_superseded.side_effect = lambda snapshot: snapshot
+    clock = Mock(return_value=NOW)
+    with (
+        patch(
+            "custom_components.journey_guardian._runtime",
+            return_value=SimpleNamespace(coordinator=coordinator),
+        ),
+        patch(
+            "custom_components.journey_guardian.recovery_runtime.dt_util.utcnow", clock
+        ),
+    ):
+        _async_register_services(hass)
+
+        async def call(action, payload):
+            return await hass.services.async_call(
+                DOMAIN,
+                action,
+                payload,
+                blocking=True,
+                return_response=True,
+            )
+
+        await call("review_recovery", COMMAND)
+        option = recovery.dashboard(NOW)["options"][0]
+        route = {key: option[key] for key in ("option_id", "revision")}
+        assert await call("approve_recovery", route) == {"status": "selection_expired"}
+        storage.async_save.assert_not_awaited()
+        await call("select_recovery", route)
+        assert await call("approve_recovery", route) == {
+            "status": "replacement_approved"
+        }
+        assert await call("approve_recovery", route) == {
+            "status": "replacement_approved"
+        }
+        storage.async_save.assert_awaited_once()
+        assert recovery.is_booking_superseded("a" * 64, NOW)
+        assert recovery.is_booking_superseded("b" * 64, NOW)
+        assert not recovery.is_booking_superseded("c" * 64, NOW)
+        progress = {"tracking_id": store.record.tracking_id, "leg_index": 0}
+        assert await call("confirm_recovery_arrival", progress) == {
+            "status": "tracking_unavailable",
+        }
+        clock.return_value = NOW + timedelta(hours=2)
+        assert await call("confirm_recovery_arrival", progress) == {
+            "status": "tracking_updated",
+        }
+        assert await call("confirm_recovery_arrival", progress) == {
+            "status": "tracking_unavailable",
+        }
+    restored = RecoveryTrackingStore(
+        SimpleNamespace(
+            async_load=AsyncMock(return_value=storage.async_save.await_args.args[0]),
+        )
+    )
+    await restored.async_load(NOW + timedelta(hours=2))
+    assert restored.record.finished
+    assert restored.record.tracking_id == progress["tracking_id"]

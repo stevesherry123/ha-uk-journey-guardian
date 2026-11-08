@@ -2,7 +2,8 @@
 
 Updated 8 November 2026. The development branch includes the Home Assistant
 action and dashboard form for explicit Railinfo recovery review and selection.
-Approval, adoption and continued tracking are later milestones.
+Approval starts durable tracking for the selected replacement. The initial
+tracking workflow uses on-demand live checks and user-confirmed arrivals.
 
 1. Confirm each intended connection between separate rail calendar bookings.
 2. With Railinfo selected and a current calendar review, open **Find another
@@ -47,7 +48,7 @@ flowchart TD
     H -->|No| M
     H -->|Yes| I[Advisory route review and affected-booking preview]
     I -->|Explicit selection| J[Recheck exact route and show approval preview]
-    J -. Future explicit approval .-> K[Track replacement while retaining booked baseline]
+    J -->|Explicit approval| K[Track replacement while retaining booked baseline]
 ```
 
 `RecoveryReviewController` implements B through H and an internal result for I.
@@ -104,7 +105,7 @@ the local TCP frontend-serving test. Ten card tests passed. The fictional browse
 preview verified the form, final destination and affected-leg display, and the
 fallback at phone width. Live travel acceptance remains pending.
 
-Explicit approval, adoption and tracking are the next milestone.
+Scheduled replacement checks and live transfer warnings are the next milestone.
 Provider-confirmed cancellation and early termination need a matched evidence
 adapter. Routes with more than one change remain a provider capability gap.
 
@@ -123,3 +124,25 @@ preview. When times or services change, the card shows the refreshed options and
 asks you to choose again. Expired options require a new review, and revocation
 or unloading invalidates the preview. The rechecked option expires with its
 route evidence or original recovery context, whichever expires first.
+
+
+## Approve and track a replacement
+
+Review the affected bookings and select **Approve and track this route** while
+the rechecked option is current. Journey Guardian saves one replacement route
+per integration entry and presents its current train under **Replacement tracking**.
+Original calendar events remain available for comparison. The normal departure
+and connection monitors skip the exact affected bookings while the replacement
+record is current. Other bookings continue through the existing calendar flow.
+
+Use **Check live train times** for matched Railinfo departure and arrival
+predictions. The card labels approved times separately and drops expired
+predictions. When you reach the displayed station, use **Confirm arrival** to
+advance to the next train or complete the route. Progress survives Home Assistant
+restart. A scheduled or predicted arrival alone never advances the route.
+
+**Stop replacement tracking** stops the replacement and resumes normal calendar
+selection. A completed or stopped route can be replaced by another explicit
+approval. Records expire eight hours after the approved final arrival. The
+initial tracking version uses one active route, at most two legs, and no
+automatic replacement announcements. Ticket acceptance remains unknown.

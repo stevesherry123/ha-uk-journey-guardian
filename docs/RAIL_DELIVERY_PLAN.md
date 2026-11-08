@@ -65,8 +65,8 @@ These policies are resolved in the relevant delivery gate. This plan does not it
 | State contracts and persistence | Partly implemented locally | Versioned confirmations and typed time evidence tested; adoption/evidence retention pending |
 | Confirmation and allowances | Implemented and reviewed locally | Persistence, defaults, provenance and fictional mobile controls tested; saved templates and live HA acceptance pending |
 | Live risk and warnings | Opt-in monitoring and announcements implemented locally | Durable transitions and guarded existing delivery route tested; live HA/physical delivery acceptance pending |
-| End-to-end search | Explicit Railinfo review wired to Home Assistant and dashboard | One-query direct and one-change options, current confirmation rechecks, affected-leg preview and manual fallback tested. Selection recheck tested. Broader provider coverage and adoption pending |
-| Explicit adoption | Pending | Whole-route approval, downstream tracking, original evidence retained |
+| End-to-end search | Explicit Railinfo review wired to Home Assistant and dashboard | One-query direct and one-change options, current confirmation rechecks, affected-leg preview and manual fallback tested. Selection recheck tested. Broader provider coverage pending |
+| Explicit adoption | Implemented for manual tracking | Exact route approval, durable progress and scoped booking suppression tested. Scheduled replacement checks and real-travel acceptance pending |
 | Release acceptance | Pending | Outage/restart rehearsals and real-travel observation |
 
 ## Documentation is part of each delivery gate
@@ -408,3 +408,15 @@ and live journey acceptance remain pending.
   acquisition. Expiry and revocation invalidate the preview.
 - The next milestone is explicit approval and durable replacement tracking.
   See [the recovery guide](RECOVERY_REVIEW.md).
+
+
+## Replacement approval checkpoint — 8 November 2026
+
+- Added explicit approval for the current rechecked route. Persist the approved
+  replacement and user-confirmed progress per integration entry. Original calendar
+  events remain available and the normal selection path skips exact affected IDs.
+- Added a tracking card with current-leg live predictions on request, explicit
+  arrival confirmation and stop controls. The original connected baseline and
+  unrelated trips remain separate.
+- Remaining work includes scheduled replacement checks, live transfer assessment
+  for adopted routes, and real-travel acceptance.

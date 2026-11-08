@@ -25,9 +25,11 @@ MAX_CALENDAR_AGE = timedelta(minutes=15)
 class RecoveryRuntime:
     """Resolve stations and rebuild current inputs around an explicit search."""
 
-    def __init__(self, coordinator, client):
+    def __init__(self, coordinator, client, tracking=None):
         self.coordinator = coordinator
         self.client = client
+        self.tracking = tracking
+        self._live_tracking = None
         self.review = RecoveryReviewController(
             client.async_recovery_search, clock=dt_util.utcnow
         )
@@ -164,7 +166,182 @@ class RecoveryRuntime:
             if not self._stopped:
                 self.coordinator.async_update_listeners()
 
+    async def async_approve(self, *, option_id, revision):
+        if self._busy:
+            return "search_in_progress"
+        self._busy = True
+        try:
+            if not self._tracking_allowed():
+                return "tracking_unavailable"
+            now = dt_util.utcnow()
+            existing = self.tracking.record
+            if (
+                existing is not None
+                and not existing.stopped
+                and not existing.finished
+                and now < existing.expires_at
+                and (existing.option_id, existing.revision) == (option_id, revision)
+            ):
+                return "replacement_approved"
+            review = self.review.current()
+            if review.context is None or review.selected_option_id != option_id:
+                return "selection_expired"
+            route = next(
+                (
+                    item
+                    for item in review.routes
+                    if (item.option_id, item.revision) == (option_id, revision)
+                ),
+                None,
+            )
+            if route is None:
+                return "selection_expired"
+            await self.tracking.async_approve(
+                route, review.context.affected_booking_ids, now=now
+            )
+            self.invalidate()
+            self._live_tracking = None
+            snapshot = self.coordinator.data
+            current = self.coordinator.suppress_superseded(snapshot)
+            if current is not snapshot:
+                self.coordinator.async_set_updated_data(current)
+            await self.coordinator.async_request_refresh()
+            return "replacement_approved"
+        except ValueError, OSError:
+            return "approval_unavailable"
+        finally:
+            self._busy = False
+            if not self._stopped:
+                self.coordinator.async_update_listeners()
+
+    def is_booking_superseded(self, booking_id, now):
+        record = self.tracking.record if self.tracking is not None else None
+        return bool(
+            record
+            and not record.stopped
+            and now < record.expires_at
+            and booking_id in record.affected_booking_ids
+        )
+
+    def _tracking_allowed(self):
+        snapshot = self.coordinator.data
+        return (
+            not self._stopped
+            and self.tracking is not None
+            and self.tracking.available
+            and snapshot is not None
+            and not snapshot.simulation_active
+        )
+
+    async def async_progress(self, *, tracking_id, leg_index=None):
+        if not self._tracking_allowed() or self._busy:
+            return "tracking_unavailable"
+        self._busy = True
+        try:
+            if leg_index is None:
+                await self.tracking.async_stop(tracking_id)
+                await self.coordinator.async_request_refresh()
+            else:
+                await self.tracking.async_confirm_arrival(
+                    tracking_id, leg_index, now=dt_util.utcnow()
+                )
+            self._live_tracking = None
+            return "tracking_updated"
+        except ValueError, OSError:
+            return "tracking_unavailable"
+        finally:
+            self._busy = False
+            if not self._stopped:
+                self.coordinator.async_update_listeners()
+
+    async def async_check_tracking(self, *, tracking_id, leg_index):
+        if not self._tracking_allowed() or self._busy:
+            return "tracking_unavailable"
+        record = self.tracking.record
+        now = dt_util.utcnow()
+        if (
+            record is None
+            or record.stopped
+            or record.finished
+            or record.tracking_id != tracking_id
+            or record.leg_index != leg_index
+            or now >= record.expires_at
+        ):
+            return "tracking_unavailable"
+        self._busy = True
+        self._live_tracking = None
+        try:
+            leg = record.legs[leg_index]
+            arguments = {
+                "origin_code": leg.origin,
+                "destination_code": leg.destination,
+                "expected_service_identity": leg.service_identity,
+                "booked_departure": leg.instant("scheduled_departure"),
+                "booked_arrival": leg.instant("scheduled_arrival"),
+            }
+            departure, arrival = await asyncio.gather(
+                self.client.async_departure_prediction(**arguments),
+                self.client.async_arrival_prediction(**arguments),
+            )
+            if not self._tracking_allowed() or self.tracking.record is not record:
+                return "tracking_unavailable"
+            now = dt_util.utcnow()
+            self._live_tracking = {
+                name: evidence
+                for name, evidence in (
+                    ("departure", departure),
+                    ("arrival", arrival),
+                )
+                if evidence is not None
+                and now < evidence.event_at
+                and timedelta(0) <= now - evidence.observed_at < MAX_AGE
+            }
+            return (
+                "tracking_checked" if self._live_tracking else "prediction_unavailable"
+            )
+        except ValueError, OSError, TimeoutError, ProviderBrokerError:
+            return "prediction_unavailable"
+        finally:
+            self._busy = False
+            if not self._stopped:
+                self.coordinator.async_update_listeners()
+
+    def _tracking_dashboard(self, now):
+        if not self._tracking_allowed():
+            return None
+        record = self.tracking.record
+        if record is None or now >= record.expires_at:
+            return None
+        active = not record.stopped and not record.finished
+        live = {}
+        for name, evidence in (self._live_tracking or {}).items():
+            if now < min(evidence.event_at, evidence.observed_at + MAX_AGE):
+                live[name] = evidence.event_at.isoformat()
+                live[f"{name}_valid_until"] = min(
+                    evidence.event_at, evidence.observed_at + MAX_AGE
+                ).isoformat()
+        return {
+            "id": record.tracking_id,
+            "state": "stopped"
+            if record.stopped
+            else ("completed" if record.finished else "tracking"),
+            "leg_index": record.leg_index,
+            "can_confirm_arrival": active
+            and now >= record.legs[record.leg_index].instant("approved_departure"),
+            "legs": [
+                {
+                    "origin": leg.origin,
+                    "destination": leg.destination,
+                    "departure": leg.approved_departure,
+                    "arrival": leg.approved_arrival,
+                }
+                for leg in record.legs
+            ],
+            "live": live if active else {},
+        }
+
     def dashboard(self, now):
+        tracking = self._tracking_dashboard(now)
         try:
             bookings = self._bookings(now)
         except ValueError:
@@ -172,7 +349,7 @@ class RecoveryRuntime:
                 self.invalidate()
             else:
                 self.review.current()
-            return {}
+            return {"tracking": tracking} if tracking else {}
         confirmed = self.coordinator.connection_confirmations.active(now=now)
         connected_ids = {
             key
@@ -200,6 +377,9 @@ class RecoveryRuntime:
         result = self.review.current()
         return {
             "bookings": list(labels.values()),
+            "tracking": tracking,
+            "can_approve": self._tracking_allowed()
+            and (tracking is None or tracking["state"] != "tracking"),
             "selection_status": self._selection_status,
             "selected_option_id": result.selected_option_id,
             "status": "review_unavailable" if self._preflight_failed else result.status,

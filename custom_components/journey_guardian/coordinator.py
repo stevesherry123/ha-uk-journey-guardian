@@ -102,6 +102,35 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
             always_update=False,
         )
 
+    def is_superseded(self, journey, now):
+        recovery = getattr(self, "recovery_runtime", None)
+        if recovery is None:
+            return False
+        booking_id = self.travel_plan.booking_identity(journey)
+        if recovery.is_booking_superseded(booking_id, now):
+            return True
+        if journey.decision_path != "calendar_recovered":
+            return False
+        # Outage recovery reconstructs a summary without the original location.
+        return any(
+            datetime.fromisoformat(leg["departure"]) == journey.start
+            and leg["arrival"] is not None
+            and datetime.fromisoformat(leg["arrival"]) == journey.end
+            and recovery.is_booking_superseded(leg["booking_id"], now)
+            for leg in self.travel_plan.attributes(now)["retained_booked_legs"]
+        )
+
+    def suppress_superseded(self, snapshot):
+        if (
+            not snapshot.simulation_active and snapshot.next_journey is not None
+            and self.is_superseded(snapshot.next_journey, dt_util.utcnow())
+        ):
+            return replace(
+                snapshot, next_journey=None, timing=None, rail_observation=None,
+                status="idle", operational_phase="idle",
+            )
+        return snapshot
+
     def connection_dashboard(self, now: datetime) -> dict:
         """Expose current candidate pairs without assuming live transfer viability."""
         snapshot = self.data
@@ -118,10 +147,15 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
                         for record in active(now=now))
         by_id = {leg["booking_id"]: leg for leg in legs}
         pairs = []
+        recovery = getattr(self, "recovery_runtime", None)
         for first, second in sorted(
             keys, key=lambda pair: by_id.get(pair[1], {}).get("departure", "")
         ):
             if first not in by_id or second not in by_id:
+                continue
+            if recovery is not None and any(
+                recovery.is_booking_superseded(key, now) for key in (first, second)
+            ):
                 continue
             inbound, outbound = by_id[first], by_id[second]
             saved = self.connection_confirmations.get(first, second, now=now)
@@ -207,7 +241,10 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         )
         self._update_health_issues(snapshot)
         await self.travel_plan.async_update(snapshot)
+        snapshot = self.suppress_superseded(snapshot)
         recovered = self.live_evidence.restore_journey(snapshot)
+        if recovered is not None and self.is_superseded(recovered, dt_util.utcnow()):
+            recovered = None
         if recovered is not None:
             snapshot = replace(
                 snapshot, next_journey=recovered, status="active",
@@ -315,6 +352,11 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
             )
         except ValueError as err:
             raise HomeAssistantError(str(err)) from None
+        if (
+            snapshot.next_journey is not None
+            and self.is_superseded(snapshot.next_journey, dt_util.utcnow())
+        ):
+            return self.data
         self.last_live_check_at = snapshot.checked_at
         if not snapshot.simulation_active:
             self.health_issues.observe(

@@ -90,6 +90,7 @@ export function previewData(scenario, now = Date.now()) {
     ];
     recovery = {
       bookings: booked,
+      can_approve: true,
       affected: booked,
       status: scenario === 'recovery-unavailable' ? 'no_complete_route_in_response' : 'options_available',
       options: scenario === 'recovery-unavailable' ? [] : [{

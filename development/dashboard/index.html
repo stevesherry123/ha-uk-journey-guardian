@@ -66,7 +66,41 @@
             recovery.selected_option_id = payload.option_id;
             recovery.selection_status = 'selection_verified';
           }
-          card.hass = {...data, states: fixture.states};
+          data.states = fixture.states;
+          card.hass = {...data, states: structuredClone(data.states)};
+          return;
+        }
+        if (['approve_recovery', 'check_recovery_tracking',
+             'confirm_recovery_arrival', 'stop_recovery_tracking'].includes(action)) {
+          const recovery = data.states['sensor.example_journey_status'].attributes.recovery;
+          if (action === 'approve_recovery') {
+            const route = recovery.options.find(option =>
+              option.option_id === recovery.selected_option_id &&
+              option.option_id === payload.option_id && option.revision === payload.revision);
+            if (!route) throw new Error('Fictional approval expired');
+            recovery.tracking = {
+              id: 'f'.repeat(64), state: 'tracking', leg_index: 0, legs: route.legs, live: {},
+            };
+            recovery.can_approve = false;
+            recovery.selected_option_id = null;
+            recovery.status = 'not_requested';
+            recovery.options = [];
+          } else if (action === 'check_recovery_tracking') {
+            const leg = recovery.tracking.legs[recovery.tracking.leg_index];
+            recovery.tracking.live = {
+              arrival: leg.arrival,
+              arrival_valid_until: new Date(Date.now() + 300000).toISOString(),
+            };
+          } else if (action === 'confirm_recovery_arrival') {
+            recovery.tracking.leg_index += 1;
+            recovery.tracking.live = {};
+            if (recovery.tracking.leg_index === recovery.tracking.legs.length) {
+              recovery.tracking.state = 'completed';
+            }
+          } else {
+            recovery.tracking.state = 'stopped';
+          }
+          card.hass = {...data, states: structuredClone(data.states)};
           return;
         }
         if (select.value === 'connection-error') throw new Error('Fictional save failure');

@@ -83,6 +83,7 @@ class JourneyGuardianEngine:
         self._station_access_fallback_minutes = station_access_fallback_minutes
         self._station_access_minimum_minutes = station_access_minimum_minutes
         self._simulation = simulation
+        self.recovery_excludes = None
         self._transportapi_client = transportapi_client
         self._railinfo_client = railinfo_client
         self._live_rail_provider = live_rail_provider
@@ -125,7 +126,12 @@ class JourneyGuardianEngine:
             return self._calendar_unavailable_snapshot(checked_at)
         try:
             events = await self._async_calendar_events(checked_at)
-            next_journey = select_next_journey(events, checked_at)
+            next_journey = select_next_journey(
+                events, checked_at,
+                exclude=(
+                    lambda journey: self.recovery_excludes(journey, checked_at)
+                ) if self.recovery_excludes is not None else None,
+            )
             booked_legs, booked_leg_count = upcoming_bookings(events, checked_at)
             if next_journey is None:
                 status = "idle"
@@ -210,6 +216,8 @@ class JourneyGuardianEngine:
         journey = snapshot.next_journey
         if journey is None:
             raise ValueError("rail_journey_unavailable")
+        if self.recovery_excludes and self.recovery_excludes(journey, dt_util.utcnow()):
+            raise ValueError("booking_replaced")
         client = self._live_rail_client()
         provider = self._live_rail_provider
         if client is None:

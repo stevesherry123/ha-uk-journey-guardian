@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Approve a rechecked rail replacement and track its progress across restarts.
+  Skip affected original bookings in the normal monitors, retain the calendar
+  baseline, and advance replacement legs only after explicit arrival confirmation.
+
 - Add a recovery route recheck that verifies the selected route with fresh
   Railinfo evidence. Show an approval preview for unchanged routes and ask for
   a new selection if timings or services change.

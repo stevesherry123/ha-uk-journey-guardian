@@ -861,3 +861,33 @@ async def test_manual_review_rejects_materially_later_service() -> None:
         calendar_result.last_live_rail_error
         == "transportapi_rail_schedule_mismatch"
     )
+
+
+async def test_replacement_excludes_original_selection_but_keeps_booked_baseline():
+    hass = Mock()
+    hass.states.get.return_value.state = "on"
+    hass.services.has_service.return_value = True
+    engine = JourneyGuardianEngine(
+        hass, calendar_entity=CALENDAR_ENTITY, budget=_budget()
+    )
+    first = {
+        "summary": "Example Central to Sample Harbour",
+        "start": (CHECKED_AT + timedelta(minutes=10)).isoformat(),
+        "end": (CHECKED_AT + timedelta(minutes=70)).isoformat(),
+    }
+    later = {
+        "summary": "Sample Harbour to Example Central",
+        "start": (CHECKED_AT + timedelta(hours=3)).isoformat(),
+        "end": (CHECKED_AT + timedelta(hours=4)).isoformat(),
+    }
+    engine._async_calendar_events = AsyncMock(return_value=[first, later])
+    engine._async_calculate_timing = AsyncMock(return_value=None)
+    engine.recovery_excludes = lambda journey, _: journey.summary == first["summary"]
+    with patch(
+        "custom_components.journey_guardian.engine.dt_util.now", return_value=CHECKED_AT
+    ):
+        snapshot = await engine.async_review()
+    assert snapshot.next_journey.summary == later["summary"]
+    assert [leg.summary for leg in snapshot.booked_legs] == [
+        first["summary"], later["summary"],
+    ]

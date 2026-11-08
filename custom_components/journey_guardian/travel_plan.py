@@ -138,7 +138,8 @@ class TravelPlanStore:
         if self._legs:
             self._source = "retained_after_restart"
 
-    def _booking(self, leg: JourneyEvent, now: datetime) -> RetainedLeg:
+    def booking_identity(self, leg: JourneyEvent) -> str:
+        """Return the exact scoped ID used for confirmations and replacement."""
         start = leg.start.astimezone(UTC).isoformat()
         end = leg.end.astimezone(UTC).isoformat() if leg.end else None
         # No reliable calendar UID is exposed by all sources. Exact identity
@@ -148,10 +149,13 @@ class TravelPlanStore:
             ensure_ascii=True,
             separators=(",", ":"),
         )
+        return hashlib.sha256(identity.encode()).hexdigest()
+
+    def _booking(self, leg: JourneyEvent, now: datetime) -> RetainedLeg:
         return RetainedLeg(
-            hashlib.sha256(identity.encode()).hexdigest(),
-            start,
-            end,
+            self.booking_identity(leg),
+            leg.start.astimezone(UTC).isoformat(),
+            leg.end.astimezone(UTC).isoformat() if leg.end else None,
             _label(leg.origin_name),
             _label(leg.destination_confirmation),
             now.isoformat(),

@@ -94,6 +94,7 @@ from .provider_broker import ProviderRequestBroker
 from .rail_monitor import AutomaticRailLedger, AutomaticRailMonitor
 from .railinfo import RailinfoClient
 from .recovery_runtime import RecoveryRuntime
+from .recovery_tracking import RecoveryTrackingStore
 from .runtime import JourneyGuardianRuntimeData
 from .simulation import JourneySimulation
 from .station_access_monitor import StationAccessMonitor
@@ -290,7 +291,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         connection_monitor=connection_monitor,
     )
     if engine._live_rail_provider == "railinfo":
-        coordinator.recovery_runtime = RecoveryRuntime(coordinator, railinfo_client)
+        tracking = RecoveryTrackingStore(Store(
+            hass, 1, f"journey_guardian.replacement.{connection_scope[:24]}"
+        ))
+        with suppress(HomeAssistantError, OSError, ValueError, TypeError, KeyError):
+            await tracking.async_load(dt_util.utcnow())
+        coordinator.recovery_runtime = RecoveryRuntime(
+            coordinator, railinfo_client, tracking
+        )
+        engine.recovery_excludes = coordinator.is_superseded
         entry.async_on_unload(coordinator.recovery_runtime.stop)
     entry.async_on_unload(provider_broker.shutdown)
     await coordinator.async_config_entry_first_refresh()
@@ -406,6 +415,25 @@ def _async_register_services(hass: HomeAssistant) -> None:
             return {"status": "provider_unsupported"}
         return {"status": await recovery.async_select(**call.data)}
 
+    def recovery_action(method):
+        async def handle(call: ServiceCall) -> dict:
+            recovery = getattr(_runtime(hass).coordinator, "recovery_runtime", None)
+            if recovery is None:
+                return {"status": "provider_unsupported"}
+            return {"status": await getattr(recovery, method)(**call.data)}
+        return handle
+
+    route_schema = {
+        vol.Required("option_id"): vol.Match(r"^[a-f0-9]{64}$"),
+        vol.Required("revision"): vol.Match(r"^[a-f0-9]{64}$"),
+    }
+    tracking_schema = {
+        vol.Required("tracking_id"): vol.Match(r"^[a-f0-9]{64}$"),
+    }
+    progress_schema = {
+        **tracking_schema,
+        vol.Required("leg_index"): vol.All(_transfer_minutes, vol.Range(max=1)),
+    }
     pair_schema = {
         vol.Required("inbound_id"): vol.Match(r"^[a-f0-9]{64}$"),
         vol.Required("outbound_id"): vol.Match(r"^[a-f0-9]{64}$"),
@@ -416,10 +444,17 @@ def _async_register_services(hass: HomeAssistant) -> None:
             vol.Optional("override_minutes"): _transfer_minutes,
         }),
         ("revoke_connection", async_revoke_connection, pair_schema),
-        ("select_recovery", async_select_recovery, {
-            vol.Required("option_id"): vol.Match(r"^[a-f0-9]{64}$"),
-            vol.Required("revision"): vol.Match(r"^[a-f0-9]{64}$"),
-        }),
+        ("select_recovery", async_select_recovery, route_schema),
+        ("approve_recovery", recovery_action("async_approve"), route_schema),
+        (
+            "confirm_recovery_arrival", recovery_action("async_progress"),
+            progress_schema,
+        ),
+        ("stop_recovery_tracking", recovery_action("async_progress"), tracking_schema),
+        (
+            "check_recovery_tracking", recovery_action("async_check_tracking"),
+            progress_schema,
+        ),
         ("review_recovery", async_review_recovery, {
             vol.Required("affected_booking_id"): vol.Match(r"^[a-f0-9]{64}$"),
             vol.Required("final_booking_id"): vol.Match(r"^[a-f0-9]{64}$"),

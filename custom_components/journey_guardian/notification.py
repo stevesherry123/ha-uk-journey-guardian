@@ -11,8 +11,11 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.components import persistent_notification
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.event import async_track_point_in_utc_time
+from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
+from homeassistant.helpers.event import (
+    async_track_point_in_utc_time,
+    async_track_state_change_event,
+)
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
@@ -110,6 +113,7 @@ class JourneyNotificationScheduler:
         self._delivery_lock = asyncio.Lock()
         self._boundary_cancellers: list[Callable[[], None]] = []
         self._remove_listener: Callable[[], None] | None = None
+        self._remove_awake_listener: Callable[[], None] | None = None
         self._home_wake_task: asyncio.Task[None] | None = None
         self._home_wake_departure: datetime | None = None
         self._home_wake_completed_departure: datetime | None = None
@@ -123,6 +127,16 @@ class JourneyNotificationScheduler:
         self._remove_listener = self._coordinator.async_add_listener(
             self._handle_coordinator_update
         )
+        if (
+            self._home_wake_enabled
+            and self._live_notifications_enabled
+            and self._home_wake_awake_entity
+        ):
+            self._remove_awake_listener = async_track_state_change_event(
+                self._hass,
+                self._home_wake_awake_entity,
+                self._handle_awake_state_change,
+            )
         self._handle_coordinator_update()
 
     @callback
@@ -133,6 +147,16 @@ class JourneyNotificationScheduler:
         if self._remove_listener is not None:
             self._remove_listener()
             self._remove_listener = None
+        if self._remove_awake_listener is not None:
+            self._remove_awake_listener()
+            self._remove_awake_listener = None
+
+    @callback
+    def _handle_awake_state_change(self, event: Event[EventStateChangedData]) -> None:
+        """Stop the alarm even if the awake state clears before the next repeat."""
+        state = event.data["new_state"]
+        if state is not None and state.state.casefold() == self._home_wake_awake_state:
+            self._record_awake_evidence(self._coordinator.data)
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -140,7 +164,8 @@ class JourneyNotificationScheduler:
         self._cancel_boundaries()
         snapshot = self._coordinator.data
         now = dt_util.now()
-        self._record_awake_evidence(snapshot)
+        if self._awake_state_observed():
+            self._record_awake_evidence(snapshot)
         home_wake_alarm = self._should_run_home_wake_alarm(snapshot)
         self._sync_home_wake_alarm(snapshot, home_wake_alarm)
         departure = (
@@ -370,11 +395,14 @@ class JourneyNotificationScheduler:
         journey = snapshot.next_journey
         if (
             journey is not None
+            and not snapshot.simulation_active
             and snapshot.operational_phase == "prepare_now"
             and self._person_is_home()
-            and self._awake_state_observed()
+            and self._home_wake_completed_departure != journey.start
         ):
             self._home_wake_completed_departure = journey.start
+            self._home_wake_last_stop_reason = "awake"
+            self._cancel_home_wake_alarm(reason="awake")
 
     def _person_is_home(self) -> bool:
         """Match the configured traveller against the configured home zone."""

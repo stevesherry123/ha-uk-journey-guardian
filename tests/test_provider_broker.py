@@ -343,3 +343,13 @@ def test_empty_request_identity_is_rejected() -> None:
         request.fingerprint()
 
     assert raised.value.category == ERROR_INVALID_REQUEST
+
+
+async def test_explicit_refresh_bypasses_current_cache(hass):
+    budget = _budget(True, True)
+    fetcher = AsyncMock(return_value=PAYLOAD)
+    broker = ProviderRequestBroker(hass, budget)
+    await broker.async_request(REQUEST, fetcher)
+    result = await broker.async_request(REQUEST, fetcher, force_refresh=True)
+    assert result.source == "provider"
+    assert fetcher.await_count == 2

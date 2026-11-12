@@ -90,6 +90,13 @@ async def test_four_bookings_survive_each_refresh_and_fresh_instance(hass):
     )
 
 
+async def test_old_flight_is_removed_from_retained_rail_overview_on_restart(hass):
+    plan = store(hass)
+    await plan.async_update(snapshot((leg(8, "ZZ1234 AAA", "BBB"),)))
+    restored = await restart(hass, plan)
+    assert restored.attributes(NOW)["retained_booked_leg_count"] == 0
+
+
 async def test_outage_keeps_future_bookings_but_never_promotes_them_to_alarms(hass):
     engine = Mock(async_review=AsyncMock(return_value=snapshot()))
     entry = MockConfigEntry(domain=DOMAIN)
@@ -338,3 +345,158 @@ async def test_live_rail_snapshot_without_overview_does_not_erase_plan(hass):
     )
     await coordinator.async_review_live_rail()
     assert coordinator.travel_plan._legs == before
+
+
+async def test_confirmation_pair_requires_current_adjacent_matching_bookings(hass):
+    plan = store(hass)
+    await plan.async_load(NOW)
+    await plan.async_update(snapshot())
+    records = plan.attributes(NOW)["retained_booked_legs"]
+    first, second, third = [record["booking_id"] for record in records[:3]]
+    inbound, outbound = plan.connection_pair(first, second, now=NOW)
+    assert inbound.destination == outbound.origin
+    for pair in ((first, third), (second, first), (first, "f" * 64)):
+        with pytest.raises(ValueError, match="current_adjacent"):
+            plan.connection_pair(*pair, now=NOW)
+    await plan.async_update(snapshot((LEGS[0], LEGS[2], LEGS[3])))
+    with pytest.raises(ValueError, match="current_adjacent"):
+        plan.connection_pair(first, second, now=NOW)
+
+
+async def test_dashboard_connections_follow_saved_state_and_hide_simulation(hass):
+    from types import SimpleNamespace
+
+    from custom_components.journey_guardian.connection_store import (
+        ConfirmedConnection,
+        ConnectionConfirmationStore,
+    )
+
+    plan = store(hass)
+    await plan.async_load(NOW)
+    await plan.async_update(snapshot())
+    storage = AsyncMock()
+    storage.async_load.return_value = None
+    confirmations = ConnectionConfirmationStore(storage, scope="fictional-scope")
+    await confirmations.async_load(NOW)
+    confirmations.persistence_error = False
+    coordinator = SimpleNamespace(
+        data=snapshot(),
+        travel_plan=plan,
+        connection_confirmations=confirmations,
+        transfer_fallback=10,
+        station_transfers={},
+    )
+    projected = JourneyGuardianCoordinator.connection_dashboard(coordinator, NOW)
+    pair = projected["connections"][0]
+    assert not pair["confirmed"]
+    assert (pair["allowance_minutes"], pair["allowance_source"]) == (
+        10,
+        "global_fallback",
+    )
+    coordinator.station_transfers = {"example junction": 20}
+    station_pair = JourneyGuardianCoordinator.connection_dashboard(coordinator, NOW)[
+        "connections"
+    ][0]
+    assert (station_pair["allowance_minutes"], station_pair["allowance_source"]) == (
+        20,
+        "station_default",
+    )
+    await confirmations.async_confirm(
+        ConfirmedConnection(
+            pair["inbound_id"],
+            pair["outbound_id"],
+            NOW.isoformat(),
+            (NOW + timedelta(hours=24)).isoformat(),
+            15,
+        ),
+        now=NOW,
+    )
+    pair = JourneyGuardianCoordinator.connection_dashboard(coordinator, NOW)[
+        "connections"
+    ][0]
+    assert pair["confirmed"]
+    assert pair["override_minutes"] == 15
+    assert (pair["allowance_minutes"], pair["allowance_source"]) == (
+        15,
+        "connection_override",
+    )
+    coordinator.data = replace(coordinator.data, simulation_active=True)
+    assert not JourneyGuardianCoordinator.connection_dashboard(coordinator, NOW)[
+        "connections"
+    ]
+
+
+async def test_monitoring_can_keep_confirmed_incoming_leg_after_booked_arrival(hass):
+    plan = store(hass)
+    await plan.async_load(NOW)
+    await plan.async_update(snapshot())
+    records = plan.attributes(NOW)["retained_booked_legs"]
+    first, second = [record["booking_id"] for record in records[:2]]
+    later = NOW.replace(hour=8, minute=45)
+    await plan.async_update(snapshot(LEGS[1:], now=later))
+    inbound, outbound = plan.connection_pair(first, second, now=later, monitoring=True)
+    assert not inbound.in_latest_response
+    assert outbound.in_latest_response
+    with pytest.raises(ValueError):
+        plan.connection_pair(first, second, now=later)
+    with pytest.raises(ValueError):
+        plan.connection_pair(
+            first, second, now=NOW.replace(hour=9, minute=16), monitoring=True
+        )
+
+
+async def test_dashboard_connection_margin_expires_without_calendar_refresh(hass):
+    from types import SimpleNamespace
+
+    from custom_components.journey_guardian.connection_evidence import (
+        EvidenceConnectionAssessment,
+    )
+    from custom_components.journey_guardian.connection_store import (
+        ConfirmedConnection,
+        ConnectionConfirmationStore,
+    )
+
+    plan = store(hass)
+    await plan.async_load(NOW)
+    await plan.async_update(snapshot())
+    records = plan.attributes(NOW)["retained_booked_legs"]
+    first, second = [record["booking_id"] for record in records[:2]]
+    storage = AsyncMock()
+    storage.async_load.return_value = None
+    confirmations = ConnectionConfirmationStore(storage, scope="fictional-scope")
+    await confirmations.async_load(NOW)
+    confirmations.persistence_error = False
+    await confirmations.async_confirm(
+        ConfirmedConnection(
+            first, second, NOW.isoformat(), (NOW + timedelta(hours=24)).isoformat()
+        ),
+        now=NOW,
+    )
+    coordinator = SimpleNamespace(
+        data=snapshot(),
+        travel_plan=plan,
+        connection_confirmations=confirmations,
+        transfer_fallback=10,
+        station_transfers={},
+        connection_assessments={
+            (first, second): (
+                EvidenceConnectionAssessment(
+                    "at_risk", "below_transfer_allowance", NOW, 10, 7, -3
+                ),
+                NOW + timedelta(minutes=5),
+            )
+        },
+    )
+    fresh = JourneyGuardianCoordinator.connection_dashboard(coordinator, NOW)
+    assert fresh["connections"][0]["assessment"]["classification"] == "at_risk"
+    stale = JourneyGuardianCoordinator.connection_dashboard(
+        coordinator, NOW + timedelta(minutes=6)
+    )
+    assert stale["connections"][0]["assessment"]["classification"] == "unknown"
+    assert stale["connections"][0]["assessment"]["minutes_available"] is None
+    coordinator.transfer_fallback = 15
+    changed = JourneyGuardianCoordinator.connection_dashboard(coordinator, NOW)
+    assert (
+        changed["connections"][0]["assessment"]["reason"]
+        == "transfer_allowance_changed"
+    )

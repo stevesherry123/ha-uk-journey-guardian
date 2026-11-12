@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from aiohttp import ClientSession, ClientTimeout
+from homeassistant.util import dt as dt_util
 
+from .connection import TransferAllowance
+from .connection_evidence import ServiceReference, StationTimeEvidence
 from .provider_broker import (
     ERROR_QUOTA_EXHAUSTED,
     ProviderBrokerError,
@@ -15,6 +19,14 @@ from .provider_broker import (
     ProviderRequestBroker,
     ProviderResult,
 )
+from .railinfo_arrival import normalize_railinfo_prediction
+from .railinfo_booking_match import (
+    BookingMatchRequest,
+    BookingMatchResult,
+    normalize_booking_match,
+)
+from .railinfo_recovery import RailinfoRecoveryResult, normalize_railinfo_recovery
+from .recovery import RecoveryRequest
 
 BASE_URL = "https://api.railinfo.uk"
 REQUEST_TIMEOUT = ClientTimeout(total=15)
@@ -91,6 +103,153 @@ class RailinfoClient:
             ),
             lambda: self._async_live_board_json(code, parameters),
         )
+
+    async def async_booking_match(
+        self, request: BookingMatchRequest
+    ) -> BookingMatchResult:
+        """Check one explicit alternative through the existing journey-details cache."""
+        if not isinstance(request, BookingMatchRequest):
+            raise ValueError("booking_match_request_required")
+        departure = request.departure
+        parameters = {
+            "from": request.origin_code, "to": request.alternative_code,
+            "date": departure.date().isoformat(), "time": departure.strftime("%H%M"),
+        }
+        try:
+            result = await self._broker.async_request(
+                ProviderRequest(
+                    provider="railinfo", operation="journey_details",
+                    parameters=parameters, quota_controlled=False,
+                ),
+                lambda: self._async_journey_details_json(parameters),
+            )
+        except ProviderBrokerError:
+            return BookingMatchResult("provider_unavailable")
+        if not result.healthy:
+            return BookingMatchResult("provider_unavailable")
+        return normalize_booking_match(
+            result.payload, request, observed_at=result.observed_at,
+            now=dt_util.utcnow(),
+        )
+
+    async def async_recovery_search(
+        self,
+        request: RecoveryRequest,
+        *,
+        max_age: timedelta,
+        max_wait: timedelta,
+        max_duration: timedelta,
+        station_allowances: Mapping[str, TransferAllowance] | None = None,
+        global_minutes: int = 10,
+        force_refresh: bool = False,
+    ) -> RailinfoRecoveryResult:
+        """Make one brokered end-to-end query for review or selection."""
+        now = dt_util.utcnow()
+        if not isinstance(request, RecoveryRequest):
+            raise ValueError("recovery_request_required")
+        if not isinstance(max_age, timedelta) or max_age <= timedelta(0):
+            raise ValueError("positive_freshness_window_required")
+        if (
+            not isinstance(max_wait, timedelta) or max_wait < timedelta(0)
+            or not isinstance(max_duration, timedelta)
+            or max_duration <= timedelta(0)
+        ):
+            raise ValueError("bounded_time_limits_required")
+        if not timedelta(0) <= now - request.origin_observed_at <= max_age:
+            return RailinfoRecoveryResult("recovery_origin_not_current")
+        ready = max(now, request.ready_at.astimezone(UTC))
+        if ready > now + max_wait:
+            return RailinfoRecoveryResult("readiness_exceeds_wait_limit")
+        departure = ready.astimezone(ZoneInfo("Europe/London"))
+        if departure.date() != now.astimezone(ZoneInfo("Europe/London")).date():
+            return RailinfoRecoveryResult("unsupported_service_day")
+        parameters = {
+            "from": request.origin_code, "to": request.final_destination_code,
+            "date": departure.date().isoformat(), "time": departure.strftime("%H%M"),
+        }
+        try:
+            result = await self._broker.async_request(
+                ProviderRequest(
+                    provider="railinfo", operation="journey_details",
+                    parameters=parameters, quota_controlled=False,
+                ),
+                lambda: self._async_journey_details_json(parameters),
+                force_refresh=force_refresh,
+            )
+        except ProviderBrokerError:
+            return RailinfoRecoveryResult("provider_unavailable")
+        if not result.healthy or (force_refresh and result.source != "provider"):
+            return RailinfoRecoveryResult("provider_unavailable")
+        return normalize_railinfo_recovery(
+            result.payload, request, observed_at=result.observed_at,
+            now=dt_util.utcnow(), max_age=max_age, max_wait=max_wait,
+            max_duration=max_duration, station_allowances=station_allowances,
+            global_minutes=global_minutes,
+        )
+
+    async def async_arrival_prediction(self, **kwargs) -> StationTimeEvidence | None:
+        """Acquire explicit arrival prediction for a matched booked service."""
+        return await self._async_station_prediction(event="arrival", **kwargs)
+
+    async def async_departure_prediction(self, **kwargs) -> StationTimeEvidence | None:
+        """Acquire explicit departure prediction, including on-time predictions."""
+        return await self._async_station_prediction(event="departure", **kwargs)
+
+    async def _async_station_prediction(
+        self,
+        *,
+        origin_code: str,
+        destination_code: str,
+        expected_service_identity: str,
+        event: str,
+        booked_departure: datetime,
+        booked_arrival: datetime,
+        urgent: bool = False,
+    ) -> StationTimeEvidence | None:
+        """Acquire explicit matched arrival evidence; no automatic caller yet."""
+        if booked_departure.utcoffset() is None or booked_arrival.utcoffset() is None:
+            raise ValueError("timezone_required")
+        departure = booked_departure.astimezone(ZoneInfo("Europe/London"))
+        origin = origin_code.strip().upper()
+        destination = destination_code.strip().upper()
+        if any(
+            len(code) != 3 or not code.isascii() or not code.isalpha()
+            for code in (origin, destination)
+        ):
+            raise ValueError("resolved_station_codes_required")
+        if booked_arrival.astimezone(UTC) <= booked_departure.astimezone(UTC):
+            raise ValueError("arrival_after_departure_required")
+        expected_service = ServiceReference("railinfo", expected_service_identity)
+        parameters = {
+            "from": origin, "to": destination,
+            "date": departure.date().isoformat(), "time": departure.strftime("%H%M"),
+        }
+        result = await self._broker.async_request(
+            ProviderRequest(
+                provider="railinfo", operation="journey_details",
+                parameters=parameters, quota_controlled=False,
+            ),
+            lambda: self._async_journey_details_json(parameters), urgent=urgent,
+        )
+        if not result.healthy:
+            return None
+        return normalize_railinfo_prediction(
+            result.payload, origin_code=origin, destination_code=destination,
+            expected_service=expected_service,
+            booked_departure=booked_departure, booked_arrival=booked_arrival,
+            observed_at=result.observed_at, event=event,
+        )
+
+    async def _async_journey_details_json(
+        self, parameters: Mapping[str, Any]
+    ) -> Mapping[str, Any]:
+        payload = await self._async_json("/journeys", parameters)
+        if (
+            not isinstance(payload, Mapping)
+            or not isinstance(payload.get("journeys"), list)
+        ):
+            raise TypeError("Railinfo journey details must contain a journey list")
+        return payload
 
     async def _async_places_json(
         self, parameters: Mapping[str, Any]

@@ -116,6 +116,13 @@ async def test_scope_change_and_unknown_schema_fail_closed(hass):
     assert store.restore(snapshot()) is None
 
 
+async def test_old_misclassified_flight_cannot_recover_during_calendar_outage(hass):
+    store = await saved_store(hass)
+    store._data["journey"]["origin_name"] = "ZZ1234 AAA"
+    store._data["journey"]["destination"] = "BBB"
+    assert store.restore_journey(outage()) is None
+
+
 @pytest.mark.parametrize(
     "key,value",
     [

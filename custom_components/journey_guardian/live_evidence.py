@@ -10,6 +10,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
+from .journey import is_rail_candidate
 from .models import JourneyEvent, JourneySnapshot, RailObservation
 
 STORAGE_KEY = "journey_guardian.live_evidence"
@@ -124,6 +125,8 @@ class LiveEvidenceStore:
                 return None
             origin = _label(raw["origin_name"])
             destination = _label(raw["destination"])
+            if not is_rail_candidate({"summary": f"{origin} to {destination}"}):
+                return None
             code = _label(raw["origin_code"], 8)
             if not re.fullmatch(r"[A-Z]{3}|CALENDAR", code):
                 return None

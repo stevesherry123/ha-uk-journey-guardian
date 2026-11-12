@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, Mock, call, patch
 import pytest
 from homeassistant.core import SupportsResponse
 
+from custom_components.journey_guardian.check_history import CheckHistory
 from custom_components.journey_guardian.engine import JourneyGuardianEngine
 from custom_components.journey_guardian.google_routes import (
     GoogleRoutesError,
@@ -467,6 +468,42 @@ async def test_active_calendar_journey_remains_selected() -> None:
     )
 
 
+async def test_flight_only_calendar_cannot_schedule_rail_or_routing() -> None:
+    hass = Mock()
+    hass.services.async_call = AsyncMock(
+        return_value={
+            CALENDAR_ENTITY: {
+                "events": [
+                    {
+                        "start": "2026-08-28T17:30:00+00:00",
+                        "end": "2026-08-28T19:30:00+00:00",
+                        "summary": "ZZ1234 AAA to BBB",
+                        "description": "[Flight] AAA to BBB",
+                        "location": "Example Airport (AAA)",
+                    }
+                ]
+            }
+        }
+    )
+    routes = Mock(configured=True)
+    routes.async_route = AsyncMock()
+    engine = JourneyGuardianEngine(
+        hass,
+        calendar_entity=CALENDAR_ENTITY,
+        budget=_budget(),
+        google_routes_client=routes,
+    )
+    with patch(
+        "custom_components.journey_guardian.engine.dt_util.now", return_value=CHECKED_AT
+    ):
+        snapshot = await engine.async_review()
+    assert snapshot.status == "idle"
+    assert snapshot.next_journey is None
+    assert snapshot.timing is None
+    assert snapshot.booked_legs == ()
+    routes.async_route.assert_not_awaited()
+
+
 async def test_future_calendar_journey_remains_planned() -> None:
     """A journey that has not started remains in the planned state."""
     hass = Mock()
@@ -747,7 +784,7 @@ async def test_manual_live_review_requires_credentials_without_calling_api() -> 
     client.async_station_board.assert_not_called()
 
 
-async def test_manual_review_rejects_materially_later_service() -> None:
+async def test_manual_review_rejects_materially_later_service(hass) -> None:
     """A unique nearby train cannot silently make conservative advice later."""
     client = Mock()
     client.configured = True
@@ -787,15 +824,23 @@ async def test_manual_review_rejects_materially_later_service() -> None:
     base = _calendar_snapshot()
     budget = _budget()
     budget.snapshot.return_value = BudgetSnapshot("2026-09-03", 3, 30, 3)
+    history = CheckHistory(hass)
+    history._store.async_save = AsyncMock()
     engine = JourneyGuardianEngine(
         Mock(),
         calendar_entity=CALENDAR_ENTITY,
         budget=budget,
         transportapi_client=client,
+        check_history=history,
+        check_history_scope="example-entry",
     )
     engine.async_review = AsyncMock(return_value=base)
 
-    result = await engine.async_review_live_rail()
+    with patch(
+        "custom_components.journey_guardian.engine.dt_util.now",
+        return_value=base.checked_at,
+    ):
+        result = await engine.async_review_live_rail()
 
     assert result.status == "planned"
     assert result.error is None
@@ -808,7 +853,68 @@ async def test_manual_review_rejects_materially_later_service() -> None:
     assert result.rail_observation is None
     assert result.budget.calls_used == 3
 
+    issue = result.current_rail_issue
+    assert issue is not None
+    assert issue.booking_fingerprint == base.next_journey.booking_fingerprint
+    assert issue.category == "transportapi_rail_schedule_mismatch"
+    assert issue.stage == "match_timetable"
+    assert issue.recorded_at == base.checked_at
+
+    restored_history = CheckHistory(hass)
+    restored_history._store.async_load = AsyncMock(
+        return_value=history._store.async_save.await_args.args[0]
+    )
+    await restored_history.async_load()
+    restarted = JourneyGuardianEngine(
+        Mock(), calendar_entity=CALENDAR_ENTITY, budget=budget,
+        check_history=restored_history, check_history_scope="example-entry",
+    )
+    assert restarted._booking_issue(base.next_journey, base.checked_at) == issue
+    unrelated = JourneyGuardianEngine(
+        Mock(), calendar_entity=CALENDAR_ENTITY, budget=budget,
+        check_history=restored_history, check_history_scope="different-entry",
+    )
+    assert unrelated._booking_issue(base.next_journey, base.checked_at) is None
+
     engine.async_review = JourneyGuardianEngine.async_review.__get__(engine)
+    original_events = [{
+        "start": base.next_journey.start.isoformat(),
+        "end": base.next_journey.end.isoformat(),
+        "summary": base.next_journey.summary,
+        "location": base.next_journey.location,
+    }]
+    engine._async_calendar_events = AsyncMock(return_value=original_events)
+    restarted._async_calendar_events = AsyncMock(return_value=original_events)
+    with patch(
+        "custom_components.journey_guardian.engine.dt_util.now",
+        return_value=base.checked_at,
+    ):
+        same_booking = await engine.async_review()
+        assert same_booking.current_rail_issue == issue
+        after_restart = await restarted.async_review()
+        assert after_restart.current_rail_issue == issue
+        assert after_restart.last_live_rail_error is None
+        engine._async_calendar_events.return_value = [{
+            **original_events[0],
+            "end": (base.next_journey.end + timedelta(minutes=15)).isoformat(),
+        }]
+        edited_booking = await engine.async_review()
+        assert edited_booking.current_rail_issue is None
+        assert edited_booking.last_live_rail_error == issue.category
+
+    client.async_station_board.return_value = _provider_result(_board())
+    recovered = await engine.async_review_live_rail(snapshot=base)
+    assert recovered.current_rail_issue is None
+    assert engine._last_rail_issue is None
+    assert recovered.last_live_rail_error is None
+    restored_history._store.async_load.return_value = (
+        history._store.async_save.await_args.args[0]
+    )
+    await restored_history.async_load()
+    assert restarted._booking_issue(base.next_journey, base.checked_at) is None
+
+    engine.async_review = JourneyGuardianEngine.async_review.__get__(engine)
+    engine._async_calendar_events.return_value = []
     engine._hass.services.async_call = AsyncMock(
         return_value={CALENDAR_ENTITY: {"events": []}}
     )
@@ -821,7 +927,35 @@ async def test_manual_review_rejects_materially_later_service() -> None:
     assert calendar_result.status == "idle"
     assert calendar_result.error is None
     assert calendar_result.data_healthy
-    assert (
-        calendar_result.last_live_rail_error
-        == "transportapi_rail_schedule_mismatch"
+    assert calendar_result.last_live_rail_error is None
+    assert calendar_result.current_rail_issue is None
+
+
+async def test_replacement_excludes_original_selection_but_keeps_booked_baseline():
+    hass = Mock()
+    hass.states.get.return_value.state = "on"
+    hass.services.has_service.return_value = True
+    engine = JourneyGuardianEngine(
+        hass, calendar_entity=CALENDAR_ENTITY, budget=_budget()
     )
+    first = {
+        "summary": "Example Central to Sample Harbour",
+        "start": (CHECKED_AT + timedelta(minutes=10)).isoformat(),
+        "end": (CHECKED_AT + timedelta(minutes=70)).isoformat(),
+    }
+    later = {
+        "summary": "Sample Harbour to Example Central",
+        "start": (CHECKED_AT + timedelta(hours=3)).isoformat(),
+        "end": (CHECKED_AT + timedelta(hours=4)).isoformat(),
+    }
+    engine._async_calendar_events = AsyncMock(return_value=[first, later])
+    engine._async_calculate_timing = AsyncMock(return_value=None)
+    engine.recovery_excludes = lambda journey, _: journey.summary == first["summary"]
+    with patch(
+        "custom_components.journey_guardian.engine.dt_util.now", return_value=CHECKED_AT
+    ):
+        snapshot = await engine.async_review()
+    assert snapshot.next_journey.summary == later["summary"]
+    assert [leg.summary for leg in snapshot.booked_legs] == [
+        first["summary"], later["summary"],
+    ]

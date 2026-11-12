@@ -1,6 +1,6 @@
 """Tests for integration-wide Journey Guardian setup."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import ANY, AsyncMock, Mock, patch
 
 from homeassistant.setup import async_setup_component
@@ -15,7 +15,12 @@ from custom_components.journey_guardian.const import (
     SERVICE_REVIEW_RAIL_NOW,
     SERVICE_SIMULATE_JOURNEY,
 )
+from custom_components.journey_guardian.models import JourneyEvent
 from custom_components.journey_guardian.provider_broker import ProviderRequestBroker
+from custom_components.journey_guardian.railinfo_booking_match import (
+    BookingMatchProposal,
+    BookingMatchResult,
+)
 
 
 async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
@@ -34,6 +39,7 @@ async def test_entry_setup_wires_dormant_provider_broker(hass) -> None:
     coordinator.async_config_entry_first_refresh = AsyncMock()
     coordinator.live_evidence.async_load = AsyncMock()
     coordinator.travel_plan.async_load = AsyncMock()
+    coordinator.connection_confirmations.async_load = AsyncMock()
     ledger = Mock()
     ledger.async_load = AsyncMock()
     scheduler = Mock()
@@ -285,3 +291,56 @@ async def test_live_rail_action_is_explicit_and_returns_snapshot(hass) -> None:
         force_calendar_refresh=True
     )
     assert response["decision_path"] == "transportapi_manual"
+
+
+async def test_investigate_booking_action_is_response_only_and_scoped(hass):
+    assert await async_setup_component(hass, DOMAIN, {})
+    start = datetime(2026, 11, 8, 9, tzinfo=UTC)
+    end = start + timedelta(minutes=22)
+    booking = JourneyEvent(
+        start, end, "Example Central to Sample Harbour", "",
+        "EXC", "Example Central", "Sample Harbour", "calendar_route",
+    )
+    runtime = Mock()
+    runtime.coordinator.data.next_journey = booking
+    runtime.coordinator.async_booking_match = AsyncMock(
+        return_value=BookingMatchResult("proposal_available", BookingMatchProposal(
+            booking.booking_fingerprint, "a" * 16, "EXC", "EXJ", start, end,
+            start, start + timedelta(minutes=5),
+        )),
+    )
+    fields = {
+        "booking_id": booking.booking_fingerprint,
+        "origin_code": "EXC", "booked_destination_code": "SMP",
+        "alternative_code": "EXJ",
+    }
+    with patch("custom_components.journey_guardian._runtime", return_value=runtime):
+        stale = await hass.services.async_call(
+            DOMAIN, "investigate_booking", fields | {"booking_id": "0" * 64},
+            blocking=True, return_response=True,
+        )
+        assert stale["proposal"] is None
+        runtime.coordinator.async_booking_match.assert_not_awaited()
+        response = await hass.services.async_call(
+            DOMAIN, "investigate_booking", fields,
+            blocking=True, return_response=True,
+        )
+        runtime.coordinator.confirm_booking_match.return_value = BookingMatchResult(
+            "proposal_confirmed",
+            runtime.coordinator.async_booking_match.return_value.proposal,
+            confirmed=True,
+        )
+        confirmed = await hass.services.async_call(
+            DOMAIN, "confirm_booking_match",
+            {"proposal_id": response["proposal"]["proposal_id"]},
+            blocking=True, return_response=True,
+        )
+    runtime.coordinator.async_booking_match.assert_awaited_once()
+    request = runtime.coordinator.async_booking_match.await_args.args[0]
+    assert request.booking is booking
+    assert response["proposal"]["confirmation_required"] is True
+    assert response["proposal"]["scheduled_arrival"] == end.isoformat()
+    assert confirmed["status"] == "proposal_confirmed"
+    runtime.coordinator.confirm_booking_match.assert_called_once_with(
+        response["proposal"]["proposal_id"]
+    )

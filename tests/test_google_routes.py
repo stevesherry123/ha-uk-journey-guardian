@@ -1,11 +1,12 @@
 """Tests for live Google Routes station-access estimates."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from custom_components.journey_guardian.google_routes import (
+    ACCESS_RETRY_INTERVAL,
     FIELD_MASK,
     ROUTES_URL,
     GoogleRoutesClient,
@@ -13,6 +14,65 @@ from custom_components.journey_guardian.google_routes import (
 )
 
 NOW = datetime(2026, 9, 8, 8, 0, tzinfo=UTC)
+
+
+@pytest.mark.parametrize(
+    "status,category", [(401, "authentication_failed"), (403, "permission_denied")]
+)
+async def test_access_denial_pauses_all_automatic_routes_then_retries(status, category):
+    response = AsyncMock(status=status)
+    response.__aenter__.return_value = response
+    session = Mock(post=Mock(return_value=response))
+    client = GoogleRoutesClient(session, "private-key")
+    request = dict(
+        latitude=12,
+        longitude=34,
+        destination="Example Central",
+        mode="transit",
+        departure_time=NOW + timedelta(hours=2),
+    )
+    with patch("custom_components.journey_guardian.google_routes.dt_util.now") as now:
+        now.return_value = NOW
+        with pytest.raises(GoogleRoutesError, match=category):
+            await client.async_route(**request)
+        now.return_value = NOW + timedelta(minutes=10)
+        with pytest.raises(GoogleRoutesError, match=category):
+            await client.async_route(
+                **{**request, "destination": "Other Station"}, force_refresh=True
+            )
+        assert session.post.call_count == 1
+        now.return_value = NOW + ACCESS_RETRY_INTERVAL
+        response.status = 200
+        response.json.return_value = {"routes": [{"duration": "600s"}]}
+        assert (await client.async_route(**request)).duration_minutes == 10
+        assert client._access_error is None
+        assert client._access_retry_at is None
+        assert session.post.call_count == 2
+
+
+async def test_explicit_test_can_recheck_repaired_access_during_cooldown():
+    response = AsyncMock(status=403)
+    response.__aenter__.return_value = response
+    session = Mock(post=Mock(return_value=response))
+    client = GoogleRoutesClient(session, "private-key")
+    request = dict(
+        latitude=12,
+        longitude=34,
+        destination="Example Central",
+        mode="driving",
+        departure_time=NOW,
+    )
+    with patch(
+        "custom_components.journey_guardian.google_routes.dt_util.now", return_value=NOW
+    ):
+        with pytest.raises(GoogleRoutesError, match="permission_denied"):
+            await client.async_route(**request)
+        response.status = 200
+        response.json.return_value = {"routes": [{"duration": "600s"}]}
+        client.reset_access_backoff()
+        await client.async_route(**request, force_refresh=True)
+    assert session.post.call_count == 2
+    assert client._access_error is None
 
 
 async def test_driving_route_is_traffic_aware_and_minimally_scoped() -> None:

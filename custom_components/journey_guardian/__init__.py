@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+from contextlib import suppress
+
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
@@ -15,6 +18,10 @@ from homeassistant.util import dt as dt_util
 from .arrival_collector import ArrivalCollector
 from .budget import TransportAPIBudget
 from .check_history import CheckHistory
+from .connection_alerts import ConnectionAlertController, ConnectionAlertLedger
+from .connection_monitor import ConnectionCheckLedger, ConnectionMonitor
+from .connection_preferences import CONF_CONNECTION_MONITOR
+from .connection_store import ConfirmedConnection
 from .const import (
     ATTR_ACCELERATED,
     ATTR_DELAY_MINUTES,
@@ -78,16 +85,22 @@ from .const import (
 from .coordinator import JourneyGuardianCoordinator
 from .end_of_day import EndOfDayReview
 from .engine import JourneyGuardianEngine
+from .frontend import async_register_card
 from .google_routes import GoogleRoutesClient
 from .manual_review import ManualTravelReview
 from .notification import JourneyNotificationScheduler, NotificationLedger
 from .provider_broker import ProviderRequestBroker
 from .rail_monitor import AutomaticRailLedger, AutomaticRailMonitor
 from .railinfo import RailinfoClient
+from .railinfo_booking_match import BookingMatchRequest, BookingMatchResult
+from .recovery_runtime import RecoveryRuntime
+from .recovery_tracking import RecoveryTrackingStore
+from .replacement_monitor import ReplacementMonitor
 from .runtime import JourneyGuardianRuntimeData
 from .simulation import JourneySimulation
 from .station_access_monitor import StationAccessMonitor
 from .transportapi import TransportAPIClient
+from .verified_rail_store import VerifiedRailStore
 
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
@@ -96,6 +109,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Journey Guardian integration namespace."""
     _async_register_services(hass)
+    await async_register_card(hass)
     return True
 
 
@@ -158,6 +172,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             CONF_LIVE_RAIL_PROVIDER, DEFAULT_LIVE_RAIL_PROVIDER
         ),
         check_history=check_history,
+        check_history_scope=entry.entry_id,
         person_entity=entry.data.get(CONF_PERSON_ENTITY, ""),
         station_access_mode=settings.get(
             CONF_STATION_ACCESS_MODE, DEFAULT_STATION_ACCESS_MODE
@@ -177,6 +192,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await coordinator.live_evidence.async_load()
     await coordinator.travel_plan.async_load(dt_util.now())
+    await coordinator.connection_confirmations.async_load(dt_util.now())
     notification_ledger = NotificationLedger(hass)
     await notification_ledger.async_load()
     notification_scheduler = JourneyNotificationScheduler(
@@ -224,6 +240,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             DEFAULT_AUTOMATIC_LIVE_RAIL_ENABLED,
         ),
     )
+    connection_scope = hashlib.sha256(
+        f"{entry.entry_id}|{entry.data[CONF_CALENDAR_ENTITY]}".encode()
+    ).hexdigest()
+    connection_ledger = ConnectionCheckLedger(
+        VerifiedRailStore(
+            hass, f"journey_guardian.connection_checks.{connection_scope[:24]}"
+        ),
+        scope=connection_scope,
+    )
+    # An unreadable ledger cannot authorize provider work.
+    with suppress(HomeAssistantError, OSError, ValueError, TypeError):
+        await connection_ledger.async_load()
+    connection_alert_ledger = ConnectionAlertLedger(
+        VerifiedRailStore(
+            hass, f"journey_guardian.connection_alerts.{connection_scope[:24]}"
+        ),
+        scope=connection_scope,
+    )
+    with suppress(HomeAssistantError, OSError, ValueError, TypeError, KeyError):
+        await connection_alert_ledger.async_load(dt_util.now())
+    coordinator.connection_alert_ledger = connection_alert_ledger
+    coordinator.connection_alert_error = not connection_alert_ledger.available
+    connection_alerts = ConnectionAlertController(
+        connection_alert_ledger, notification_scheduler
+    )
+    connection_monitor = ConnectionMonitor(
+        hass, coordinator, connection_ledger,
+        enabled=settings.get(CONF_CONNECTION_MONITOR, False),
+        alerts=connection_alerts,
+    )
     arrival_collector = ArrivalCollector(
         hass, coordinator, railinfo_client, check_history
     )
@@ -250,7 +296,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         station_access_monitor=station_access_monitor,
         end_of_day_review=end_of_day_review,
         manual_review=ManualTravelReview(coordinator, notification_scheduler),
+        connection_monitor=connection_monitor,
     )
+    replacement_monitor = None
+    if engine._live_rail_provider == "railinfo":
+        tracking = RecoveryTrackingStore(VerifiedRailStore(
+            hass, f"journey_guardian.replacement.{connection_scope[:24]}"
+        ))
+        with suppress(HomeAssistantError, OSError, ValueError, TypeError, KeyError):
+            await tracking.async_load(dt_util.utcnow())
+        coordinator.recovery_runtime = RecoveryRuntime(
+            coordinator, railinfo_client, tracking,
+            alerts=(
+                connection_alerts if coordinator.connection_monitor_enabled else None
+            ),
+        )
+        if coordinator.connection_monitor_enabled:
+            replacement_monitor = ReplacementMonitor(
+                hass, coordinator.recovery_runtime, connection_ledger
+            )
+        engine.recovery_excludes = coordinator.is_superseded
+        entry.async_on_unload(coordinator.recovery_runtime.stop)
     entry.async_on_unload(provider_broker.shutdown)
     await coordinator.async_config_entry_first_refresh()
     entry.async_on_unload(
@@ -264,6 +330,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(notification_scheduler.stop)
     automatic_rail_monitor.start()
     entry.async_on_unload(automatic_rail_monitor.stop)
+    if replacement_monitor is not None:
+        replacement_monitor.start()
+        entry.async_on_unload(replacement_monitor.stop)
+    connection_monitor.start()
+    entry.async_on_unload(connection_monitor.stop)
     arrival_collector.start()
     entry.async_on_unload(arrival_collector.stop)
     station_access_monitor.start()
@@ -300,7 +371,163 @@ def _runtime(hass: HomeAssistant) -> JourneyGuardianRuntimeData:
     raise HomeAssistantError("Journey Guardian is not loaded")
 
 
+def _transfer_minutes(value):
+    """Require an integer allowance without accepting booleans or strings."""
+    if type(value) is not int or not 0 <= value <= 1440:
+        raise vol.Invalid("Transfer allowance must be an integer from 0 to 1440")
+    return value
+
+
 def _async_register_services(hass: HomeAssistant) -> None:
+    async def async_investigate_booking(call: ServiceCall) -> dict:
+        coordinator = _runtime(hass).coordinator
+        snapshot = coordinator.data
+        booking = snapshot.next_journey if snapshot is not None else None
+        if booking is None or booking.booking_fingerprint != call.data["booking_id"]:
+            return BookingMatchResult("booking_match_context_unavailable").as_dict()
+        try:
+            request = BookingMatchRequest(
+                booking, call.data["origin_code"], call.data["booked_destination_code"],
+                call.data["alternative_code"],
+            )
+        except ValueError:
+            return BookingMatchResult("booking_match_invalid_request").as_dict()
+        return (await coordinator.async_booking_match(request)).as_dict()
+
+    if not hass.services.has_service(DOMAIN, "investigate_booking"):
+        station_code = vol.Match(r"^[A-Z]{3}\Z")
+        hass.services.async_register(
+            DOMAIN, "investigate_booking", async_investigate_booking,
+            schema=vol.Schema({
+                vol.Required("booking_id"): vol.Match(r"^[a-f0-9]{64}\Z"),
+                vol.Required("origin_code"): station_code,
+                vol.Required("booked_destination_code"): station_code,
+                vol.Required("alternative_code"): station_code,
+            }),
+            supports_response=SupportsResponse.ONLY,
+        )
+
+    async def async_confirm_booking_match(call: ServiceCall) -> dict:
+        return _runtime(hass).coordinator.confirm_booking_match(
+            call.data["proposal_id"]
+        ).as_dict()
+
+    if not hass.services.has_service(DOMAIN, "confirm_booking_match"):
+        hass.services.async_register(
+            DOMAIN, "confirm_booking_match", async_confirm_booking_match,
+            schema=vol.Schema({
+                vol.Required("proposal_id"): vol.Match(r"^[a-f0-9]{64}\Z"),
+            }),
+            supports_response=SupportsResponse.ONLY,
+        )
+
+    async def async_confirm_connection(call: ServiceCall) -> dict:
+        coordinator = _runtime(hass).coordinator
+        snapshot = coordinator.data
+        if snapshot is None or snapshot.simulation_active or snapshot.error:
+            raise HomeAssistantError("A healthy real calendar review is required")
+        now = dt_util.now()
+        try:
+            inbound, outbound = coordinator.travel_plan.connection_pair(
+                call.data["inbound_id"], call.data["outbound_id"], now=now
+            )
+            record = ConfirmedConnection(
+                inbound.booking_id, outbound.booking_id, now.isoformat(),
+                outbound.expiry.isoformat(), call.data.get("override_minutes"),
+            )
+            await coordinator.connection_confirmations.async_confirm(record, now=now)
+        except (ValueError, OSError) as err:
+            raise HomeAssistantError(
+                "Connection confirmation could not be saved"
+            ) from err
+        if isinstance(recovery := getattr(coordinator, "recovery_runtime", None),
+                      RecoveryRuntime):
+            recovery.invalidate()
+        coordinator.async_update_listeners()
+        return {"confirmed": True}
+
+    async def async_revoke_connection(call: ServiceCall) -> dict:
+        coordinator = _runtime(hass).coordinator
+        if coordinator.data is not None and coordinator.data.simulation_active:
+            raise HomeAssistantError("Exit simulation before changing connections")
+        try:
+            await coordinator.connection_confirmations.async_revoke(
+                call.data["inbound_id"], call.data["outbound_id"]
+            )
+        except (ValueError, OSError) as err:
+            raise HomeAssistantError(
+                "Connection revocation could not be saved"
+            ) from err
+        if isinstance(recovery := getattr(coordinator, "recovery_runtime", None),
+                      RecoveryRuntime):
+            recovery.invalidate()
+        coordinator.async_update_listeners()
+        return {"confirmed": False}
+
+    async def async_review_recovery(call: ServiceCall) -> dict:
+        recovery = getattr(_runtime(hass).coordinator, "recovery_runtime", None)
+        if recovery is None:
+            return {"status": "provider_unsupported"}
+        return {"status": await recovery.async_search(**call.data)}
+
+    async def async_select_recovery(call: ServiceCall) -> dict:
+        recovery = getattr(_runtime(hass).coordinator, "recovery_runtime", None)
+        if recovery is None:
+            return {"status": "provider_unsupported"}
+        return {"status": await recovery.async_select(**call.data)}
+
+    def recovery_action(method):
+        async def handle(call: ServiceCall) -> dict:
+            recovery = getattr(_runtime(hass).coordinator, "recovery_runtime", None)
+            if recovery is None:
+                return {"status": "provider_unsupported"}
+            return {"status": await getattr(recovery, method)(**call.data)}
+        return handle
+
+    route_schema = {
+        vol.Required("option_id"): vol.Match(r"^[a-f0-9]{64}$"),
+        vol.Required("revision"): vol.Match(r"^[a-f0-9]{64}$"),
+    }
+    tracking_schema = {
+        vol.Required("tracking_id"): vol.Match(r"^[a-f0-9]{64}$"),
+    }
+    progress_schema = {
+        **tracking_schema,
+        vol.Required("leg_index"): vol.All(_transfer_minutes, vol.Range(max=1)),
+    }
+    pair_schema = {
+        vol.Required("inbound_id"): vol.Match(r"^[a-f0-9]{64}$"),
+        vol.Required("outbound_id"): vol.Match(r"^[a-f0-9]{64}$"),
+    }
+    for name, handler, fields in (
+        ("confirm_connection", async_confirm_connection, {
+            **pair_schema,
+            vol.Optional("override_minutes"): _transfer_minutes,
+        }),
+        ("revoke_connection", async_revoke_connection, pair_schema),
+        ("select_recovery", async_select_recovery, route_schema),
+        ("approve_recovery", recovery_action("async_approve"), route_schema),
+        (
+            "confirm_recovery_arrival", recovery_action("async_progress"),
+            progress_schema,
+        ),
+        ("stop_recovery_tracking", recovery_action("async_progress"), tracking_schema),
+        (
+            "check_recovery_tracking", recovery_action("async_check_tracking"),
+            progress_schema,
+        ),
+        ("review_recovery", async_review_recovery, {
+            vol.Required("affected_booking_id"): vol.Match(r"^[a-f0-9]{64}$"),
+            vol.Required("final_booking_id"): vol.Match(r"^[a-f0-9]{64}$"),
+            vol.Required("origin"): vol.All(str, str.strip, vol.Length(min=1, max=120)),
+        }),
+    ):
+        if not hass.services.has_service(DOMAIN, name):
+            hass.services.async_register(
+                DOMAIN, name, handler, schema=vol.Schema(fields),
+                supports_response=SupportsResponse.OPTIONAL,
+            )
+
     async def async_travel_review_now(call: ServiceCall) -> dict:
         return await _runtime(hass).manual_review.async_run(
             notify=call.data["notify"]

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import datetime
 from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
+
+from .models import BOOKING_CHECK_FAILURES, RailCheckIssue
 
 STORAGE_VERSION = 1
 STORAGE_KEY = "journey_guardian.check_history"
@@ -40,6 +43,9 @@ class CheckHistory:
             "journey_date",
             "trigger",
             "journey_fingerprint",
+            "booking_check_key",
+            "booking_check_recorded_at",
+            "booking_check_failure",
             "origin_code",
             "destination_code",
             "operation",
@@ -63,6 +69,40 @@ class CheckHistory:
         self._records.append({key: record.get(key) for key in allowed})
         self._records = self._records[-MAX_RECORDS:]
         await self._store.async_save({"records": self._records})
+
+    def booking_issue(
+        self, key: str, fingerprint: str, now: datetime
+    ) -> RailCheckIssue | None:
+        """Restore only the latest scoped, actionable failure for this booking."""
+        for record in reversed(self._records):
+            if (
+                record.get("booking_check_key") != key
+                or record.get("operation") != "station_timetables"
+            ):
+                continue
+            # A later success or non-booking failure supersedes an older warning.
+            category = record.get("booking_check_failure")
+            stage = record.get("stage")
+            timestamp = record.get("booking_check_recorded_at")
+            if (
+                record.get("outcome") != "failed"
+                or not isinstance(category, str)
+                or category not in BOOKING_CHECK_FAILURES
+                or stage not in (
+                    "resolve_origin", "resolve_destination",
+                    "station_timetable", "match_timetable",
+                )
+                or not isinstance(timestamp, str)
+            ):
+                return None
+            try:
+                recorded_at = datetime.fromisoformat(timestamp)
+            except ValueError:
+                return None
+            if recorded_at.utcoffset() is None or recorded_at > now:
+                return None
+            return RailCheckIssue(fingerprint, recorded_at, category, stage)
+        return None
 
     def records(self) -> list[dict[str, Any]]:
         """Return defensive copies of the retained records."""

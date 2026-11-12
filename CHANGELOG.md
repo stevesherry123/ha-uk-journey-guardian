@@ -1,5 +1,170 @@
 # Changelog
 
+## Unreleased
+
+### v0.3.0-beta.12 staging build
+
+- Combine opt-in rail connection warnings and recovery with booking-specific
+  timetable investigation. Recovery searches to the confirmed final destination
+  on the same day, including a single change where supported.
+- Keep flight preview on its separate branch. Provider-confirmed early
+  termination remains an open acceptance case.
+- See the [staged rail trial checklist](docs/RAIL_STAGED_TRIAL.md).
+
+- Verify atomic writes for rail confirmations, replacement tracking and check
+  and alert claims. A logged storage failure can no longer authorize a new
+  recovery decision or provider check.
+
+- Link to the National Rail Journey Planner when recovery options are unavailable
+  or a replacement transfer is at risk.
+
+- Schedule replacement train checks when connection monitoring is enabled.
+  Share the durable connection budget and use matched predictions to warn when
+  the approved replacement transfer falls below its allowance.
+
+- Approve a rechecked rail replacement and track its progress across restarts.
+  Skip affected original bookings in the normal monitors, retain the calendar
+  baseline, and advance replacement legs only after explicit arrival confirmation.
+
+- Add a recovery route recheck that verifies the selected route with fresh
+  Railinfo evidence. Show an approval preview for unchanged routes and ask for
+  a new selection if timings or services change.
+
+- Wire explicit Railinfo recovery review into Home Assistant and the dashboard.
+  Confirm the current station, select the affected and final booked trains,
+  and review complete routes, transfer time, expiry and affected bookings.
+  Show manual fallback when a route cannot be verified. Adoption is pending.
+
+- Add an internal explicit recovery-review controller with one in-flight query,
+  context and preference rechecks, complete-route revalidation, expiry on reads
+  and invalidation after revocation or unload. Keep results advisory and require
+  manual fallback for unavailable outcomes. Commands, UI and adoption are pending.
+
+- Add an internal recovery-context builder that binds the final destination to
+  exact confirmed bookings and a fresh user-confirmed origin. Preserve the full
+  booked baseline separately from affected downstream legs; reject ambiguous,
+  edited, expired or incomplete chains. Runtime commands and adoption are pending.
+- Add response-only Home Assistant actions to investigate an exact booking
+  and acknowledge its current timetable proposal. Confirmation is temporary
+  review state, not a calendar edit or change to the tracked service.
+
+- Guard explicit timetable investigations against edited bookings, simulation
+  and changes during a lookup. Do not silently switch providers.
+
+- Add an internal, bounded Railinfo timetable check for one supplied alternative
+  endpoint. Require one direct train matching both booked clocks, reject ambiguity,
+  and return review-only evidence without modifying the original booking. No
+  runtime caller, destination discovery or confirmation action is added.
+
+- Restore booking-check warnings from the existing bounded history after a
+  restart, scoped to the exact booking and integration settings. A later
+  check supersedes older evidence; unscoped legacy records cannot raise warnings.
+
+- Add booking-scoped failed-check evidence and a dashboard warning requesting
+  station/time verification and any missing onward details. Keep a previous
+  journey's historical error separate from the selected booking. Do not infer
+  a missing leg, invent a replacement train or add provider calls. Automatic
+  investigation, confirmation actions and phone/watch
+  delivery remain pending. See [booking-check warnings](docs/ITINERARY_INTEGRITY.md).
+
+- Add an internal, single-query Railinfo recovery search to the confirmed final
+  destination. Validate complete direct/one-change routes with original evidence
+  age, bounded responses and explicit unavailable outcomes. Runtime controls,
+  broader changes, selection and adoption remain pending.
+- Pin the CI test runner to Ubuntu 24.04, where the required Python 3.14.2 build
+  is available; the previous Ubuntu 26.04 run failed before executing tests.
+
+- Add a pure end-to-end recovery route contract that rejects partial destinations,
+  disconnected/tight transfers, stale or cancelled service evidence and routes
+  outside explicit change/wait/duration bounds. Track option identity separately
+  from prediction/allowance revisions. Runtime search controls and adoption remain pending.
+
+- Add restart-safe connection warning transitions through the existing live-alert
+  route, with meaningful updates, recovery hysteresis, delivery guards and local
+  fallback. Record hand-off uncertainty separately from device receipt; retain
+  historical dashboard risk when live evidence expires. Monitoring stays off
+  by default and live notifications remain the master delivery control.
+
+- Add opt-in development monitoring for confirmed Railinfo connections, with
+  durable daily/cadence limits, independent two-leg acquisition and dashboard
+  margins that expire back to unknown. Defaults to off; no connection-risk
+  announcements or recovery search are introduced.
+
+- Add conservative Railinfo direct-journey arrival prediction mapping using explicit
+  Darwin arrival fields, matched service/endpoints/schedule and broker acquisition.
+  Reject timetable fallback, duplicate matches and ambiguous local clocks.
+  Automatic connection monitoring and alerts remain disabled.
+
+- Add a pure, typed connection-evidence assessment foundation. Require confirmed
+  booking intent and fresh matched station-time evidence; preserve unknown states
+  for missing, stale, retained or timetable-only data. Provider arrival mapping
+  and live connection warnings remain pending.
+
+- Add fictional connection preview scenarios and responsive control styling.
+  Fix controls remaining disabled when entity state refreshes during a save.
+
+- Add global and station-specific transfer allowances to development options,
+  initially using a 10-minute fallback. Show the applied allowance and source
+  on each suggested/confirmed dashboard connection. Reject ambiguous defaults.
+
+- Add development dashboard confirmation status and confirm/revoke controls for
+  current candidate connections, with optional transfer override, pending state
+  and visible save errors. No live connection-risk monitoring is enabled.
+
+- Add explicit confirm/revoke connection actions with validation against current
+  adjacent retained bookings and simulation isolation. Persist revocation before
+  committing it in memory. Live connection alerts and dashboard controls remain
+  pending; see the development connection-controls guide.
+
+- Wire dormant connection confirmation storage into entry startup with private
+  scoped keys and degraded-load handling. User commands and alerts remain pending;
+  HA integration validation is required before release.
+
+- Add an unwired confirmation-store foundation with scoped/versioned persistence,
+  booking-pair identity, expiry and failed-write protection. Runtime integration
+  and user confirmation controls remain pending.
+
+- Add review-only transfer allowance precedence and provenance with a 10-minute
+  global fallback; use elapsed UTC time for connection calculations across DST.
+  No live settings or connection announcements are enabled.
+
+- Record accepted connection monitoring and end-to-end recovery scope, provider
+  implementation gaps, proposed state contracts and documentation delivery gates.
+- Correct stable installation references to v0.2.13.
+- Keep negative predicted connection margins at risk in the review-only helper;
+  predictions alone do not confirm a missed connection. No live warnings enabled.
+
+## 0.3.0-beta.10 (Rail Safety And Routing Repairs)
+
+- Exclude explicitly non-rail calendar events at ingestion, before operational
+  selection, timing, routing, rail checks, alarms or the booking overview.
+- Reject flight-number labels from old retained rail plans and restart recovery.
+- Add a network-isolated runtime rehearsal proving flight-only calendars produce
+  no routing, rail requests, alarms, announcements or arrival collection.
+- Raise an immediate Repairs issue for Google authentication/permission failures.
+  Pause automatic Google access retries for one hour, including forced scheduled
+  checkpoints; the explicit station-route test can retry after account repair.
+- Keep the existing routing preference order and worst-case constant calculation.
+  Clear the access repair only after Google succeeds, not after Waze or idle state.
+- Flight travel analysis remains separate development work; no flight monitoring
+  or airport timing policy is introduced. Stable/main remain unchanged.
+
+## 0.3.0-beta.9 (Dashboard Review Branch)
+
+- Limit Python package discovery to the integration namespace. The beta.8
+  build was blocked before publication because the preview folder was treated
+  as another top-level Python package; include card assets explicitly.
+
+## 0.3.0-beta.8 (Unpublished Build)
+
+- Development-branch prerelease only; not merged to main or the stable line.
+- Add a read-only dashboard projection, conditional notification timeline and
+  actual upcoming data checks, without scheduling or sending extra alerts.
+- Package the beta Lovelace card and serve only that static JavaScript file.
+  Journey data continues to use authenticated HA entity states.
+- Include overnight, clock-change, cancellation, stale and missing-data states.
+- Keep existing dashboards unchanged; add the review dashboard explicitly.
+
 ## 0.3.0-beta.7
 
 - Include stable v0.2.13 ordered routing failover alongside the retained-booking

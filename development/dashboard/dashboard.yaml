@@ -1,0 +1,8 @@
+# Development branch only. Choose the status entity from your installation.
+title: Journey Guardian
+views:
+  - title: Travel
+    path: travel
+    cards:
+      - type: custom:journey-guardian-card
+        entity: sensor.example_journey_status

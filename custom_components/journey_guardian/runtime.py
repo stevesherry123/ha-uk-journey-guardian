@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from .arrival_collector import ArrivalCollector
 from .budget import TransportAPIBudget
 from .check_history import CheckHistory
+from .connection_monitor import ConnectionMonitor
 from .coordinator import JourneyGuardianCoordinator
 from .end_of_day import EndOfDayReview
 from .manual_review import ManualTravelReview
@@ -30,3 +31,5 @@ class JourneyGuardianRuntimeData:
     station_access_monitor: StationAccessMonitor
     end_of_day_review: EndOfDayReview
     manual_review: ManualTravelReview
+
+    connection_monitor: ConnectionMonitor | None = None

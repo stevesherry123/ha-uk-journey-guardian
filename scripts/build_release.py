@@ -7,7 +7,7 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 INTEGRATION = Path("custom_components/journey_guardian")
-SUFFIXES = {".py", ".json", ".yaml", ".png"}
+SUFFIXES = {".py", ".json", ".yaml", ".png", ".js"}
 
 
 def build_release(output: Path, *, root: Path = ROOT) -> None:

@@ -1,0 +1,114 @@
+/* Fictional examples only. No Home Assistant connection or personal data. */
+export function previewData(scenario, now = Date.now()) {
+  const base = scenario === 'overnight' ? Date.parse('2026-10-22T22:00:00Z') :
+    scenario === 'clock-change' ? Date.parse('2026-10-25T00:00:00Z') : now;
+  const at = minutes => new Date(base + minutes * 60000).toISOString();
+  const allowance = scenario === 'constant' ? 60 : scenario === 'google' ? 40 : 30;
+  const leave = 65 - allowance;
+  const prepare = leave - 45;
+  const disabled = scenario === 'disabled';
+  const cancelled = scenario === 'cancelled';
+  const awake = scenario === 'awake';
+  const stale = scenario === 'stale';
+  const eligibility = disabled ? 'disabled' : cancelled || stale ? 'suppressed' : 'conditional';
+  const reason = disabled ? 'Live notifications are disabled' : cancelled ? 'Service is cancelled' : stale ? 'Journey data needs attention' : null;
+  const dashboard = {
+    schema_version: 1, checked_at: scenario === 'stale' ? at(-30) : at(0),
+    healthy: scenario !== 'stale', simulation: false, phase: cancelled ? 'cancelled' : 'prepare_now',
+    planned_delivery: 'announcement_engine', bookings_source: scenario === 'stale' ? 'retained_calendar' : 'calendar_only',
+    journey: {
+      origin: scenario === 'long' ? 'Example Central International Parkway and Interchange' : 'Example Central',
+      destination: 'Sample Harbour', booked_departure: at(90), departure: at(90),
+      booked_arrival: at(220), cancelled,
+    },
+    routing: {
+      source: scenario === 'constant' ? 'configured_fallback' : scenario === 'google' ? 'google_routes' : 'waze_sensor',
+      mode: 'driving', provider_minutes: scenario === 'constant' ? null : scenario === 'google' ? 40 : 20,
+      applied_minutes: allowance, fallback_reason: scenario === 'google' ? 'waze_sensor_unavailable' :
+        scenario === 'constant' ? 'waze_sensor_unavailable;google_routes_quota_exceeded' : null,
+    },
+    segments: [
+      {label: 'Preparation', start: at(prepare), end: at(leave)},
+      {label: 'Station access', start: at(leave), end: at(65)},
+      {label: 'At station', start: at(65), end: at(90)},
+      {label: 'Booked train', start: at(90), end: at(220)},
+    ],
+    notifications: [
+      {
+        kind: 'wake_alarm', label: 'Home wake-up', due_at: at(prepare),
+        eligibility: awake ? 'suppressed' : eligibility,
+        eligibility_reason: awake ? 'Awake evidence recorded' : reason,
+        repeat_seconds: 6, maximum_minutes: 15,
+        condition: 'While home, until awake evidence, safety limit or leave time',
+      },
+      {
+        kind: 'leave_now', label: 'Leave for station', due_at: at(leave),
+        eligibility, eligibility_reason: reason,
+        condition: 'Subject to live state and deduplication',
+      },
+    ],
+    checks: cancelled ? [] : [
+      {kind: 'station_access', label: 'Station routing check', due_at: at(5), notification_promised: false},
+      {kind: 'rail', label: 'Live rail check', due_at: at(15), notification_promised: false},
+    ],
+    latest_notification_record: awake ? {
+      kind: 'wake_alarm', recorded_at: at(-5), receipt_confirmed: false,
+    } : null,
+    bookings: [{origin: 'Sample Harbour', destination: 'Example Central', booked_departure: at(600), booked_arrival: at(730)}],
+    bookings_truncated: false,
+  };
+  if (scenario.startsWith('connection')) {
+    dashboard.connections = [{station: 'Example Junction International Parkway',
+      inbound_id: 'a'.repeat(64), outbound_id: 'b'.repeat(64),
+      inbound_arrival: at(220), outbound_departure: at(235),
+      confirmed: scenario !== 'connection' && scenario !== 'connection-error', can_confirm: true,
+      override_minutes: scenario === 'connection-confirmed' ? 15 : null,
+      allowance_minutes: scenario === 'connection-confirmed' ? 15 : 10,
+      allowance_source: scenario === 'connection-confirmed' ? 'connection_override' : 'global_fallback'}];
+  }
+  if (['connection-risk','connection-recovered','connection-unknown'].includes(scenario)) {
+    dashboard.connection_monitor_enabled = true;
+    dashboard.connection_monitor_supported = true;
+    const pair = dashboard.connections[0];
+    const recovered = scenario === 'connection-recovered';
+    const unknown = scenario === 'connection-unknown';
+    pair.assessment = {classification: unknown ? 'unknown' : recovered ? 'viable' : 'at_risk',
+      reason: unknown ? 'evidence_stale' : recovered ? 'meets_transfer_allowance' : 'below_transfer_allowance',
+      minutes_available: unknown ? null : recovered ? 13 : 7, minimum_minutes: 10,
+      inbound_event_at: unknown ? null : at(recovered ? 222 : 228),
+      outbound_event_at: unknown ? null : at(235)};
+    pair.last_alert = {kind: recovered ? 'recovered' : 'risk', recorded_at: at(-1),
+      delivery: unknown ? 'claimed' : 'announcement_engine', receipt_confirmed: false};
+  }
+  let recovery;
+  if (scenario.startsWith('recovery')) {
+    const booked = [
+      {id: 'a'.repeat(64), origin: 'Example Central', destination: 'Example Junction',
+        departure: at(90), can_affect: true, can_finish: false},
+      {id: 'b'.repeat(64), origin: 'Example Junction', destination: 'Sample Harbour',
+        departure: at(235), can_affect: true, can_finish: true},
+    ];
+    recovery = {
+      bookings: booked,
+      can_approve: true,
+      affected: booked,
+      status: scenario === 'recovery-unavailable' ? 'no_complete_route_in_response' : 'options_available',
+      options: scenario === 'recovery-unavailable' ? [] : [{
+        option_id: "d".repeat(64), revision: "e".repeat(64),
+        valid_until: at(5),
+        legs: [
+          {origin: 'EXC', destination: 'EXJ', departure: at(20), arrival: at(45)},
+          {origin: 'EXJ', destination: 'SMP', departure: at(60), arrival: at(90)},
+        ],
+        transfers: [{station: 'EXJ', available: 15, required: 10}],
+      }],
+    };
+  }
+  if (scenario === 'empty') dashboard.journey = null;
+  return {
+    states: {'sensor.example_journey_status': {
+      state: scenario === 'unavailable' ? 'unavailable' : 'planned', attributes: recovery ? {dashboard, recovery} : {dashboard},
+    }},
+    config: {time_zone: 'Europe/London'}, locale: {language: 'en-GB'},
+  };
+}

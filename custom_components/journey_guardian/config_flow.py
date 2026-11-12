@@ -10,6 +10,13 @@ from homeassistant.config_entries import ConfigEntry, OptionsFlowWithReload
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
+from .connection_preferences import (
+    CONF_CONNECTION_MONITOR,
+    CONF_STATION_TRANSFERS,
+    CONF_TRANSFER_FALLBACK,
+    DEFAULT_TRANSFER_MINUTES,
+    parse_station_transfers,
+)
 from .const import (
     CALENDAR_REFRESH_INTERVAL_OPTIONS,
     CONF_ANNOUNCEMENT_SCRIPT_ENTITY,
@@ -253,6 +260,10 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
                 )
             except StationAccessProfileError as err:
                 errors[CONF_STATION_ACCESS_PROFILES] = str(err)
+            try:
+                parse_station_transfers(user_input.get(CONF_STATION_TRANSFERS))
+            except ValueError:
+                errors[CONF_STATION_TRANSFERS] = "invalid_station_transfers"
             if not errors:
                 updated = dict(user_input)
                 for key in (
@@ -271,6 +282,22 @@ class JourneyGuardianOptionsFlow(OptionsFlowWithReload):
             step_id="init",
             data_schema=vol.Schema(
                 {
+                    vol.Optional(
+                        CONF_CONNECTION_MONITOR,
+                        default=current.get(CONF_CONNECTION_MONITOR, False),
+                    ): bool,
+                    vol.Required(
+                        CONF_TRANSFER_FALLBACK,
+                        default=current.get(
+                            CONF_TRANSFER_FALLBACK, DEFAULT_TRANSFER_MINUTES
+                        ),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=0, max=1440)),
+                    vol.Optional(
+                        CONF_STATION_TRANSFERS,
+                        default=current.get(CONF_STATION_TRANSFERS, ""),
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(multiline=True)
+                    ),
                     vol.Required(
                         CONF_CALENDAR_REFRESH_INTERVAL_MINUTES,
                         default=current.get(

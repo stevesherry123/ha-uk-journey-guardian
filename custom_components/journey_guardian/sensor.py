@@ -9,9 +9,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .booking_overview import render_bookings
 from .const import CONF_PERSON_ENTITY, CONF_PROGRESS_ALTERNATIVES, CONF_PROGRESS_ZONES
+from .dashboard import dashboard_projection
 from .entity import JourneyGuardianEntity
 from .progress_sensor import JourneyProgressSensor
 
@@ -85,6 +87,8 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
     _attr_translation_key = "status"
     _attr_icon = "mdi:shield-check"
 
+    _unrecorded_attributes = frozenset({"recovery"})
+
     def __init__(
         self,
         coordinator,
@@ -106,6 +110,27 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
         journey = self.coordinator.data.next_journey
         observation = self.coordinator.data.rail_observation
         attributes = {
+            "dashboard": dashboard_projection(
+                self.coordinator.data,
+                notification_context=(
+                    self._notification_scheduler.dashboard_context()
+                    if self._notification_scheduler is not None else None
+                ),
+                last_notification=getattr(self.coordinator, "last_notification", None)
+                if isinstance(getattr(self.coordinator, "last_notification", None), str)
+                else None,
+                last_notification_at=(
+                    value if isinstance(value := getattr(
+                        self.coordinator, "last_notification_at", None
+                    ), datetime) else None
+                ),
+                next_live_check_at=getattr(
+                    self.coordinator, "next_live_check_at", None
+                ),
+                next_station_access_check_at=getattr(
+                    self.coordinator, "next_station_access_check_at", None
+                ),
+            ),
             **self.coordinator.travel_plan.attributes(
                 self.coordinator.data.checked_at,
                 simulation=self.coordinator.data.simulation_active,
@@ -245,6 +270,14 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
                     ],
                 }
             )
+        connections = self.coordinator.connection_dashboard(
+            dt_util.now()
+        )
+        if isinstance(connections, dict):
+            attributes["dashboard"].update(connections)
+        recovery = getattr(self.coordinator, "recovery_runtime", None)
+        if recovery is not None:
+            attributes["recovery"] = recovery.dashboard(dt_util.utcnow())
         return attributes
 
 

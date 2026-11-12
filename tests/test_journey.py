@@ -2,9 +2,89 @@
 
 from datetime import UTC, datetime
 
+import pytest
+
 from custom_components.journey_guardian.journey import select_next_journey
 
 NOW = datetime(2026, 1, 15, 8, 0, tzinfo=UTC)
+
+
+@pytest.mark.parametrize(
+    "tag", ["Flight", "Parking", "Lodging", "Car Rental", "Cruise"]
+)
+def test_explicit_non_rail_categories_never_select_a_rail_journey(tag) -> None:
+    event = {
+        "start": "2026-01-15T09:00:00+00:00",
+        "summary": "Example Central to Example Junction",
+        "description": f"Trip details\n\n[{tag}] Example Central to Example Junction",
+    }
+    assert select_next_journey([event], NOW) is None
+
+
+@pytest.mark.parametrize(
+    "summary",
+    [
+        "ZZ1234 AAA to BBB",
+        "Example Airline - ZZ1234 AAA to BBB",
+        "zz 123 aaa to bbb",
+        "Flight - Example to Other",
+        "[Flight] Example to Other",
+    ],
+)
+def test_flight_titles_are_excluded_even_without_description(summary) -> None:
+    assert (
+        select_next_journey(
+            [
+                {
+                    "start": "2026-01-15T09:00:00+00:00",
+                    "summary": summary,
+                }
+            ],
+            NOW,
+        )
+        is None
+    )
+
+
+def test_mixed_calendar_skips_flight_and_selects_later_rail_leg() -> None:
+    flight = {
+        "start": "2026-01-15T09:00:00+00:00",
+        "summary": "ZZ1234 AAA to BBB",
+        "description": "[Flight] AAA to BBB",
+    }
+    rail = {
+        "start": "2026-01-15T10:00:00+00:00",
+        "summary": "Rail operator - Example Central to Example Junction",
+        "description": "[Rail] Example Central to Example Junction",
+    }
+    assert select_next_journey([flight, rail], NOW).summary == rail["summary"]
+
+
+def test_non_rail_tag_wins_over_conflicting_rail_tag() -> None:
+    assert (
+        select_next_journey(
+            [
+                {
+                    "start": "2026-01-15T09:00:00+00:00",
+                    "summary": "Rail - Example to Other",
+                    "description": "[Rail] Example to Other\n[Flight] AAA to BBB",
+                }
+            ],
+            NOW,
+        )
+        is None
+    )
+
+
+def test_rail_description_can_mention_airport_and_connecting_flight() -> None:
+    event = {
+        "start": "2026-01-15T09:00:00+00:00",
+        "summary": "Rail - Example Central [EXC] to Airport Parkway [AIR]",
+        "description": (
+            "[Rail] Example Central to Airport Parkway\nConnect to flight ZZ1234"
+        ),
+    }
+    assert select_next_journey([event], NOW) is not None
 
 
 def test_generic_route_uses_calendar_origin_and_time() -> None:

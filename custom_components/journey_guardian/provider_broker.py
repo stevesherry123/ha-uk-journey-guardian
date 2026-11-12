@@ -156,6 +156,7 @@ class ProviderRequestBroker:
         fetcher: ProviderFetcher,
         *,
         urgent: bool = False,
+        force_refresh: bool = False,
     ) -> ProviderResult:
         """Return current or explicitly stale data through the quota guard."""
         fingerprint = request.fingerprint()
@@ -172,7 +173,7 @@ class ProviderRequestBroker:
         )
         async with self._lock:
             cached = self._usable_cache(fingerprint, now)
-            if cached is not None and now < cached.fresh_until:
+            if not force_refresh and cached is not None and now < cached.fresh_until:
                 return _result_from_cache(cached, now, freshness="current")
 
             pending = self._inflight.get(fingerprint)
@@ -205,7 +206,9 @@ class ProviderRequestBroker:
                 and not pending.reserved_as_urgent
             ):
                 await asyncio.sleep(0)
-                return await self.async_request(request, fetcher, urgent=True)
+                return await self.async_request(
+                    request, fetcher, urgent=True, force_refresh=force_refresh
+                )
             return _detach_result(result)
         except ProviderBrokerError as err:
             if (
@@ -214,7 +217,9 @@ class ProviderRequestBroker:
                 and not pending.reserved_as_urgent
             ):
                 await asyncio.sleep(0)
-                return await self.async_request(request, fetcher, urgent=True)
+                return await self.async_request(
+                    request, fetcher, urgent=True, force_refresh=force_refresh
+                )
             raise
 
     def clear(self) -> None:

@@ -153,6 +153,9 @@ async def test_options_flow_updates_timing_and_reloads(hass) -> None:
 
     assert result["type"] is FlowResultType.FORM
     updated = {
+        "connection_monitor_enabled": False,
+        "connection_transfer_minutes": 10,
+        "station_transfer_defaults": "",
         CONF_PROGRESS_ZONES: "zone.example_origin\nzone.example_destination",
         "progress_alternatives": "",
         CONF_PREPARATION_BUFFER_MINUTES: 35,
@@ -263,3 +266,16 @@ async def test_options_flow_does_not_return_saved_credentials(hass) -> None:
     assert entry.options[CONF_TRANSPORTAPI_APP_ID] == "example-app-id"
     assert entry.options[CONF_TRANSPORTAPI_APP_KEY] == "example-app-key"
     assert CONF_GOOGLE_ROUTES_API_KEY not in entry.options
+
+
+async def test_options_reject_duplicate_transfer_station_names(hass):
+    entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT)
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {
+            "station_transfer_defaults": "Example Junction=12\nexample junction=15",
+        },
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"]["station_transfer_defaults"] == "invalid_station_transfers"

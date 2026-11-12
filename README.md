@@ -8,10 +8,15 @@ The current stable release targets Home Assistant 2026.8 or newer.
 Releases include a [runtime-only HACS ZIP](docs/RELEASE_PACKAGING.md) from v0.2.10.
 Existing installations update in place; no uninstall is needed.
 
-The stable maintenance line is **0.2.12**. The **0.3.0-beta.6** prerelease adds a
-[read-only upcoming and retained booking views](docs/BOOKING_OVERVIEW.md),
-not completed automatic
-interchange or disruption recovery. Choose prereleases deliberately.
+The stable maintenance line is **0.2.13**. The **0.3 preview** introduces
+[upcoming and retained booking views](docs/BOOKING_OVERVIEW.md).
+
+The development branch adds confirmed connection warnings, explicit recovery
+review, and approved replacement tracking. Railinfo recovery supports same-day
+direct journeys and routes with one change. See the
+[recovery guide](docs/RECOVERY_REVIEW.md) and the
+[rail delivery plan](docs/RAIL_DELIVERY_PLAN.md) for development usage and
+remaining acceptance work.
 
 Start with the [setup and first-journey guide](docs/GETTING_STARTED.md).
 For missing journeys, alarms, or provider results, use
@@ -129,6 +134,10 @@ Routing diagnostics explain the selected source and fallback reason.
 Other station profiles are unchanged.
 
 ## Calendar format
+
+Mixed calendars need transport-type safeguards. See
+[calendar transport classification](docs/CALENDAR_TRANSPORT_CLASSIFICATION.md)
+for non-rail exclusions, untagged-calendar limits, and the separate flight scope.
 
 The preferred and development-tested calendar source is a TripIt calendar feed,
 but any Home Assistant calendar entity can work when it supplies timed events in

@@ -99,7 +99,7 @@ class StationAccessMonitor:
         if current is None or current.start != departure:
             return
         try:
-            await self._coordinator.async_test_station_access()
+            await self._coordinator.async_test_station_access(automatic=True)
         except Exception as err:  # Errors are sanitized in coordinator data.
             _LOGGER.warning(
                 "Automatic station access check failed with %s",

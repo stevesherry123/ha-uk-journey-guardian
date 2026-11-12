@@ -17,6 +17,42 @@ review_rail_now:
   name: Check live rail now
   description: Explicitly check the selected rail provider for the current calendar journey. This can consume provider allowance.
 
+investigate_booking:
+  name: Investigate booking mismatch
+  description: Check one specified alternative station through Railinfo. Returns a timetable proposal without changing the booking.
+  fields:
+    booking_id:
+      name: Booking fingerprint
+      description: Exact booking fingerprint from the current rail-check issue.
+      required: true
+      selector:
+        text:
+    origin_code:
+      name: Origin station code
+      required: true
+      selector:
+        text:
+    booked_destination_code:
+      name: Booked destination station code
+      required: true
+      selector:
+        text:
+    alternative_code:
+      name: Alternative station code
+      required: true
+      selector:
+        text:
+
+confirm_booking_match:
+  name: Confirm timetable proposal
+  description: Acknowledge the exact unexpired proposal without changing the tracked train.
+  fields:
+    proposal_id:
+      name: Proposal ID
+      required: true
+      selector:
+        text:
+
 simulate_journey:
   name: Simulate journey
   description: Activate a deterministic journey scenario without contacting live providers or consuming provider allowance.
@@ -74,3 +110,139 @@ simulate_journey:
 clear_simulation:
   name: Clear simulation
   description: Return Journey Guardian to its configured calendar source. No provider call is made.
+
+confirm_connection:
+  name: Confirm booked connection
+  description: Confirm two adjacent current rail bookings as a connection. Development feature; does not enable live connection warnings.
+  fields:
+    inbound_id:
+      name: Incoming booking ID
+      required: true
+      selector:
+        text:
+    outbound_id:
+      name: Onward booking ID
+      required: true
+      selector:
+        text:
+    override_minutes:
+      name: Transfer allowance override
+      description: Optional allowance for this booked pair, in minutes.
+      selector:
+        number:
+          min: 0
+          max: 1440
+          mode: box
+
+revoke_connection:
+  name: Revoke booked connection
+  description: Remove a saved confirmation without changing either calendar booking.
+  fields:
+    inbound_id:
+      name: Incoming booking ID
+      required: true
+      selector:
+        text:
+    outbound_id:
+      name: Onward booking ID
+      required: true
+      selector:
+        text:
+
+review_recovery:
+  name: Review rail recovery options
+  description: Search from your confirmed current station to the final booking in a confirmed connected journey.
+  fields:
+    affected_booking_id:
+      name: Affected booking ID
+      required: true
+      selector:
+        text:
+    final_booking_id:
+      name: Final booking ID
+      required: true
+      selector:
+        text:
+    origin:
+      name: Confirmed current station name
+      required: true
+      selector:
+        text:
+
+select_recovery:
+  name: Recheck a recovery route
+  description: Recheck a reviewed route and prepare its approval preview.
+  fields:
+    option_id:
+      name: Reviewed route ID
+      required: true
+      selector:
+        text:
+    revision:
+      name: Reviewed route revision
+      required: true
+      selector:
+        text:
+
+approve_recovery:
+  name: Approve and track a recovery route
+  description: Adopt the currently rechecked route for replacement tracking.
+  fields:
+    option_id:
+      name: Rechecked route ID
+      required: true
+      selector:
+        text:
+    revision:
+      name: Rechecked route revision
+      required: true
+      selector:
+        text:
+
+check_recovery_tracking:
+  name: Check replacement train predictions
+  description: Update predictions for the current approved replacement train.
+  fields:
+    tracking_id:
+      name: Replacement tracking ID
+      required: true
+      selector:
+        text:
+    leg_index:
+      name: Current leg index
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 1
+          mode: box
+
+confirm_recovery_arrival:
+  name: Confirm arrival on a replacement train
+  description: Record your arrival and advance the approved replacement route.
+  fields:
+    tracking_id:
+      name: Replacement tracking ID
+      required: true
+      selector:
+        text:
+    leg_index:
+      name: Current leg index
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 1
+          mode: box
+
+stop_recovery_tracking:
+  name: Stop tracking the replacement
+  description: Stop the approved replacement and resume normal calendar selection.
+  fields:
+    tracking_id:
+      name: Replacement tracking ID
+      required: true
+      selector:
+        text:

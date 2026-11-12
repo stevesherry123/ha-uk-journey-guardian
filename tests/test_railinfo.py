@@ -176,3 +176,66 @@ async def test_railinfo_rate_limit_has_a_stable_error() -> None:
         await client.async_places("Example Central")
 
     assert raised.value.category == ERROR_QUOTA_EXHAUSTED
+
+
+async def test_arrival_prediction_uses_broker_and_preserves_explicit_arrival():
+    from custom_components.journey_guardian.rail import service_identity
+
+    departure = NOW.replace(hour=11)
+    arrival = NOW.replace(hour=12)
+    client, session, broker = _client({
+        "date": NOW.date().isoformat(), "is_today": True, "journeys": [{
+            "changes": 0, "status": "on_time", "legs": [{
+                "from_crs": "EXC", "to_crs": "SMP", "dep": "1200", "arr": "1300",
+                "expected_arr": "1308", "headcode": "1A23", "mode": "train",
+                "status_source": "darwin", "status": "late",
+            }],
+        }],
+    })
+    result = await client.async_arrival_prediction(
+        origin_code="exc", destination_code="smp",
+        expected_service_identity=service_identity("1A23", NOW.date()),
+        booked_departure=departure, booked_arrival=arrival, urgent=True,
+    )
+    assert result.event_at == arrival + timedelta(minutes=8)
+    assert result.observed_at == NOW
+    assert result.station_identity == "SMP"
+    request = broker.async_request.await_args.args[0]
+    assert request.operation == "journey_details"
+    assert request.quota_controlled is False
+    assert request.parameters["time"] == "1200"
+    assert broker.async_request.await_args.kwargs["urgent"] is True
+    assert session.get.await_args.args[0] == f"{BASE_URL}/journeys"
+
+
+async def test_stale_broker_result_does_not_become_arrival_evidence():
+    from dataclasses import replace
+
+    client, session, broker = _client({})
+    broker.async_request.side_effect = None
+    broker.async_request.return_value = replace(_result({}), freshness="stale")
+    result = await client.async_arrival_prediction(
+        origin_code="EXC", destination_code="SMP",
+        expected_service_identity="fictional",
+        booked_departure=NOW, booked_arrival=NOW + timedelta(hours=1),
+    )
+    assert result is None
+    session.get.assert_not_called()
+
+
+@pytest.mark.parametrize("changes", [
+    {"origin_code": ""}, {"destination_code": "unknown"},
+    {"booked_departure": NOW.replace(tzinfo=None)}, {"booked_arrival": NOW},
+    {"expected_service_identity": ""},
+])
+async def test_invalid_arrival_request_cannot_consume_provider_work(changes):
+    client, session, broker = _client({})
+    parameters = {
+        "origin_code": "EXC", "destination_code": "SMP",
+        "expected_service_identity": "fictional-service",
+        "booked_departure": NOW, "booked_arrival": NOW + timedelta(hours=1),
+    }
+    with pytest.raises(ValueError):
+        await client.async_arrival_prediction(**(parameters | changes))
+    broker.async_request.assert_not_called()
+    session.get.assert_not_called()

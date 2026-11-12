@@ -6,7 +6,7 @@ import hashlib
 import logging
 from collections.abc import Mapping
 from dataclasses import replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
@@ -26,11 +26,12 @@ from .const import (
 )
 from .google_routes import GoogleRoutesClient, GoogleRoutesError
 from .journey import select_next_journey
-from .models import JourneyEvent, JourneySnapshot, JourneyTiming
+from .models import JourneyEvent, JourneySnapshot, JourneyTiming, RailCheckIssue
 from .phase import calculate_operational_phase
 from .provider_broker import ProviderBrokerError
 from .rail import RailDataError, normalize_station_board
 from .railinfo import RailinfoClient
+from .railinfo_booking_match import BookingMatchRequest, BookingMatchResult
 from .simulation import JourneySimulation
 from .station import StationResolution, StationResolutionError, resolve_station
 from .station_access_profiles import (
@@ -72,6 +73,7 @@ class JourneyGuardianEngine:
         station_access_mode: str = "auto",
         station_access_profiles: object = None,
         google_routes_client: GoogleRoutesClient | None = None,
+        check_history_scope: str = "",
     ) -> None:
         """Initialize the engine."""
         self._hass = hass
@@ -83,10 +85,14 @@ class JourneyGuardianEngine:
         self._station_access_fallback_minutes = station_access_fallback_minutes
         self._station_access_minimum_minutes = station_access_minimum_minutes
         self._simulation = simulation
+        self.recovery_excludes = None
         self._transportapi_client = transportapi_client
         self._railinfo_client = railinfo_client
         self._live_rail_provider = live_rail_provider
         self._check_history = check_history
+        self._check_history_scope = hashlib.sha256(
+            f"{check_history_scope}|{calendar_entity}|{live_rail_provider}".encode()
+        ).hexdigest()
         self._person_entity = person_entity
         self._station_access_mode = station_access_mode
         self._station_access_profiles = parse_station_access_profiles(
@@ -95,6 +101,7 @@ class JourneyGuardianEngine:
         self._google_routes_client = google_routes_client
         self._station_resolutions: dict[str, StationResolution] = {}
         self._last_live_rail_error: str | None = None
+        self._last_rail_issue: RailCheckIssue | None = None
         self._route_warning_keys: set[str] = set()
 
     async def async_review(
@@ -125,7 +132,12 @@ class JourneyGuardianEngine:
             return self._calendar_unavailable_snapshot(checked_at)
         try:
             events = await self._async_calendar_events(checked_at)
-            next_journey = select_next_journey(events, checked_at)
+            next_journey = select_next_journey(
+                events, checked_at,
+                exclude=(
+                    lambda journey: self.recovery_excludes(journey, checked_at)
+                ) if self.recovery_excludes is not None else None,
+            )
             booked_legs, booked_leg_count = upcoming_bookings(events, checked_at)
             if next_journey is None:
                 status = "idle"
@@ -157,6 +169,7 @@ class JourneyGuardianEngine:
                 last_live_rail_error=self._last_live_rail_error,
                 booked_legs=booked_legs,
                 booked_leg_count=booked_leg_count,
+                current_rail_issue=self._booking_issue(next_journey, checked_at),
             )
         except Exception as err:  # Home Assistant service errors vary by provider
             # Exception messages from calendars and future provider clients may
@@ -210,6 +223,8 @@ class JourneyGuardianEngine:
         journey = snapshot.next_journey
         if journey is None:
             raise ValueError("rail_journey_unavailable")
+        if self.recovery_excludes and self.recovery_excludes(journey, dt_util.utcnow()):
+            raise ValueError("booking_replaced")
         client = self._live_rail_client()
         provider = self._live_rail_provider
         if client is None:
@@ -261,11 +276,18 @@ class JourneyGuardianEngine:
         except (ProviderBrokerError, RailDataError, StationResolutionError) as err:
             category = getattr(err, "category", "provider_unavailable")
             self._last_live_rail_error = f"{provider}_{category}"
+            self._last_rail_issue = RailCheckIssue(
+                booking_fingerprint=journey.booking_fingerprint,
+                recorded_at=dt_util.now(),
+                category=self._last_live_rail_error,
+                stage=stage,
+            )
             _LOGGER.warning("Manual rail review failed: %s", category)
             degraded = replace(
                 snapshot,
                 budget=self._budget.snapshot(),
                 last_live_rail_error=self._last_live_rail_error,
+                current_rail_issue=self._last_rail_issue,
             )
             await self._async_record_live_check(
                 degraded,
@@ -276,10 +298,12 @@ class JourneyGuardianEngine:
                 destination,
                 stage,
                 getattr(err, "schedule_offset_minutes", None),
+                booked_journey=journey,
             )
             return degraded
 
         self._last_live_rail_error = None
+        self._last_rail_issue = None
         resolved_journey = replace(
             journey,
             origin_code=station.code,
@@ -339,6 +363,7 @@ class JourneyGuardianEngine:
             destination,
             "complete",
             None,
+            booked_journey=journey,
         )
         return result
 
@@ -491,6 +516,34 @@ class JourneyGuardianEngine:
             station_access_provider_minutes=estimate.duration_minutes,
         )
 
+    async def async_booking_match(
+        self, request: BookingMatchRequest
+    ) -> BookingMatchResult:
+        """Use only the configured provider for timetable investigation."""
+        if self._live_rail_provider != "railinfo" or self._railinfo_client is None:
+            return BookingMatchResult("booking_match_provider_unsupported")
+        return await self._railinfo_client.async_booking_match(request)
+
+    def _booking_check_key(self, fingerprint: str) -> str:
+        return hashlib.sha256(
+            f"{self._check_history_scope}:{fingerprint}".encode()
+        ).hexdigest()
+
+    def _booking_issue(
+        self, journey: JourneyEvent | None, now: datetime
+    ) -> RailCheckIssue | None:
+        if journey is None:
+            return None
+        fingerprint = journey.booking_fingerprint
+        issue = self._last_rail_issue
+        if issue is not None and issue.booking_fingerprint == fingerprint:
+            return issue
+        if self._check_history is not None:
+            return self._check_history.booking_issue(
+                self._booking_check_key(fingerprint), fingerprint, now
+            )
+        return None
+
     async def _async_record_live_check(
         self,
         snapshot,
@@ -501,6 +554,8 @@ class JourneyGuardianEngine:
         destination,
         stage,
         schedule_offset_minutes,
+        *,
+        booked_journey: JourneyEvent,
     ) -> None:
         """Persist a privacy-safe live-check audit record."""
         if self._check_history is None:
@@ -512,12 +567,20 @@ class JourneyGuardianEngine:
                 f"{journey.start.isoformat()}|{journey.origin_name}|{journey.destination_confirmation}".encode()
             ).hexdigest()[:16]
         observation = snapshot.rail_observation
+        issue = snapshot.current_rail_issue
         await self._check_history.async_record(
             {
                 "checked_at": snapshot.checked_at.isoformat(),
                 "journey_date": journey.start.date().isoformat() if journey else None,
                 "trigger": trigger,
                 "journey_fingerprint": fingerprint,
+                "booking_check_key": self._booking_check_key(
+                    booked_journey.booking_fingerprint
+                ),
+                "booking_check_recorded_at": (
+                    issue.recorded_at if issue else dt_util.now()
+                ).isoformat(),
+                "booking_check_failure": issue.category if issue else None,
                 "origin_code": (
                     station.code
                     if station
@@ -590,6 +653,11 @@ class JourneyGuardianEngine:
             else self._transportapi_client
         )
         return client if client is not None and client.configured else None
+
+    def reset_google_access_backoff(self) -> None:
+        """Reserve immediate account-access retries for explicit user tests."""
+        if self._google_routes_client is not None:
+            self._google_routes_client.reset_access_backoff()
 
     async def _async_calendar_events(self, start: Any) -> list[dict[str, Any]]:
         end = start + timedelta(hours=DEFAULT_LOOKAHEAD_HOURS)

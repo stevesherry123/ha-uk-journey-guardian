@@ -357,6 +357,14 @@ class JourneyNotificationScheduler:
             "last_stop_reason": self._home_wake_last_stop_reason,
         }
 
+    def dashboard_context(self) -> dict[str, Any]:
+        """Expose eligibility without scheduling or revealing target entities."""
+        return {
+            **self.diagnostics(),
+            "live_enabled": self._live_notifications_enabled,
+            "person_home": self._person_is_home(),
+        }
+
     def _record_awake_evidence(self, snapshot: JourneySnapshot) -> None:
         """Remember momentary awake evidence for the current departure."""
         journey = snapshot.next_journey
@@ -446,6 +454,12 @@ class JourneyNotificationScheduler:
         fingerprint = _notification_fingerprint(snapshot, kind)
         if not await self._ledger.async_claim(fingerprint):
             return
+        excludes = getattr(self._coordinator, "is_superseded", None)
+        if (
+            not snapshot.simulation_active and excludes is not None
+            and excludes(snapshot.next_journey, dt_util.utcnow()) is True
+        ):
+            return
         title = (
             "UK Journey Guardian simulation"
             if snapshot.simulation_active
@@ -459,6 +473,9 @@ class JourneyNotificationScheduler:
             title=title,
             notification_id=f"{DOMAIN}_{fingerprint}",
             simulation=snapshot.simulation_active,
+            is_current=(
+                lambda: excludes(snapshot.next_journey, dt_util.utcnow()) is not True
+            ) if not snapshot.simulation_active and excludes is not None else None,
         )
         self._coordinator.record_notification(kind, dt_util.now())
 
@@ -482,6 +499,46 @@ class JourneyNotificationScheduler:
         self._coordinator.record_notification("manual_review", dt_util.now())
         return delivery
 
+    @property
+    def connection_notices_enabled(self) -> bool:
+        """Connection monitoring also respects the existing live-alert master."""
+        return self._live_notifications_enabled
+
+    async def async_connection_notice(
+        self, message: str, *, notification_id: str, kind: str, is_current
+    ) -> str:
+        """Use the shared route with context checks at the actual hand-off."""
+        def guard():
+            snapshot = self._coordinator.data
+            return bool(
+                self._live_notifications_enabled and snapshot is not None
+                and not snapshot.simulation_active and not snapshot.error
+                and is_current()
+            )
+
+        if not guard():
+            return "suppressed"
+        try:
+            async with asyncio.timeout(20):
+                outcome = await self._async_deliver(
+                    message, title="Journey Guardian connection",
+                    notification_id=notification_id, simulation=False,
+                    is_current=guard,
+                )
+        except TimeoutError:
+            if not guard():
+                return "suppressed"
+            persistent_notification.async_create(
+                self._hass, message, title="Journey Guardian connection",
+                notification_id=notification_id,
+            )
+            outcome = "persistent_notification"
+        if outcome == "announcement_engine" and kind == "recovered" and guard():
+            persistent_notification.async_dismiss(self._hass, notification_id)
+        if outcome != "suppressed":
+            self._coordinator.record_notification(f"connection_{kind}", dt_util.now())
+        return outcome
+
     async def _async_deliver(
         self,
         message: str,
@@ -490,12 +547,17 @@ class JourneyNotificationScheduler:
         notification_id: str,
         simulation: bool,
         script_data: dict | None = None,
+        is_current: Callable[[], bool] | None = None,
     ) -> str:
         """Deliver live messages through the configured announcement engine."""
+        if is_current is not None and not is_current():
+            return "suppressed"
         configured = self._announcement_engine_configured()
         if not simulation and configured:
             try:
                 async with self._delivery_lock:
+                    if is_current is not None and not is_current():
+                        return "suppressed"
                     await self._hass.services.async_call(
                         "input_text",
                         "set_value",
@@ -505,6 +567,8 @@ class JourneyNotificationScheduler:
                         },
                         blocking=True,
                     )
+                    if is_current is not None and not is_current():
+                        return "suppressed"
                     await self._hass.services.async_call(
                         "script",
                         self._announcement_script_entity.removeprefix("script."),
@@ -517,6 +581,8 @@ class JourneyNotificationScheduler:
                     "Announcement delivery failed with %s; using local fallback",
                     type(err).__name__,
                 )
+        if is_current is not None and not is_current():
+            return "suppressed"
         persistent_notification.async_create(
             self._hass,
             message,

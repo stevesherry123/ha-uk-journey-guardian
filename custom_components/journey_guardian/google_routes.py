@@ -12,6 +12,7 @@ from homeassistant.util import dt as dt_util
 
 ROUTES_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
 FIELD_MASK = "routes.duration,routes.distanceMeters"
+ACCESS_RETRY_INTERVAL = timedelta(hours=1)
 MODE_MAP = {
     "driving": "DRIVE",
     "walking": "WALK",
@@ -42,11 +43,17 @@ class GoogleRoutesClient:
         self._session = session
         self._api_key = api_key.strip()
         self._cache: dict[tuple[Any, ...], tuple[datetime, StationAccessEstimate]] = {}
+        self._access_error: str | None = None
+        self._access_retry_at: datetime | None = None
 
     @property
     def configured(self) -> bool:
         """Return whether a credential is available."""
         return bool(self._api_key)
+
+    def reset_access_backoff(self) -> None:
+        """Allow an explicit user test after the account has been repaired."""
+        self._access_retry_at = None
 
     async def async_route(
         self,
@@ -70,6 +77,12 @@ class GoogleRoutesClient:
         ):
             raise GoogleRoutesError("invalid_request")
         now = dt_util.now()
+        if (
+            self._access_error is not None
+            and self._access_retry_at is not None
+            and now < self._access_retry_at
+        ):
+            raise GoogleRoutesError(self._access_error)
         cache_key = (
             round(latitude, 4),
             round(longitude, 4),
@@ -118,7 +131,12 @@ class GoogleRoutesClient:
                         404: "endpoint_unavailable",
                         429: "quota_exceeded",
                     }.get(response.status, "provider_unavailable")
+                    if response.status in {401, 403}:
+                        self._access_error = category
+                        self._access_retry_at = now + ACCESS_RETRY_INTERVAL
                     raise GoogleRoutesError(category)
+                self._access_error = None
+                self._access_retry_at = None
                 payload = await response.json()
         except TimeoutError as err:
             raise GoogleRoutesError("timeout") from err

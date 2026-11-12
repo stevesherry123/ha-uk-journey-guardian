@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Journey Guardian development preview</title>
+  <style>
+    body{margin:0;background:#f1f4f4;color:#202322;font:14px/1.5 system-ui;letter-spacing:0}
+    main{max-width:850px;margin:24px auto;padding:0 16px}
+    header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+    h1{font-size:17px;margin:0}
+    select{padding:8px;font:inherit;border:1px solid #bac3c5;border-radius:4px;background:#fff;max-width:100%}
+    label{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .note{color:#5d6568;margin:8px 0 16px}
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Journey Guardian / development</h1>
+      <label>Scenario
+        <select id="scenario">
+          <option value="connection">Suggested connection</option>
+          <option value="connection-confirmed">Confirmed connection</option>
+          <option value="connection-risk">Connection at risk</option>
+          <option value="connection-recovered">Connection margin recovered</option>
+          <option value="connection-unknown">Stale connection / uncertain delivery</option>
+          <option value="recovery-options">Recovery route review</option>
+          <option value="recovery-unavailable">Recovery manual fallback</option>
+          <option value="connection-error">Connection save failure</option>
+          <option value="normal">Waze preferred</option>
+          <option value="google">Google recovery</option>
+          <option value="constant">Both providers unavailable</option>
+          <option value="disabled">Notifications disabled</option>
+          <option value="awake">Awake evidence recorded</option>
+          <option value="cancelled">Cancelled service</option>
+          <option value="stale">Retained calendar data</option>
+          <option value="overnight">Overnight journey</option>
+          <option value="clock-change">Clocks go back</option>
+          <option value="long">Long station name</option>
+          <option value="empty">No journey</option>
+          <option value="unavailable">HA unavailable</option>
+        </select>
+      </label>
+    </header>
+    <p class="note">Fictional data. Connection and recovery actions use local examples; no Home Assistant connection.</p>
+    <journey-guardian-card></journey-guardian-card>
+  </main>
+  <script type="module">
+    import './journey-guardian-card.js';
+    import {previewData} from './preview-data.js';
+    const card = document.querySelector('journey-guardian-card');
+    card.setConfig({entity:'sensor.example_journey_status'});
+    const now = Date.now();
+    const select = document.getElementById('scenario');
+    const update = () => {
+      const data = previewData(select.value, now);
+      data.callService = async (_domain, action, payload) => {
+        if (action === 'review_recovery' || action === 'select_recovery') {
+          const fixture = previewData(select.value, Date.now());
+          const recovery = fixture.states['sensor.example_journey_status'].attributes.recovery;
+          if (action === 'select_recovery') {
+            if (!recovery.options.some(option =>
+              option.option_id === payload.option_id && option.revision === payload.revision
+            )) throw new Error('Fictional option unavailable');
+            recovery.selected_option_id = payload.option_id;
+            recovery.selection_status = 'selection_verified';
+          }
+          data.states = fixture.states;
+          card.hass = {...data, states: structuredClone(data.states)};
+          return;
+        }
+        if (['approve_recovery', 'check_recovery_tracking',
+             'confirm_recovery_arrival', 'stop_recovery_tracking'].includes(action)) {
+          const recovery = data.states['sensor.example_journey_status'].attributes.recovery;
+          if (action === 'approve_recovery') {
+            const route = recovery.options.find(option =>
+              option.option_id === recovery.selected_option_id &&
+              option.option_id === payload.option_id && option.revision === payload.revision);
+            if (!route) throw new Error('Fictional approval expired');
+            recovery.tracking = {
+              id: 'f'.repeat(64), state: 'tracking', leg_index: 0, legs: route.legs, live: {},
+            };
+            recovery.can_approve = false;
+            recovery.selected_option_id = null;
+            recovery.status = 'not_requested';
+            recovery.options = [];
+          } else if (action === 'check_recovery_tracking') {
+            const leg = recovery.tracking.legs[recovery.tracking.leg_index];
+            recovery.tracking.live = {
+              arrival: leg.arrival,
+              arrival_valid_until: new Date(Date.now() + 300000).toISOString(),
+            };
+            if (recovery.tracking.leg_index === 0 && recovery.tracking.legs.length > 1) {
+              recovery.tracking.transfer = {
+                classification: 'at_risk', minutes_available: 6, minimum_minutes: 10,
+                valid_until: recovery.tracking.live.arrival_valid_until,
+              };
+            }
+          } else if (action === 'confirm_recovery_arrival') {
+            recovery.tracking.leg_index += 1;
+            recovery.tracking.live = {};
+            recovery.tracking.transfer = null;
+            if (recovery.tracking.leg_index === recovery.tracking.legs.length) {
+              recovery.tracking.state = 'completed';
+            }
+          } else {
+            recovery.tracking.state = 'stopped';
+          }
+          card.hass = {...data, states: structuredClone(data.states)};
+          return;
+        }
+        if (select.value === 'connection-error') throw new Error('Fictional save failure');
+        const pair = data.states['sensor.example_journey_status'].attributes.dashboard.connections[0];
+        pair.confirmed = action === 'confirm_connection';
+        pair.override_minutes = pair.confirmed ? payload.override_minutes ?? null : null;
+        pair.allowance_minutes = pair.override_minutes ?? 10;
+        pair.allowance_source = pair.override_minutes === null ? 'global_fallback' : 'connection_override';
+        card.hass = {...data, states: structuredClone(data.states)};
+      };
+      card.hass = data;
+    };
+    select.addEventListener('change', update);
+    update();
+  </script>
+</body>
+</html>

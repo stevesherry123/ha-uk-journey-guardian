@@ -2,11 +2,57 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+import re
+from collections.abc import Callable, Iterable, Mapping
 from datetime import UTC, datetime
 from typing import Any
 
 from .models import JourneyEvent
+
+_TRANSPORT_TAG = re.compile(r"^\s*\[([^\]\r\n]+)\]\s+", re.MULTILINE)
+_NON_RAIL_TAGS = {
+    "flight",
+    "air",
+    "parking",
+    "lodging",
+    "hotel",
+    "car rental",
+    "car",
+    "cruise",
+    "ferry",
+    "bus",
+    "coach",
+    "transfer",
+    "ground transportation",
+    "transportation",
+    "activity",
+    "restaurant",
+    "meeting",
+}
+_FLIGHT_ROUTE = re.compile(
+    r"^(?:flight\s+)?[a-z0-9]{2,3}\s?\d{1,4}[a-z]?\s+"
+    r"[a-z]{3}\s+to\s+[a-z]{3}$",
+    re.IGNORECASE,
+)
+_FLIGHT_TITLE = re.compile(r"^\s*(?:\[flight\]|flight\b)", re.IGNORECASE)
+
+
+def is_rail_candidate(event: Mapping[str, Any]) -> bool:
+    """Exclude explicit non-rail intent without guessing from three-letter codes.
+
+    Untagged route calendars retain their existing contract. TripIt category
+    lines are stronger evidence than route-shaped titles, even if tags conflict.
+    """
+    summary = str(event.get("summary", "")).strip()
+    description = str(event.get("description", ""))
+    tags = {
+        " ".join(tag.casefold().split())
+        for tag in _TRANSPORT_TAG.findall(f"{summary}\n{description}")
+    }
+    if tags & _NON_RAIL_TAGS or _FLIGHT_TITLE.match(summary):
+        return False
+    route_title = summary.rsplit(" - ", 1)[-1].strip()
+    return bool(tags & {"rail", "train"}) or not _FLIGHT_ROUTE.fullmatch(route_title)
 
 
 def parse_datetime(value: str, reference: datetime) -> datetime | None:
@@ -36,11 +82,16 @@ def _route_parts(summary: str) -> tuple[str, str] | None:
 
 
 def select_next_journey(
-    events: Iterable[Mapping[str, Any]], reference: datetime
+    events: Iterable[Mapping[str, Any]],
+    reference: datetime,
+    *,
+    exclude: Callable[[JourneyEvent], bool] | None = None,
 ) -> JourneyEvent | None:
     """Return the next timed event and its Journey Guardian decision path."""
     candidates: list[JourneyEvent] = []
     for raw_event in events:
+        if not is_rail_candidate(raw_event):
+            continue
         start = parse_datetime(str(raw_event.get("start", "")), reference)
         if start is None:
             continue
@@ -53,16 +104,16 @@ def select_next_journey(
         if route is None:
             continue
         origin_name, destination_name = route
-        candidates.append(
-            JourneyEvent(
-                start=start,
-                end=end,
-                summary=summary,
-                location=location,
-                origin_code="CALENDAR",
-                origin_name=origin_name,
-                destination_confirmation=destination_name,
-                decision_path="calendar_route",
-            )
+        candidate = JourneyEvent(
+            start=start,
+            end=end,
+            summary=summary,
+            location=location,
+            origin_code="CALENDAR",
+            origin_name=origin_name,
+            destination_confirmation=destination_name,
+            decision_path="calendar_route",
         )
+        if exclude is None or not exclude(candidate):
+            candidates.append(candidate)
     return min(candidates, key=lambda event: event.start) if candidates else None

@@ -95,7 +95,11 @@ export class JourneyGuardianCard extends BaseElement {
       this._hass?.locale?.language || "en-GB", { day: "numeric", month: "short", timeZone: timezone }
     ).format(new Date(value)) : "Unknown date";
     status.textContent = data.simulation ? "Simulation" : (data.phase || "Unknown").replaceAll("_", " ");
-    if (!data.healthy) add("p", "Journey data needs attention. Times may be retained.", root, "notice");
+    if (data.calendar_unavailable) {
+      add("p", "Home Assistant could not read the travel calendar. Any displayed bookings may be from the last successful read.", root, "notice");
+    } else if (!data.healthy) {
+      add("p", "Journey data needs attention. Times may be retained.", root, "notice");
+    }
     for (const warning of (Array.isArray(data.integrity_warnings) ? data.integrity_warnings : []).slice(0, 3)) {
       if (typeof warning.message !== "string") continue;
       const notice = add("p", warning.message, root, "notice");

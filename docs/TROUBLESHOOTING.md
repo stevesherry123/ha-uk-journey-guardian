@@ -33,6 +33,8 @@ provider calls.
 | --- | --- |
 | No upcoming journey | Correct source calendar, timed start/end, `Origin to Destination` title, 30-hour lookahead, no active simulation. Press **Refresh calendar and timings**. |
 | Booking still missing after refresh | Inspect HA's calendar. If absent there, compare the private upstream feed with its source itinerary. Journey Guardian cannot import unpublished events. Never post a feed URL publicly. |
+| Travel calendar could not be read | The dashboard labels this separately from a rail timetable mismatch. Any visible bookings may come from the last successful read. Check the source calendar and refresh after it recovers. |
+| Two nearby bookings list different interchange stations | Check where the first train actually ends and where the next departs. If these are a connection, correct the calendar or verify the station against the timetable. Confirm the connection only after the bookings agree. |
 | Data health on but no live rail | Health is not proof of every feature. Check **Rail data freshness**, **Check live rail now**, selected provider, credentials and budget. Automatic checks are opt-in. |
 | Rail status says retained or historical | This is an earlier observation, not a new railway confirmation. Check the last successful live time/error on **Status**. |
 | Service missing or ambiguous | Verify station names/codes, event time and operator evidence. Do not widen matching or assume cancellation merely because a service is absent. Early termination remains a known gap. |

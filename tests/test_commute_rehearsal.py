@@ -578,6 +578,56 @@ async def test_active_calendar_outage_recovers_intent_after_runtime_reload(rehea
     assert h.runtime.coordinator.data.next_journey is None
 
 
+async def test_late_onward_booking_after_calendar_failure_explains_station_mismatch(
+    rehearsal,
+):
+    h = rehearsal
+    h.events = [{
+        "summary": f"{NAMES[0]} to {NAMES[3]}",
+        "start": clock("09:00").isoformat(),
+        "end": clock("09:22").isoformat(),
+    }]
+    await h.load(home=False, connection_monitor=True)
+    entity_id = er.async_get(h.hass).async_get_entity_id(
+        "sensor", DOMAIN, f"{h.entry.entry_id}_status",
+    )
+
+    def dashboard():
+        return h.hass.states.get(entity_id).attributes["dashboard"]
+
+    assert len(dashboard()["bookings"]) == 1
+    assert not dashboard()["integrity_warnings"]
+
+    h.calendar_error = True
+    h.events.append({
+        "summary": f"{NAMES[1]} to {NAMES[3]}",
+        "start": clock("09:55").isoformat(),
+        "end": clock("11:00").isoformat(),
+    })
+    await h.review()
+    assert dashboard()["calendar_unavailable"]
+    assert dashboard()["bookings_source"] == "retained_calendar"
+    assert not dashboard()["connections"]
+
+    h.calendar_error = False
+    await h.advance("08:46")
+    await h.review()
+    assert not dashboard()["calendar_unavailable"]
+    assert len(dashboard()["bookings"]) == 2
+    warning, = dashboard()["integrity_warnings"]
+    assert warning["kind"] == "booking_station_mismatch"
+    assert NAMES[3] in warning["message"]
+    assert NAMES[1] in warning["message"]
+    assert not dashboard()["connections"]
+
+    h.events[0]["summary"] = f"{NAMES[0]} to {NAMES[1]}"
+    await h.advance("08:48")
+    await h.review()
+    assert not dashboard()["integrity_warnings"]
+    connection, = dashboard()["connections"]
+    assert not connection["confirmed"]
+
+
 async def test_four_bookings_visible_without_new_provider_calls_or_plan_changes(
     rehearsal,
 ):

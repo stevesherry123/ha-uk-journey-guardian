@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Explain when Home Assistant cannot read the travel calendar. Flag nearby
+  bookings whose arrival and onward departure stations differ, so a late
+  calendar edit can be reviewed before confirming a connection.
+
 ### v0.3.0-beta.12 staging build
 
 - Combine opt-in rail connection warnings and recovery with booking-specific

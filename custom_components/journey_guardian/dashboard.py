@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from .booking_overview import render_bookings
+from .booking_overview import MAX_POSSIBLE_CONNECTION_MINUTES, render_bookings
 from .models import BOOKING_CHECK_FAILURES, JourneySnapshot
 from .notification import (
     WAKE_REMINDER_OFFSETS,
@@ -31,10 +31,13 @@ def dashboard_projection(
         and issue.booking_fingerprint == journey.booking_fingerprint
         and _aware(issue.recorded_at)
     )
+    bookings = render_bookings(snapshot.booked_legs, snapshot.checked_at)
+    calendar_unavailable = snapshot.error == "calendar_unavailable"
     result = {
         "schema_version": 1,
         "checked_at": snapshot.checked_at.isoformat(),
         "healthy": snapshot.data_healthy,
+        "calendar_unavailable": calendar_unavailable,
         "simulation": snapshot.simulation_active,
         "phase": snapshot.operational_phase,
         "journey": None,
@@ -49,7 +52,7 @@ def dashboard_projection(
             if context.get("announcement_engine_configured")
             and not snapshot.simulation_active else "ha_persistent_notification"
         ),
-        "bookings": render_bookings(snapshot.booked_legs, snapshot.checked_at),
+        "bookings": bookings,
         "bookings_source": "retained_calendar" if snapshot.error else "calendar_only",
         "bookings_truncated": snapshot.booked_leg_count > len(snapshot.booked_legs),
         "latest_notification_record": (
@@ -76,6 +79,21 @@ def dashboard_projection(
             "confirmation_required": True,
             "suggested_service": None,
         })
+    if not snapshot.simulation_active and not snapshot.error:
+        for inbound, outbound in zip(bookings, bookings[1:], strict=False):
+            if (
+                outbound["relationship_to_previous"] == "different_station"
+                and outbound["scheduled_gap_minutes"] <= MAX_POSSIBLE_CONNECTION_MINUTES
+            ):
+                result["integrity_warnings"].append({
+                    "kind": "booking_station_mismatch",
+                    "message": (
+                        f"One booking ends at {inbound['destination']} and the next "
+                        f"starts at {outbound['origin']}. If these trains are meant "
+                        "to connect, check the interchange in your calendar."
+                    ),
+                })
+                break
     departure = _actionable_departure(snapshot)
     result["journey"] = {
         "origin": journey.origin_name,

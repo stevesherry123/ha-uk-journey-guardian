@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.14
+
+- Stop repeating home wake alerts when the configured awake sensor signals,
+  even if it clears before the next repeat.
+
 ## 0.2.13
 
 - Try the preferred Waze sensor, then configured Google driving for the same

@@ -1,5 +1,6 @@
 """Tests for cancellable, restart-safe operational notifications."""
 
+import asyncio
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, Mock, patch
@@ -398,6 +399,50 @@ async def test_home_wake_alarm_repeats_until_awake_evidence(hass) -> None:
     coordinator.record_notification.assert_called_once_with("wake_alarm", NOW)
     hass.states.async_set(awake_entity, "off")
     assert not scheduler._should_run_home_wake_alarm(snapshot)
+
+
+async def test_home_wake_stops_on_a_brief_awake_state(hass) -> None:
+    """An awake pulse between repeats must stop the alarm for this departure."""
+    person_entity = ".".join(("person", "example_traveller"))
+    awake_entity = "input_boolean.example_awake"
+    hass.states.async_set(person_entity, "home")
+    hass.states.async_set(awake_entity, "off")
+    snapshot = replace(
+        _snapshot(simulation=False, phase="prepare_now"),
+        timing=replace(TIMING, leave_home_at=NOW + timedelta(minutes=30)),
+    )
+    scheduler = JourneyNotificationScheduler(
+        hass,
+        Mock(data=snapshot),
+        Mock(),
+        live_notifications_enabled=True,
+        person_entity=person_entity,
+        home_wake_enabled=True,
+        home_wake_awake_entity=awake_entity,
+    )
+    delivered = asyncio.Event()
+
+    async def deliver(*_args, **_kwargs):
+        delivered.set()
+        return "announcement_engine"
+
+    scheduler._async_deliver = AsyncMock(side_effect=deliver)
+
+    with patch(
+        "custom_components.journey_guardian.notification.dt_util.now",
+        return_value=NOW,
+    ):
+        scheduler.start()
+        try:
+            await asyncio.wait_for(delivered.wait(), timeout=1)
+            hass.states.async_set(awake_entity, "on")
+            hass.states.async_set(awake_entity, "off")
+            await hass.async_block_till_done()
+            assert scheduler.diagnostics()["last_stop_reason"] == "awake"
+            assert not scheduler._should_run_home_wake_alarm(snapshot)
+            scheduler._async_deliver.assert_awaited_once()
+        finally:
+            scheduler.stop()
 
 
 async def test_away_preparation_keeps_standard_reminder(hass) -> None:

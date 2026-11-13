@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### v0.3.0-beta.13
+
+- Stop repeating home wake alerts when the configured awake sensor signals,
+  even when the signal clears before the next repeat.
+
 - Retain the last successful calendar read and latest failure category and
   timestamp across restarts, and show them in the dashboard after a failure.
 

@@ -7,11 +7,10 @@ identify every disruption, or automatically find a replacement train yet.
 ## 1. Install and configure
 
 1. Back up Home Assistant. You need Home Assistant 2026.8 or newer.
-2. Open HACS and search for **UK Journey Guardian**. Download the latest stable
-   release and restart Home Assistant. It is in the default catalogue.
-   If it does not appear, refresh HACS and allow time for catalogue updates.
-   As a fallback, open **Custom repositories** in the HACS menu and add
-   `https://github.com/stevesherry123/ha-uk-journey-guardian` as **Integration**.
+2. On Home Assistant 2026.11 or newer, open **Settings → Marketplace**. On
+   Home Assistant 2026.8–2026.10, open **HACS**. Search for **UK Journey Guardian**,
+   install the latest stable release and restart Home Assistant. If the entry
+   is missing, see the [installation options](../README.md#installation).
 3. Open **Settings > Devices & services > Add integration**, then select
    **UK Journey Guardian**. Only one integration entry is supported.
 4. Select your existing calendar, person and home zone. Choose conservative

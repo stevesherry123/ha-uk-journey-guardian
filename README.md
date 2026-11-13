@@ -1,27 +1,51 @@
 # UK Journey Guardian
 
-UK Journey Guardian is a Home Assistant commuting assistant for departure
-timing, live UK rail checks, station access, and separate booked rail legs.
+Journey Guardian turns timed UK rail bookings into preparation reminders,
+leave-for-station alerts, and live train checks in Home Assistant.
 
-The current stable release targets Home Assistant 2026.8 or newer.
+**[Install and set up](#installation)** ·
+**[Latest stable release](https://github.com/stevesherry123/ha-uk-journey-guardian/releases/latest)** ·
+**[Troubleshooting](docs/TROUBLESHOOTING.md)**
 
-Releases include a [runtime-only HACS ZIP](docs/RELEASE_PACKAGING.md) from v0.2.10.
-Existing installations update in place; no uninstall is needed.
+## A morning commute
 
-The stable maintenance line is **0.2.12**. The **0.3.0-beta.6** prerelease adds a
-[read-only upcoming and retained booking views](docs/BOOKING_OVERVIEW.md),
-not completed automatic
-interchange or disruption recovery. Choose prereleases deliberately.
+For a fictional 09:00 train from Example Central to Example Junction, Journey
+Guardian can plan this morning using your configured allowances:
 
-Start with the [setup and first-journey guide](docs/GETTING_STARTED.md).
-For missing journeys, alarms, or provider results, use
-[troubleshooting](docs/TROUBLESHOOTING.md).
+| Time | What you see |
+| --- | --- |
+| 07:50 | Start getting ready |
+| 08:30 | Leave for the station |
+| 08:50 | Aim to arrive at the station |
+| 09:00 | Booked train departure |
 
-> [!WARNING]
-> UK Journey Guardian is travel assistance, not a guaranteed transport service.
-> Keep a fallback alarm while validating a new installation, and do not rely on
-> any single provider or Home Assistant instance as the sole source of departure
-> advice.
+The example uses 30 minutes to prepare, 10 minutes of early warning, 20 minutes
+to reach the station, and a 10-minute station buffer. Live rail checks and
+phone alerts require configuration. Keep an independent alarm while validating
+your setup.
+
+**Stable** includes calendar-based timing, live rail checks, and configurable
+alerts. The [rail beta](https://github.com/stevesherry123/ha-uk-journey-guardian/releases/tag/v0.3.0-beta.13)
+adds the travel dashboard, confirmed connection warnings, and user-directed
+recovery to the booked destination on same-day routes with up to one change.
+
+## Installation
+
+Journey Guardian supports Home Assistant 2026.8 or newer.
+
+1. On Home Assistant 2026.11 or newer, open **Settings → Marketplace**. On
+   Home Assistant 2026.8–2026.10, open **HACS**.
+2. Search for **UK Journey Guardian** and install the latest stable release.
+   The integration is in the default catalog. If needed, use **Add from link**
+   in Marketplace or **Custom repositories** in HACS with the
+   [Journey Guardian repository](https://github.com/stevesherry123/ha-uk-journey-guardian).
+3. Restart Home Assistant. For a fresh installation, go to
+   **Settings → Devices & services → Add integration → UK Journey Guardian**.
+4. Follow the [setup and first-journey guide](docs/GETTING_STARTED.md) to choose
+   your calendar and verify your first booking.
+
+Existing installations update in place. See the [release packaging
+guide](docs/RELEASE_PACKAGING.md) for the runtime ZIP.
 
 ## Design principles
 
@@ -245,45 +269,6 @@ Fallback results remain
 `source: configured_fallback` and `classification: inferred`. Automatic mode
 uses driving at home and public transport away from home; walking, driving and
 cycling can also be selected explicitly.
-
-## Installation
-
-Open HACS and search for **UK Journey Guardian**. Open its entry and download
-the latest stable release. The integration is included in the default HACS
-catalogue; adding a custom repository is not normally necessary.
-
-If it does not appear yet, refresh HACS and allow time for catalogue updates.
-As a fallback, add the URL below as a **custom repository** of type
-**Integration**, then download it. HACS installs the files under
-`custom_components/` in the Home Assistant configuration directory.
-
-```text
-https://github.com/stevesherry123/ha-uk-journey-guardian
-```
-
-After downloading it:
-
-1. Restart Home Assistant.
-2. Open **Settings → Devices & services → Add integration**.
-3. Search for **UK Journey Guardian**.
-4. Select the calendar, traveller, and zones. Provider credentials can be
-   deferred until the manual live-rail check is needed. The calendar source is
-   force-refreshed daily by default; this can be changed from 15 minutes to
-   weekly, or disabled.
-5. Keep existing travel alarms enabled while validating shadow-mode results.
-
-After installation, open **Settings → Devices & services → UK Journey
-Guardian → Configure** to tune the preparation, early-warning,
-station-arrival, conservative station-access durations, and upstream calendar
-refresh interval. Live-calendar notifications are deliberately disabled by
-default. Validate local simulations and separately test the delivery script
-before enabling them. The development notification-preview helper is not a
-user-facing preview screen. Simulation notifications remain enabled for testing.
-
-The [default-catalogue submission](https://github.com/hacs/default/pull/11772)
-was approved and merged on 21 October 2026. Catalogue availability may take up
-to eight hours after approval. HACS indexes the GitHub repository; it does not
-replace or host the source repository.
 
 ## Entities
 

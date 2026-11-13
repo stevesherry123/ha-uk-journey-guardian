@@ -48,10 +48,16 @@ def test_delivery_example_reads_the_helper_for_automatic_and_manual_alerts():
 
 
 def test_installation_leads_with_catalogue_search_and_keeps_a_fallback():
-    for path in (ROOT / "README.md", ROOT / "docs/GETTING_STARTED.md"):
-        text = path.read_text()
-        search = text.index("Open HACS and search for **UK Journey Guardian**")
-        fallback = text.index("As a fallback", search)
-        assert search < fallback
-        assert "custom repositor" in text[fallback:].casefold()
-        assert "Until the default-catalogue submission is accepted" not in text
+    readme = (ROOT / "README.md").read_text()
+    guide = (ROOT / "docs/GETTING_STARTED.md").read_text()
+    for text in (readme, guide):
+        install = text.index("**Settings → Marketplace**")
+        legacy = text.index("**HACS**", install)
+        search = text.index("Search for **UK Journey Guardian**", legacy)
+        assert install < legacy < search
+
+    assert readme.index("**Add from link**") > readme.index(
+        "Search for **UK Journey Guardian**"
+    )
+    assert "**Custom repositories** in HACS" in readme
+    assert "../README.md#installation" in guide

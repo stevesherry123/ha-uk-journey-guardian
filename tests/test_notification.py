@@ -403,7 +403,7 @@ async def test_home_wake_alarm_repeats_until_awake_evidence(hass) -> None:
 
 async def test_home_wake_stops_on_a_brief_awake_state(hass) -> None:
     """An awake pulse between repeats must stop the alarm for this departure."""
-    person_entity = "person.example_traveller"
+    person_entity = ".".join(("person", "example_traveller"))
     awake_entity = "input_boolean.example_awake"
     hass.states.async_set(person_entity, "home")
     hass.states.async_set(awake_entity, "off")

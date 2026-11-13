@@ -435,12 +435,22 @@ async def test_home_wake_stops_on_a_brief_awake_state(hass) -> None:
         scheduler.start()
         try:
             await asyncio.wait_for(delivered.wait(), timeout=1)
+            hass.states.async_set("input_boolean.unrelated_awake", "on")
+            await asyncio.sleep(0)
+            assert scheduler._should_run_home_wake_alarm(snapshot)
             hass.states.async_set(awake_entity, "on")
             hass.states.async_set(awake_entity, "off")
             await hass.async_block_till_done()
             assert scheduler.diagnostics()["last_stop_reason"] == "awake"
             assert not scheduler._should_run_home_wake_alarm(snapshot)
             scheduler._async_deliver.assert_awaited_once()
+            next_booking = replace(
+                snapshot,
+                next_journey=replace(
+                    snapshot.next_journey, start=DEPARTURE + timedelta(days=1),
+                ),
+            )
+            assert scheduler._should_run_home_wake_alarm(next_booking)
         finally:
             scheduler.stop()
 

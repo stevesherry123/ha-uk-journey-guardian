@@ -189,6 +189,7 @@ class JourneySnapshot:
     booked_legs: tuple[JourneyEvent, ...] = ()
     booked_leg_count: int = 0
     current_rail_issue: RailCheckIssue | None = None
+    calendar_read_error: str | None = None
 
     @property
     def data_healthy(self) -> bool:

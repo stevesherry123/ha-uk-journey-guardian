@@ -100,6 +100,21 @@ export class JourneyGuardianCard extends BaseElement {
     } else if (!data.healthy) {
       add("p", "Journey data needs attention. Times may be retained.", root, "notice");
     }
+    const calendarReads = data.calendar_reads;
+    if (calendarReads && validTime(calendarReads.last_failure_at)) {
+      const reasons = {
+        entity_unavailable: "calendar entity unavailable",
+        service_unavailable: "calendar service unavailable",
+        timeout: "request timed out",
+        invalid_response: "unexpected calendar response",
+        service_call_failed: "calendar service request failed",
+        review_failed: "journey review failed",
+      };
+      const failure = calendarReads.last_failure_at;
+      add("p", `Last calendar failure: ${day(failure)} ${format(failure)} / ${reasons[calendarReads.last_error] || "unknown reason"}`, root, "secondary");
+      const success = calendarReads.last_success_at;
+      if (validTime(success)) add("p", `Last successful calendar read: ${day(success)} ${format(success)}`, root, "secondary");
+    }
     for (const warning of (Array.isArray(data.integrity_warnings) ? data.integrity_warnings : []).slice(0, 3)) {
       if (typeof warning.message !== "string") continue;
       const notice = add("p", warning.message, root, "notice");

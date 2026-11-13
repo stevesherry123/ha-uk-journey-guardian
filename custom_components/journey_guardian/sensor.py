@@ -270,6 +270,10 @@ class JourneyStatusSensor(JourneyGuardianEntity, SensorEntity):
                     ],
                 }
             )
+        if not self.coordinator.data.simulation_active:
+            attributes["dashboard"]["calendar_reads"] = (
+                self.coordinator.calendar_reads.as_dict()
+            )
         connections = self.coordinator.connection_dashboard(
             dt_util.now()
         )

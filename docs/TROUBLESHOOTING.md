@@ -98,9 +98,11 @@ For denied access, check the Routes API, key restrictions, billing and quota in
 your own Google project; the category alone does not prove which setting failed.
 Conservative fallback timing remains in use until a route succeeds.
 
-The Status attribute `last_successful_calendar_review_at` records successful
-calendar reads since startup, not proof of a successful upstream feed refresh.
-Inspect the separate source-refresh time/error attributes for that.
+The Status attribute `last_successful_calendar_review_at` records the latest
+successful calendar read. After a failure, the dashboard shows its time and
+category alongside the latest successful read, even after recovery or restart.
+The record stores timestamps and fixed categories only. For an upstream feed
+refresh, inspect the separate source-refresh time and error attributes.
 
 Include the integration version, HA version, expected behaviour, what happened,
 approximate stage (preparation, departure or arrival), selected provider, and

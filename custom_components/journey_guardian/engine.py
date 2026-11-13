@@ -47,6 +47,14 @@ from .waze_sensor import WazeSensorError, async_waze_estimate
 _LOGGER = logging.getLogger(__name__)
 
 
+class CalendarReadError(ValueError):
+    """Describe a calendar failure without retaining source data."""
+
+    def __init__(self, category: str) -> None:
+        super().__init__(category)
+        self.category = category
+
+
 class JourneyGuardianEngine:
     """Read journey inputs and produce one normalized decision snapshot."""
 
@@ -123,15 +131,18 @@ class JourneyGuardianEngine:
                     simulated,
                     last_live_rail_error=self._last_live_rail_error,
                 )
-        calendar_state = self._hass.states.get(self._calendar_entity)
-        if (
-            calendar_state is None
-            or calendar_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN)
-            or not self._hass.services.has_service("calendar", "get_events")
-        ):
-            return self._calendar_unavailable_snapshot(checked_at)
         try:
             events = await self._async_calendar_events(checked_at)
+        except CalendarReadError as err:
+            return self._calendar_unavailable_snapshot(checked_at, err.category)
+        except TimeoutError:
+            return self._calendar_unavailable_snapshot(checked_at, "timeout")
+        except Exception as err:
+            _LOGGER.warning("Calendar read failed with %s", type(err).__name__)
+            return self._calendar_unavailable_snapshot(
+                checked_at, "service_call_failed"
+            )
+        try:
             next_journey = select_next_journey(
                 events, checked_at,
                 exclude=(
@@ -178,10 +189,10 @@ class JourneyGuardianEngine:
             _LOGGER.warning(
                 "Calendar review failed with %s", type(err).__name__
             )
-            return self._calendar_unavailable_snapshot(checked_at)
+            return self._calendar_unavailable_snapshot(checked_at, "review_failed")
 
     def _calendar_unavailable_snapshot(
-        self, checked_at: Any
+        self, checked_at: Any, category: str
     ) -> JourneySnapshot:
         """Return the stable state used while the calendar is starting."""
         return JourneySnapshot(
@@ -191,6 +202,7 @@ class JourneyGuardianEngine:
             budget=self._budget.snapshot(),
             operational_phase="error",
             error="calendar_unavailable",
+            calendar_read_error=category,
             last_live_rail_error=self._last_live_rail_error,
         )
 
@@ -661,6 +673,11 @@ class JourneyGuardianEngine:
 
     async def _async_calendar_events(self, start: Any) -> list[dict[str, Any]]:
         end = start + timedelta(hours=DEFAULT_LOOKAHEAD_HOURS)
+        state = self._hass.states.get(self._calendar_entity)
+        if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            raise CalendarReadError("entity_unavailable")
+        if not self._hass.services.has_service("calendar", "get_events"):
+            raise CalendarReadError("service_unavailable")
         response = await self._hass.services.async_call(
             "calendar",
             "get_events",
@@ -674,17 +691,17 @@ class JourneyGuardianEngine:
         )
         state = self._hass.states.get(self._calendar_entity)
         if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-            raise ValueError("calendar_unavailable")
+            raise CalendarReadError("entity_unavailable")
         if not isinstance(response, Mapping):
-            raise ValueError("calendar_response_invalid")
+            raise CalendarReadError("invalid_response")
         calendar_data = response.get(self._calendar_entity)
         if not isinstance(calendar_data, Mapping):
-            raise ValueError("calendar_response_invalid")
+            raise CalendarReadError("invalid_response")
         events = calendar_data.get("events")
         if not isinstance(events, list) or any(
             not isinstance(event, Mapping) for event in events
         ):
-            raise ValueError("calendar_response_invalid")
+            raise CalendarReadError("invalid_response")
         return events
 
 

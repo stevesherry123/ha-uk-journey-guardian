@@ -13,6 +13,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
+from .calendar_read_history import CalendarReadHistory
 from .connection import resolve_transfer_allowance
 from .connection_preferences import (
     CONF_CONNECTION_MONITOR,
@@ -68,7 +69,9 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
         self.next_station_access_check_at: datetime | None = None
         self.last_notification: str | None = None
         self.last_notification_at: datetime | None = None
-        self.last_successful_calendar_review_at: datetime | None = None
+        self.calendar_reads = CalendarReadHistory(
+            hass, scope=f"{entry.entry_id}|{calendar_entity}"
+        )
         self.health_issues = JourneyHealthIssues(hass)
         entry.async_on_unload(self.health_issues.stop)
         self._last_live_snapshot: JourneySnapshot | None = None
@@ -229,6 +232,13 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
                 else None
             ),
         }
+
+    async def _async_setup(self) -> None:
+        await self.calendar_reads.async_load()
+
+    @property
+    def last_successful_calendar_review_at(self) -> datetime | None:
+        return self.calendar_reads.last_success
 
     async def _async_update_data(self) -> JourneySnapshot:
         """Return the latest normalized journey state."""
@@ -454,8 +464,11 @@ class JourneyGuardianCoordinator(DataUpdateCoordinator[JourneySnapshot]):
                 now.isoformat()
             ),
         )
-        if not calendar_failed:
-            self.last_successful_calendar_review_at = now
+        self.calendar_reads.record(
+            now,
+            (snapshot.calendar_read_error or "review_failed")
+            if calendar_failed else None
+        )
         timing = snapshot.timing
         if timing is not None:
             self.health_issues.observe_google_access(

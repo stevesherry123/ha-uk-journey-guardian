@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Retain the last successful calendar read and latest failure category and
+  timestamp across restarts, and show them in the dashboard after a failure.
+
 - Explain when Home Assistant cannot read the travel calendar. Flag nearby
   bookings whose arrival and onward departure stations differ, so a late
   calendar edit can be reviewed before confirming a connection.

@@ -606,6 +606,10 @@ async def test_late_onward_booking_after_calendar_failure_explains_station_misma
     })
     await h.review()
     assert dashboard()["calendar_unavailable"]
+    failure = dashboard()["calendar_reads"]
+    assert failure["last_error"] == "service_call_failed"
+    assert failure["last_success_at"] is not None
+    assert failure["last_failure_at"] is not None
     assert dashboard()["bookings_source"] == "retained_calendar"
     assert not dashboard()["connections"]
 
@@ -613,6 +617,15 @@ async def test_late_onward_booking_after_calendar_failure_explains_station_misma
     await h.advance("08:46")
     await h.review()
     assert not dashboard()["calendar_unavailable"]
+    recovered = dashboard()["calendar_reads"]
+    assert recovered["last_failure_at"] == failure["last_failure_at"]
+    assert recovered["last_error"] == failure["last_error"]
+    assert recovered["last_success_at"] > failure["last_failure_at"]
+    await h.advance("08:47")
+    await h.reload()
+    assert (
+        dashboard()["calendar_reads"]["last_failure_at"] == failure["last_failure_at"]
+    )
     assert len(dashboard()["bookings"]) == 2
     warning, = dashboard()["integrity_warnings"]
     assert warning["kind"] == "booking_station_mismatch"

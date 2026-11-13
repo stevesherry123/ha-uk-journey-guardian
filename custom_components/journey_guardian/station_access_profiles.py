@@ -77,6 +77,20 @@ def _alias(value: str) -> str:
     return " ".join(value.casefold().split()).removeprefix("zzz ")
 
 
+def station_code_for_alias(name: str, profiles: Mapping[str, str]) -> str | None:
+    """Resolve only an exact, uniquely configured station alias."""
+    wanted = _alias(name)
+    if not wanted:
+        return None
+    matches = [
+        code
+        for key in profiles
+        for code, separator, alias in (key.partition("|"),)
+        if separator and _alias(alias) == wanted
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
 def _profile_for_journey(
     journey: JourneyEvent, profiles: Mapping[str, str]
 ) -> str | None:
@@ -89,18 +103,14 @@ def _profile_for_journey(
     except StationResolutionError as err:
         if err.category != "station_code_unresolved":
             return None
-        matches = [
-            value
-            for key, value in profiles.items()
-            if "|" in key
-            and _alias(key.split("|", 1)[1]) == _alias(journey.origin_name)
-        ]
-        return matches[0] if len(matches) == 1 else None
+        code = station_code_for_alias(journey.origin_name, profiles)
+    else:
+        code = station.code
     return next(
         (
             value
             for key, value in profiles.items()
-            if key.split("|", 1)[0] == station.code
+            if key.split("|", 1)[0] == code
         ),
         None,
     )

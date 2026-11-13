@@ -47,6 +47,20 @@ provider calls.
 | No nightly report | Read the [safety-net guide](TRAVEL_DAY_REVIEW.md). It only alerts on saved possible claims or unresolved outcomes; no report is not proof of punctuality. |
 | HACS shows a newer version than HA | Downloaded files take effect after an HA restart. Check the running integration version afterwards. |
 
+## Station Not Found
+
+Check the origin and destination labels against the booking. If a calendar uses
+a different station name from the rail provider, add an explicit CRS code to
+the calendar label or configure an exact alias in **Station access profiles**.
+For example, `SHA|Harbour Station=transit` associates that fictional calendar
+label with `SHA`. Preserve the existing mode or Waze sensor when adding the alias
+to an existing profile; edit that line rather than adding a duplicate CRS.
+
+Explicit codes take precedence. The configured alias can resolve either endpoint
+without a provider name search. This does not change the booked times or confirm
+that a train matches. A successful live rail check clears the rail Repair;
+station-access routing and Google permission errors are separate.
+
 ## Calendar Unavailable After Restart
 
 If the selected calendar itself appears under **Needs attention** in HA's

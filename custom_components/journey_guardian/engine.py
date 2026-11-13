@@ -38,6 +38,7 @@ from .station_access_profiles import (
     WAZE_SENSOR,
     mode_for_journey,
     parse_station_access_profiles,
+    station_code_for_alias,
     waze_sensor_for_journey,
 )
 from .timing import calculate_fallback_timing
@@ -630,7 +631,7 @@ class JourneyGuardianEngine:
         urgent: bool = False,
         client: TransportAPIClient | RailinfoClient | None = None,
     ) -> StationResolution:
-        """Resolve explicitly or with one cached manual Places lookup."""
+        """Resolve explicit codes and configured aliases before provider lookup."""
         cache_key = _station_cache_key(name, code, location)
         if cached := self._station_resolutions.get(cache_key):
             return cached
@@ -643,15 +644,21 @@ class JourneyGuardianEngine:
         except StationResolutionError as err:
             if err.category != "station_code_unresolved":
                 raise
-            if client is None:
-                raise
-            places = await client.async_places(name, urgent=urgent)
-            station = resolve_station(
-                origin_name=name,
-                origin_code=code,
-                location=location,
-                places_payload=places.payload,
-            )
+            alias_code = station_code_for_alias(name, self._station_access_profiles)
+            if alias_code is not None:
+                station = StationResolution(
+                    alias_code, name, "configured_alias", "explicit"
+                )
+            else:
+                if client is None:
+                    raise
+                places = await client.async_places(name, urgent=urgent)
+                station = resolve_station(
+                    origin_name=name,
+                    origin_code=code,
+                    location=location,
+                    places_payload=places.payload,
+                )
         if len(self._station_resolutions) >= 20:
             self._station_resolutions.pop(next(iter(self._station_resolutions)))
         self._station_resolutions[cache_key] = station

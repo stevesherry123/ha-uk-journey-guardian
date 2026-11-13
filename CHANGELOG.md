@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Use exact configured station-access aliases when resolving live rail stations,
+  including destinations. Explicit station codes still take precedence.
+
 ### v0.3.0-beta.13
 
 - Stop repeating home wake alerts when the configured awake sensor signals,

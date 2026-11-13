@@ -20,6 +20,7 @@ from custom_components.journey_guardian.models import (
     JourneySnapshot,
 )
 from custom_components.journey_guardian.provider_broker import ProviderResult
+from custom_components.journey_guardian.station import StationResolutionError
 from custom_components.journey_guardian.timing import calculate_fallback_timing
 
 CHECKED_AT = datetime(2026, 8, 28, 16, 34, tzinfo=UTC)
@@ -650,6 +651,50 @@ async def test_manual_live_review_resolves_and_normalizes_provider_data() -> Non
         2026, 9, 3, 9, 55, tzinfo=UTC
     )
     assert result.budget.calls_used == 2
+
+
+async def test_railinfo_review_uses_configured_destination_alias() -> None:
+    client = Mock(configured=True)
+    client.async_places = AsyncMock(return_value=_provider_result({"results": []}))
+    client.async_station_board = AsyncMock(return_value=_provider_result(_board()))
+    engine = JourneyGuardianEngine(
+        Mock(), calendar_entity=CALENDAR_ENTITY, budget=_budget(),
+        railinfo_client=client, live_rail_provider="railinfo",
+        station_access_profiles={"SHA|Harbour Station": "transit"},
+    )
+    base = _calendar_snapshot()
+    snapshot = replace(base, next_journey=replace(
+        base.next_journey, origin_code="EXC",
+        destination_confirmation="Harbour Station",
+    ))
+    result = await engine.async_review_live_rail(snapshot=snapshot)
+    client.async_places.assert_not_awaited()
+    client.async_station_board.assert_awaited_once_with(
+        "EXC", snapshot.next_journey.start, calling_at="SHA", urgent=False,
+    )
+    assert result.last_live_rail_error is None
+    assert result.rail_observation.destination_code == "SHA"
+    assert snapshot.next_journey.destination_confirmation == "Harbour Station"
+
+
+async def test_station_alias_does_not_override_explicit_or_guess_partial_name():
+    client = Mock(async_places=AsyncMock(
+        return_value=_provider_result({"results": []})
+    ))
+    engine = JourneyGuardianEngine(
+        Mock(), calendar_entity=CALENDAR_ENTITY, budget=_budget(),
+        station_access_profiles={"SHA|Harbour Station": "transit"},
+    )
+    explicit = await engine._async_resolve_station(
+        name="Harbour Station", code="EXC", location="", client=client,
+    )
+    assert explicit.code == "EXC"
+    client.async_places.assert_not_awaited()
+    with pytest.raises(StationResolutionError, match="station_not_found"):
+        await engine._async_resolve_station(
+            name="Harbour", code="CALENDAR", location="", client=client,
+        )
+    client.async_places.assert_awaited_once_with("Harbour", urgent=False)
 
 
 async def test_manual_review_reuses_in_memory_station_resolution() -> None:

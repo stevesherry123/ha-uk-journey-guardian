@@ -77,14 +77,14 @@ async def test_diagnostics_remove_journey_and_configuration_identifiers(hass) ->
     }
     runtime.notification_scheduler.diagnostics.return_value = {
         "enabled": True,
-        "status": "waiting",
+        "status": "away",
         "awake_evidence_configured": False,
         "announcement_engine_configured": True,
         "repeat_seconds": 6,
         "max_minutes": 15,
         "delivery_count": 0,
         "last_delivery": None,
-        "last_stop_reason": None,
+        "last_stop_reason": "awake",
     }
     entry = Mock()
     entry.runtime_data = runtime
@@ -110,7 +110,8 @@ async def test_diagnostics_remove_journey_and_configuration_identifiers(hass) ->
     assert diagnostics["engine"]["next_journey"] == "REDACTED"
     assert diagnostics["engine"]["rail_observation"]["delay_minutes"] == 12
     assert diagnostics["recent_live_checks"][0]["outcome"] == "success"
-    assert diagnostics["home_wake_alarm"]["status"] == "waiting"
+    assert "status" not in diagnostics["home_wake_alarm"]
+    assert "last_stop_reason" not in diagnostics["home_wake_alarm"]
     for private_value in (
         "private_station_a",
         "private_station_b",

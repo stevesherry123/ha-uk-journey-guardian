@@ -12,6 +12,7 @@ from .const import (
     CONF_EARLY_WARNING_MINUTES,
     CONF_GOOGLE_ROUTES_API_KEY,
     CONF_HOME_WAKE_AWAKE_ENTITY,
+    CONF_HOME_WAKE_AWAKE_STATE,
     CONF_HOME_ZONE,
     CONF_LIVE_NOTIFICATIONS_ENABLED,
     CONF_PERSON_ENTITY,
@@ -38,6 +39,7 @@ TO_REDACT = {
     CONF_PROGRESS_ALTERNATIVES,
     CONF_HOME_ZONE,
     CONF_HOME_WAKE_AWAKE_ENTITY,
+    CONF_HOME_WAKE_AWAKE_STATE,
     CONF_DESTINATION_ZONES,
     CONF_EARLY_WARNING_MINUTES,
     CONF_PREPARATION_BUFFER_MINUTES,
@@ -106,7 +108,15 @@ async def async_get_config_entry_diagnostics(
         ],
         "last_travel_day_review": runtime.end_of_day_review.diagnostics(),
         "arrival_collector": runtime.arrival_collector.diagnostics(),
-        "home_wake_alarm": runtime.notification_scheduler.diagnostics(),
+        "home_wake_alarm": {
+            key: value
+            for key, value in runtime.notification_scheduler.diagnostics().items()
+            if key in {
+                "enabled", "awake_evidence_configured",
+                "announcement_engine_configured",
+                "repeat_seconds", "max_minutes",
+            }
+        },
     }
 
 

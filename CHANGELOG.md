@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.2.15
+
+- Check caller permissions for journey actions and minimise shared wake-alarm diagnostics.
+- Scan tracked files and the packaged installation asset for private information.
+
 ## v0.2.14
 
 - Stop repeating home wake alerts when the configured awake sensor signals,

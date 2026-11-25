@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### v0.3.0-beta.15
+
+- Check caller permissions for journey actions and minimise shared wake-alarm diagnostics.
+- Scan tracked files and the packaged installation asset for private information.
+
 ### v0.3.0-beta.14
 
 - Use exact configured station-access aliases when resolving live rail stations,

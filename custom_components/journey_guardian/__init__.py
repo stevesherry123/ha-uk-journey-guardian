@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import voluptuous as vol
+from homeassistant.auth.permissions.const import POLICY_CONTROL, POLICY_READ
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, Unauthorized
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later
@@ -292,14 +293,42 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-def _runtime(hass: HomeAssistant) -> JourneyGuardianRuntimeData:
+def _loaded_entry(hass: HomeAssistant) -> ConfigEntry:
     for entry in hass.config_entries.async_entries(DOMAIN):
         if entry.state is ConfigEntryState.LOADED:
-            return entry.runtime_data
+            return entry
     raise HomeAssistantError("Journey Guardian is not loaded")
 
 
+def _runtime(hass: HomeAssistant) -> JourneyGuardianRuntimeData:
+    return _loaded_entry(hass).runtime_data
+
+
 def _async_register_services(hass: HomeAssistant) -> None:
+    def register(name, handler, **options):
+        async def authorized(call: ServiceCall):
+            if (user_id := call.context.user_id) is not None:
+                user = await hass.auth.async_get_user(user_id)
+                if user is None or not user.is_active:
+                    raise Unauthorized(context=call.context)
+                entry = _loaded_entry(hass)
+                calendar = entry.data[CONF_CALENDAR_ENTITY]
+                person = entry.data.get(CONF_PERSON_ENTITY)
+                permissions = user.permissions
+                if not permissions.check_entity(calendar, POLICY_READ) or (
+                    person and not permissions.check_entity(person, POLICY_READ)
+                ):
+                    raise Unauthorized(context=call.context)
+                # Live checks spend quota, briefings can notify, and the other
+                # actions change shared simulation or booking state.
+                if name != SERVICE_REVIEW_NOW and not permissions.check_entity(
+                    calendar, POLICY_CONTROL
+                ):
+                    raise Unauthorized(context=call.context)
+            return await handler(call)
+
+        hass.services.async_register(DOMAIN, name, authorized, **options)
+
     async def async_travel_review_now(call: ServiceCall) -> dict:
         return await _runtime(hass).manual_review.async_run(
             notify=call.data["notify"]
@@ -337,22 +366,20 @@ def _async_register_services(hass: HomeAssistant) -> None:
         return runtime.coordinator.data.as_dict()
 
     if not hass.services.has_service(DOMAIN, SERVICE_TRAVEL_REVIEW_NOW):
-        hass.services.async_register(
-            DOMAIN, SERVICE_TRAVEL_REVIEW_NOW, async_travel_review_now,
+        register(
+            SERVICE_TRAVEL_REVIEW_NOW, async_travel_review_now,
             schema=vol.Schema({vol.Optional("notify", default=True): cv.boolean}),
             supports_response=SupportsResponse.OPTIONAL,
         )
     if not hass.services.has_service(DOMAIN, SERVICE_REVIEW_NOW):
-        hass.services.async_register(
-            DOMAIN,
+        register(
             SERVICE_REVIEW_NOW,
             async_review_now,
             schema=vol.Schema({}),
             supports_response=SupportsResponse.OPTIONAL,
         )
     if not hass.services.has_service(DOMAIN, SERVICE_SIMULATE_JOURNEY):
-        hass.services.async_register(
-            DOMAIN,
+        register(
             SERVICE_SIMULATE_JOURNEY,
             async_simulate_journey,
             schema=vol.Schema(
@@ -374,16 +401,14 @@ def _async_register_services(hass: HomeAssistant) -> None:
             supports_response=SupportsResponse.OPTIONAL,
         )
     if not hass.services.has_service(DOMAIN, SERVICE_REVIEW_RAIL_NOW):
-        hass.services.async_register(
-            DOMAIN,
+        register(
             SERVICE_REVIEW_RAIL_NOW,
             async_review_rail_now,
             schema=vol.Schema({}),
             supports_response=SupportsResponse.OPTIONAL,
         )
     if not hass.services.has_service(DOMAIN, SERVICE_CLEAR_SIMULATION):
-        hass.services.async_register(
-            DOMAIN,
+        register(
             SERVICE_CLEAR_SIMULATION,
             async_clear_simulation,
             schema=vol.Schema({}),

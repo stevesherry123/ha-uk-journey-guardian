@@ -72,6 +72,9 @@ jobs:
       - name: Build runtime-only HACS installation asset
         run: python3 scripts/build_release.py
 
+      - name: Scan the built installation asset
+        run: python3 scripts/privacy_scan.py --archive dist/journey_guardian.zip
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

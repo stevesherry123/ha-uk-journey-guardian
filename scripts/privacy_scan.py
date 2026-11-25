@@ -1,31 +1,14 @@
 """Fail when repository text resembles secrets or installation-specific IDs."""
 
+import argparse
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
+from zipfile import ZipFile
 
 ROOT = Path(__file__).parents[1]
-EXCLUDED_PARTS = {
-    ".git",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".venv",
-    "__pycache__",
-    "build",
-    "dist",
-    "venv",
-}
-TEXT_SUFFIXES = {
-    "",
-    ".json",
-    ".md",
-    ".py",
-    ".toml",
-    ".txt",
-    ".yaml",
-    ".yml",
-}
-
 PATTERNS = {
     "GitHub personal access token": re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
     "classic GitHub token": re.compile(r"ghp_[A-Za-z0-9]{20,}"),
@@ -43,51 +26,54 @@ PATTERNS = {
     "private key material": re.compile(
         r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"
     ),
-    "private route place": re.compile(
-        "|".join(
-            (
-                "ches" + "ter",
-                "cre" + "we",
-                "liverpool lime " + "street",
-                "london " + "eus" + "ton",
-                "man" + "ches" + "ter",
-                "holy" + "head",
-                "wrex" + "ham",
-            )
-        ),
-        re.IGNORECASE,
-    ),
-    "private coordinates": re.compile(
-        r"\b(?:53\.2|-2\.9|51\.5|-0\.1)\b"
-    ),
-    "private route station code": re.compile(
-        rf"\b(?:{'|'.join(('E' + 'US', 'C' + 'TR', 'C' + 'RE', 'L' + 'IV'))})\b"
-    ),
 }
 
 
 def main() -> int:
-    """Scan repository text and print only file and rule names."""
-    findings: list[tuple[Path, str]] = []
-    for path in ROOT.rglob("*"):
-        if not path.is_file() or any(
-            part in EXCLUDED_PARTS or part.endswith(".egg-info")
-            for part in path.parts
-        ):
-            continue
-        if path.suffix.casefold() not in TEXT_SUFFIXES:
-            continue
-        text = path.read_text(encoding="utf-8", errors="ignore")
-        for name, pattern in PATTERNS.items():
-            if pattern.search(text):
-                findings.append((path.relative_to(ROOT), name))
+    """Check tracked files or a built archive without printing matched values."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--archive", type=Path)
+    args = parser.parse_args()
+    rules = dict(PATTERNS)
+    private = subprocess.check_output(
+        ["git", "rev-parse", "--git-path", "info/jg-private-patterns"],
+        cwd=ROOT, text=True,
+    ).strip()
+    private_file = ROOT / private
+    if private_file.is_file():
+        for index, pattern in enumerate(private_file.read_text().splitlines()):
+            if pattern:
+                rules[f"local rule {index + 1}"] = re.compile(pattern)
 
-    if findings:
-        for path, name in findings:
-            print(f"privacy scan: {path}: {name}")
-        return 1
-    print("privacy scan: clean")
-    return 0
+    def check(name: str, data: bytes) -> bool:
+        # Latin-1 preserves every byte, including ASCII identifiers in binary files.
+        content = data.decode("latin-1")
+        clean = True
+        for label, pattern in rules.items():
+            if pattern.search(content):
+                print(f"privacy scan: {name!r}: {label}")
+                clean = False
+        return clean
+
+    clean = True
+    if args.archive:
+        with ZipFile(args.archive) as archive:
+            for member in archive.infolist():
+                clean = check(member.filename, archive.read(member)) and clean
+    else:
+        paths = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT)
+        for raw in paths.split(b"\0"):
+            if raw:
+                name = os.fsdecode(raw)
+                path = ROOT / name
+                data = (
+                    os.fsencode(os.readlink(path)) if path.is_symlink()
+                    else path.read_bytes()
+                )
+                clean = check(name, data) and clean
+    if clean:
+        print("privacy scan: clean")
+    return 0 if clean else 1
 
 
 if __name__ == "__main__":

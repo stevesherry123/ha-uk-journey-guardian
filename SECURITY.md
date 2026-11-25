@@ -14,3 +14,14 @@ and ask the maintainer for a private contact route.
 UK Journey Guardian stores provider credentials in Home Assistant config entries.
 The integration must not expose credentials through entity state, logs, service
 responses, tests, fixtures, or downloaded diagnostics.
+
+## Checking a release
+
+Run `python scripts/privacy_scan.py` to check tracked files. After building the
+release, run `python scripts/privacy_scan.py --archive dist/journey_guardian.zip`
+to check the actual installation asset.
+
+For installation-specific checks, place one regular expression per line in the
+local file identified by `git rev-parse --git-path info/jg-private-patterns`.
+This file stays outside the tracked tree. Both commands apply its rules when
+present. Fresh checkouts and hosted CI run the generic checks by default.
